@@ -1,0 +1,19 @@
+{
+ "formato": 1,
+ "id": "caja",
+ "nombre": "Caja",
+ "fuente": "Poppins SemiBold",
+ "peso": 600,
+ "tamano": 6.4,
+ "color": "#FFFFFF",
+ "color_activo": "#FFFFFF",
+ "borde": 0,
+ "color_borde": "#000000",
+ "sombra": 0,
+ "mayusculas": false,
+ "fondo": true,
+ "color_fondo": "#111111",
+ "animacion": "ninguna",
+ "notas": "Texto blanco sobre caja oscura, sobrio y muy legible.",
+ "autor": "Corta"
+}

@@ -1,0 +1,400 @@
+{
+ "version": "0.1.0",
+ "carpeta": "~/Corta",
+ "config": {
+  "ia": "claude",
+  "bienvenida": true
+ },
+ "ias": [
+  {
+   "id": "claude",
+   "nombre": "Claude",
+   "instalada": true
+  },
+  {
+   "id": "codex",
+   "nombre": "ChatGPT (Codex)",
+   "instalada": true
+  },
+  {
+   "id": "gemini",
+   "nombre": "Gemini",
+   "instalada": false
+  }
+ ],
+ "modelos": {
+  "recomendado": "turbo",
+  "lista": [
+   {
+    "id": "turbo",
+    "nombre": "Preciso",
+    "detalle": "Mejor para cualquier idioma. 574 MB.",
+    "mb": 574,
+    "listo": true
+   },
+   {
+    "id": "small",
+    "nombre": "Rápido",
+    "detalle": "Más liviano, un poco menos preciso. 190 MB.",
+    "mb": 190,
+    "listo": false
+   }
+  ]
+ },
+ "estilos": [
+  {
+   "formato": 1,
+   "id": "caja",
+   "nombre": "Caja",
+   "fuente": "Poppins SemiBold",
+   "peso": 600,
+   "tamano": 6.4,
+   "color": "#FFFFFF",
+   "color_activo": "#FFFFFF",
+   "borde": 0,
+   "color_borde": "#000000",
+   "sombra": 0,
+   "mayusculas": false,
+   "fondo": true,
+   "color_fondo": "#111111",
+   "animacion": "ninguna",
+   "notas": "Texto blanco sobre caja oscura, sobrio y muy legible.",
+   "autor": "Corta"
+  },
+  {
+   "formato": 1,
+   "id": "neon",
+   "nombre": "Neón",
+   "fuente": "Montserrat Black",
+   "peso": 900,
+   "tamano": 8.6,
+   "color": "#FFFFFF",
+   "color_activo": "#C6F432",
+   "borde": 6,
+   "color_borde": "#111111",
+   "sombra": 3,
+   "mayusculas": true,
+   "fondo": false,
+   "color_fondo": "#000000",
+   "animacion": "pop",
+   "notas": "Verde lima, con mucha energía.",
+   "autor": "Corta"
+  },
+  {
+   "formato": 1,
+   "id": "palabra",
+   "nombre": "Una palabra",
+   "fuente": "Anton",
+   "peso": 400,
+   "tamano": 14,
+   "color": "#FFFFFF",
+   "color_activo": "#FFFFFF",
+   "borde": 8,
+   "color_borde": "#000000",
+   "sombra": 3,
+   "mayusculas": true,
+   "fondo": false,
+   "color_fondo": "#000000",
+   "animacion": "palabra",
+   "notas": "Una sola palabra gigante a la vez, al ritmo de la voz.",
+   "autor": "Corta"
+  },
+  {
+   "formato": 1,
+   "id": "pop",
+   "nombre": "Pop",
+   "fuente": "Poppins ExtraBold",
+   "peso": 800,
+   "tamano": 9.2,
+   "color": "#FFFFFF",
+   "color_activo": "#FFE14D",
+   "borde": 7,
+   "color_borde": "#000000",
+   "sombra": 2,
+   "mayusculas": true,
+   "fondo": false,
+   "color_fondo": "#000000",
+   "animacion": "pop",
+   "notas": "El clásico de los Shorts: palabra activa en amarillo y un poco más grande.",
+   "autor": "Corta"
+  },
+  {
+   "formato": 1,
+   "id": "suave",
+   "nombre": "Suave",
+   "fuente": "Poppins SemiBold",
+   "peso": 600,
+   "tamano": 6.6,
+   "color": "#FFFFFF",
+   "color_activo": "#9FD3FF",
+   "borde": 0,
+   "color_borde": "#000000",
+   "sombra": 6,
+   "mayusculas": false,
+   "fondo": false,
+   "color_fondo": "#000000",
+   "animacion": "ninguna",
+   "notas": "Minimalista, sin borde, solo una sombra suave.",
+   "autor": "Corta"
+  },
+  {
+   "formato": 1,
+   "id": "titular",
+   "nombre": "Titular",
+   "fuente": "Bebas Neue",
+   "peso": 400,
+   "tamano": 12,
+   "color": "#FFFFFF",
+   "color_activo": "#FF5A5F",
+   "borde": 5,
+   "color_borde": "#000000",
+   "sombra": 4,
+   "mayusculas": true,
+   "fondo": false,
+   "color_fondo": "#000000",
+   "animacion": "subrayado",
+   "notas": "Letras altas y condensadas, estilo titular de noticia.",
+   "autor": "Corta"
+  }
+ ],
+ "proyectos": [
+  {
+   "carpeta": "~/Corta/2026-10-25 Ahorra una hora editando",
+   "proyecto": {
+    "formato": 1,
+    "titulo": "Ahorra una hora editando",
+    "fuente": {
+     "archivo": "demo/ana.mp4",
+     "ancho": 1280,
+     "alto": 720,
+     "duracion": 30.24
+    },
+    "lienzo": "9:16",
+    "relleno": "recorte",
+    "encuadre": {
+     "x": 0.45,
+     "y": 0.5
+    },
+    "palabras": [
+     {
+      "t": "Eh…",
+      "i": 1.2,
+      "f": 1.8
+     },
+     {
+      "t": "hola,",
+      "i": 2.7,
+      "f": 3.12
+     },
+     {
+      "t": "soy",
+      "i": 3.22,
+      "f": 3.575
+     },
+     {
+      "t": "Ana.",
+      "i": 3.655,
+      "f": 4.01
+     },
+     {
+      "t": "¿Sabías",
+      "i": 5.41,
+      "f": 5.96
+     },
+     {
+      "t": "que",
+      "i": 6.04,
+      "f": 6.395
+     },
+     {
+      "t": "puedes",
+      "i": 6.475,
+      "f": 7.025
+     },
+     {
+      "t": "ahorrar",
+      "i": 7.105,
+      "f": 7.72
+     },
+     {
+      "t": "una",
+      "i": 7.8,
+      "f": 8.155
+     },
+     {
+      "t": "hora",
+      "i": 8.235,
+      "f": 8.655
+     },
+     {
+      "t": "cada",
+      "i": 8.735,
+      "f": 9.155
+     },
+     {
+      "t": "semana",
+      "i": 9.235,
+      "f": 9.785
+     },
+     {
+      "t": "editando",
+      "i": 9.865,
+      "f": 10.545
+     },
+     {
+      "t": "tus",
+      "i": 10.625,
+      "f": 10.98
+     },
+     {
+      "t": "videos?",
+      "i": 11.06,
+      "f": 11.61
+     },
+     {
+      "t": "Mmm…",
+      "i": 13.21,
+      "f": 13.81
+     },
+     {
+      "t": "te",
+      "i": 14.51,
+      "f": 14.8
+     },
+     {
+      "t": "muestro",
+      "i": 14.88,
+      "f": 15.495
+     },
+     {
+      "t": "cómo.",
+      "i": 15.575,
+      "f": 15.995
+     },
+     {
+      "t": "Primero,",
+      "i": 16.995,
+      "f": 17.61
+     },
+     {
+      "t": "sacas",
+      "i": 17.86,
+      "f": 18.345
+     },
+     {
+      "t": "los",
+      "i": 18.425,
+      "f": 18.78
+     },
+     {
+      "t": "silencios.",
+      "i": 18.86,
+      "f": 19.605
+     },
+     {
+      "t": "Después,",
+      "i": 20.505,
+      "f": 21.12
+     },
+     {
+      "t": "los",
+      "i": 21.37,
+      "f": 21.725
+     },
+     {
+      "t": "subtítulos",
+      "i": 21.805,
+      "f": 22.615
+     },
+     {
+      "t": "aparecen",
+      "i": 22.695,
+      "f": 23.375
+     },
+     {
+      "t": "solos.",
+      "i": 23.455,
+      "f": 23.94
+     },
+     {
+      "t": "Y",
+      "i": 25.14,
+      "f": 25.365
+     },
+     {
+      "t": "listo:",
+      "i": 25.445,
+      "f": 25.93
+     },
+     {
+      "t": "tu",
+      "i": 26.23,
+      "f": 26.52
+     },
+     {
+      "t": "Short",
+      "i": 26.6,
+      "f": 27.085
+     },
+     {
+      "t": "está",
+      "i": 27.165,
+      "f": 27.585
+     },
+     {
+      "t": "para",
+      "i": 27.665,
+      "f": 28.085
+     },
+     {
+      "t": "publicar.",
+      "i": 28.165,
+      "f": 28.845
+     }
+    ],
+    "cortes": [],
+    "subtitulos": {
+     "activos": true,
+     "estilo": "pop",
+     "palabras_por_linea": 3,
+     "posicion": 0.7
+    },
+    "zooms": [],
+    "textos": [],
+    "musica": null,
+    "creado": "2026-10-25T20:00:00"
+   }
+  },
+  {
+   "carpeta": "~/Corta/2026-10-24 Mi rutina de mañana",
+   "proyecto": {
+    "formato": 1,
+    "titulo": "Mi rutina de mañana",
+    "fuente": {
+     "archivo": "demo/ana.mp4",
+     "ancho": 1280,
+     "alto": 720,
+     "duracion": 30.24
+    },
+    "lienzo": "9:16",
+    "relleno": "recorte",
+    "encuadre": {
+     "x": 0.45,
+     "y": 0.5
+    },
+    "palabras": [],
+    "cortes": [],
+    "subtitulos": {
+     "activos": true,
+     "estilo": "pop",
+     "palabras_por_linea": 3,
+     "posicion": 0.7
+    },
+    "zooms": [],
+    "textos": [],
+    "musica": null,
+    "creado": "2026-10-24T09:10:00"
+   }
+  }
+ ]
+}

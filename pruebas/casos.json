@@ -1,0 +1,238 @@
+{
+ "_nota": "Casos compartidos: los prueban pruebas/test_python.py (bin/) y pruebas/interfaz.mjs (ui/app.js). Si cambias una regla, cambia los dos lados y regenera con cuidado: los esperados se revisan a mano.",
+ "conservados": [
+  {
+   "duracion": 10,
+   "cortes": [],
+   "esperado": [
+    {
+     "i": 0,
+     "f": 10
+    }
+   ]
+  },
+  {
+   "duracion": 10,
+   "cortes": [
+    {
+     "i": 2,
+     "f": 3,
+     "motivo": "manual"
+    },
+    {
+     "i": 2.5,
+     "f": 4,
+     "motivo": "silencio"
+    },
+    {
+     "i": 9.98,
+     "f": 10,
+     "motivo": "silencio"
+    }
+   ],
+   "esperado": [
+    {
+     "i": 0,
+     "f": 2
+    },
+    {
+     "i": 4,
+     "f": 9.98
+    }
+   ]
+  },
+  {
+   "duracion": 5,
+   "cortes": [
+    {
+     "i": 0,
+     "f": 1.5,
+     "motivo": "fuera"
+    }
+   ],
+   "esperado": [
+    {
+     "i": 1.5,
+     "f": 5
+    }
+   ]
+  }
+ ],
+ "a_salida": [
+  {
+   "duracion": 10,
+   "cortes": [
+    {
+     "i": 2,
+     "f": 4,
+     "motivo": "manual"
+    }
+   ],
+   "t": 5,
+   "esperado": 3
+  },
+  {
+   "duracion": 10,
+   "cortes": [
+    {
+     "i": 2,
+     "f": 4,
+     "motivo": "manual"
+    }
+   ],
+   "t": 3,
+   "esperado": null
+  }
+ ],
+ "cortar": [
+  {
+   "desde": 1,
+   "hasta": 2,
+   "esperado": [
+    {
+     "i": 2.25,
+     "f": 3.615,
+     "motivo": "manual"
+    }
+   ]
+  },
+  {
+   "desde": 0,
+   "hasta": 0,
+   "esperado": [
+    {
+     "i": 1.2,
+     "f": 2.25,
+     "motivo": "manual"
+    }
+   ]
+  }
+ ],
+ "restaurar": {
+  "cortes": [
+   {
+    "i": 1,
+    "f": 5,
+    "motivo": "manual"
+   }
+  ],
+  "i": 2,
+  "f": 3,
+  "esperado": [
+   {
+    "i": 1,
+    "f": 2,
+    "motivo": "manual"
+   },
+   {
+    "i": 3,
+    "f": 5,
+    "motivo": "manual"
+   }
+  ]
+ },
+ "palabras": [
+  {
+   "t": "Eh…",
+   "i": 1.2,
+   "f": 1.8
+  },
+  {
+   "t": "hola,",
+   "i": 2.7,
+   "f": 3.12
+  },
+  {
+   "t": "soy",
+   "i": 3.22,
+   "f": 3.575
+  },
+  {
+   "t": "Ana.",
+   "i": 3.655,
+   "f": 4.01
+  },
+  {
+   "t": "¿Sabías",
+   "i": 5.41,
+   "f": 5.96
+  },
+  {
+   "t": "que",
+   "i": 6.04,
+   "f": 6.395
+  },
+  {
+   "t": "puedes",
+   "i": 6.475,
+   "f": 7.025
+  },
+  {
+   "t": "ahorrar",
+   "i": 7.105,
+   "f": 7.72
+  },
+  {
+   "t": "una",
+   "i": 7.8,
+   "f": 8.155
+  },
+  {
+   "t": "hora",
+   "i": 8.235,
+   "f": 8.655
+  }
+ ],
+ "duracion": 9.0,
+ "limpiar": {
+  "silencio": 0.5,
+  "muletillas": true,
+  "esperado": [
+   {
+    "i": 1.2,
+    "f": 1.85,
+    "motivo": "muletilla"
+   },
+   {
+    "i": 0.0,
+    "f": 1.08,
+    "motivo": "silencio"
+   },
+   {
+    "i": 1.92,
+    "f": 2.58,
+    "motivo": "silencio"
+   },
+   {
+    "i": 4.13,
+    "f": 5.29,
+    "motivo": "silencio"
+   }
+  ]
+ },
+ "lineas": {
+  "por_linea": 3,
+  "esperado": [
+   [
+    "Eh…"
+   ],
+   [
+    "hola,"
+   ],
+   [
+    "soy",
+    "Ana."
+   ],
+   [
+    "¿Sabías",
+    "que",
+    "puedes"
+   ],
+   [
+    "ahorrar",
+    "una",
+    "hora"
+   ]
+  ]
+ }
+}

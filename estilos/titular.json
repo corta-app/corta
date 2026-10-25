@@ -1,0 +1,19 @@
+{
+ "formato": 1,
+ "id": "titular",
+ "nombre": "Titular",
+ "fuente": "Bebas Neue",
+ "peso": 400,
+ "tamano": 12,
+ "color": "#FFFFFF",
+ "color_activo": "#FF5A5F",
+ "borde": 5,
+ "color_borde": "#000000",
+ "sombra": 4,
+ "mayusculas": true,
+ "fondo": false,
+ "color_fondo": "#000000",
+ "animacion": "subrayado",
+ "notas": "Letras altas y condensadas, estilo titular de noticia.",
+ "autor": "Corta"
+}

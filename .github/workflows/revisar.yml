@@ -1,0 +1,42 @@
+# Revisión automática de cada cambio (y de cada pull request): si algo falla, se ve antes de que llegue a alguien.
+# Sintaxis, privacidad básica, pruebas del motor (exporta de verdad con ffmpeg) y de la interfaz (español/inglés, celular, contraste, misma lógica que Python).
+name: Revisar
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+concurrency:
+  group: revisar-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  comun:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Sintaxis
+        run: |
+          node --check ui/app.js
+          python3 -m py_compile bin/*.py pruebas/*.py ejemplos/*.py
+          python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('estilos/*.json') + ['ui/demo.json', 'pruebas/casos.json']]"
+          for f in herramientas/*.sh pruebas/*.sh; do bash -n "$f"; done
+      - name: Privacidad (correos personales y rutas de usuario)
+        run: bash herramientas/revisar_privacidad.sh --generico
+      - name: ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Pruebas de Python
+        run: python3 pruebas/test_python.py
+      - name: Pruebas de la interfaz
+        run: |
+          npm i --no-save --prefix "$RUNNER_TEMP/pw" playwright@1.56.1
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          mkdir -p capturas
+          PLAYWRIGHT="$RUNNER_TEMP/pw/node_modules/playwright" CAPTURAS=capturas node pruebas/interfaz.mjs
+      - name: Capturas para revisar a ojo
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: capturas, path: capturas, retention-days: 14, if-no-files-found: ignore }

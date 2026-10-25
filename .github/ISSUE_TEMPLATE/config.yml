@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 Conversar, preguntar o mostrar lo que publicaste
+    url: https://github.com/corta-app/corta/discussions
+    about: Dudas de uso, ideas a medio cocinar y tus videos editados con Corta. / Questions, rough ideas and what you made.
+  - name: 🤖 Ayuda para instalar tu IA
+    url: https://corta-app.github.io/corta/ia.html
+    about: Guía paso a paso para Claude Code, Codex o Antigravity CLI. / Step-by-step AI setup guide.

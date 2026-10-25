@@ -1,0 +1,19 @@
+{
+ "formato": 1,
+ "id": "pop",
+ "nombre": "Pop",
+ "fuente": "Poppins ExtraBold",
+ "peso": 800,
+ "tamano": 9.2,
+ "color": "#FFFFFF",
+ "color_activo": "#FFE14D",
+ "borde": 7,
+ "color_borde": "#000000",
+ "sombra": 2,
+ "mayusculas": true,
+ "fondo": false,
+ "color_fondo": "#000000",
+ "animacion": "pop",
+ "notas": "El clásico de los Shorts: palabra activa en amarillo y un poco más grande.",
+ "autor": "Corta"
+}

@@ -1,0 +1,19 @@
+{
+ "formato": 1,
+ "id": "neon",
+ "nombre": "Neón",
+ "fuente": "Montserrat Black",
+ "peso": 900,
+ "tamano": 8.6,
+ "color": "#FFFFFF",
+ "color_activo": "#C6F432",
+ "borde": 6,
+ "color_borde": "#111111",
+ "sombra": 3,
+ "mayusculas": true,
+ "fondo": false,
+ "color_fondo": "#000000",
+ "animacion": "pop",
+ "notas": "Verde lima, con mucha energía.",
+ "autor": "Corta"
+}

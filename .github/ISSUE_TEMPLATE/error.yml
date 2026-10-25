@@ -1,0 +1,29 @@
+name: 🐞 Algo falla / Something's broken
+description: Cuéntanos qué pasó. No adjuntes videos privados. / Tell us what happened. Don't include amounts, statements or account data.
+labels: [error]
+body:
+  - type: textarea
+    id: que
+    attributes:
+      label: ¿Qué pasó? / What happened?
+      description: Qué hiciste, qué esperabas y qué pasó en cambio.
+    validations: { required: true }
+  - type: dropdown
+    id: sistema
+    attributes:
+      label: Sistema / System
+      options: [Mac, Windows, Linux, Vista previa en el navegador / Browser preview]
+    validations: { required: true }
+  - type: input
+    id: video
+    attributes:
+      label: Tipo de video (duración, formato, de qué cámara o app) / Video details
+  - type: input
+    id: version
+    attributes:
+      label: Versión de Corta / Corta version
+      description: Ajustes → Acerca de Corta.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Algo más (capturas, pasos para repetirlo) / Anything else

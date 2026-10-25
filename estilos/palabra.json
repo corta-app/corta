@@ -1,0 +1,19 @@
+{
+ "formato": 1,
+ "id": "palabra",
+ "nombre": "Una palabra",
+ "fuente": "Anton",
+ "peso": 400,
+ "tamano": 14,
+ "color": "#FFFFFF",
+ "color_activo": "#FFFFFF",
+ "borde": 8,
+ "color_borde": "#000000",
+ "sombra": 3,
+ "mayusculas": true,
+ "fondo": false,
+ "color_fondo": "#000000",
+ "animacion": "palabra",
+ "notas": "Una sola palabra gigante a la vez, al ritmo de la voz.",
+ "autor": "Corta"
+}

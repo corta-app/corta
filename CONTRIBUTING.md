@@ -1,0 +1,49 @@
+# Cómo aportar a Corta
+
+Corta es gratis y abierta, y la hacemos entre todos. Hay lugar para cualquiera, programes o no. *(English below.)*
+
+## Sin programar
+- **Crea un estilo de subtítulos:** es un archivo JSON corto (formato en [`estilos/README.md`](estilos/README.md)). Pruébalo y
+  compártelo con una captura.
+- **Pruébala con tus videos** y cuéntanos qué tal: los issues con la etiqueta [`probar`](https://github.com/corta-app/corta/labels/probar)
+  piden justo eso.
+- **Conversa:** dudas, ideas o lo que publicaste editado con Corta → [Discussions](https://github.com/corta-app/corta/discussions).
+- **Cuéntanos qué falla o qué te gustaría** en [issues](https://github.com/corta-app/corta/issues/new/choose).
+- **Traducciones:** revisa o mejora `ui/idiomas/en.json`, o propón otro idioma.
+
+## Programando (con o sin IA)
+1. Lee [`AGENTS.md`](AGENTS.md): cómo funciona, reglas y cómo se conectan las piezas. Sirve igual para personas y para tu IA.
+2. Haz un fork, una rama y tu cambio. La sección "Desarrollo" del [README](README.md#desarrollo) explica cómo correrla.
+3. Corre `bash pruebas/correr.sh` (lo mismo que revisa GitHub en cada cambio).
+4. Abre un pull request contando qué cambia para quien usa Corta y cómo lo probaste.
+
+Reglas que importan: código, comentarios y textos en español (todo texto nuevo de la interfaz con su traducción en `ui/idiomas/en.json`);
+**nunca subas videos reales ni datos personales**; solo biblioteca estándar en Python; la vista previa y la exportación tienen que verse
+igual; y no romper el [formato del proyecto](README.md#formato-del-proyecto).
+
+Los aportes entran con la licencia del proyecto, [AGPL-3.0](LICENSE).
+
+## Cómo revisamos
+Todo entra por pull request y lo junta alguien que mantiene el proyecto: nadie puede subir cambios directo. Revisamos:
+- **Siempre:** que las pruebas de GitHub pasen, que no haya datos personales y que el cambio haga lo que dice. Si es tu primer
+  aporte, GitHub espera a que aprobemos correr las pruebas (es normal).
+- **Código:** que no cambie el formato del proyecto, que la lógica compartida cambie en Python y JS a la vez, que los textos tengan
+  traducción y que no agregue dependencias ni conexiones a internet nuevas sin conversarlo.
+- **Estilos:** que sean válidos, que la fuente sea libre y venga incluida, y que se vean bien en la vista previa y exportados.
+- **Traducciones:** que una persona que hable el idioma revise el texto.
+
+Si algo falta te lo pedimos con un comentario; casi nunca cerramos un aporte sin conversar.
+
+¿Buscas por dónde empezar? Mira los issues con la etiqueta
+[`good first issue`](https://github.com/corta-app/corta/labels/good%20first%20issue) o pregunta en Discussions.
+
+Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
+
+---
+
+## Contributing (English)
+- **No code needed:** create a caption style (a short JSON file), try Corta with your videos (label `probar`), chat in
+  [Discussions](https://github.com/corta-app/corta/discussions), report bugs or ideas, and help with translations.
+- **Code (with or without AI):** read [`AGENTS.md`](AGENTS.md), fork, branch, run `bash pruebas/correr.sh` and open a pull request.
+  Code and comments are in Spanish; UI text needs its English entry in `ui/idiomas/en.json`; never commit real videos or personal data.
+- **Review:** everything goes through a pull request and a maintainer merges it. Contributions are licensed under AGPL-3.0.

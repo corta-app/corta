@@ -1,0 +1,36 @@
+# Lista blanca: solo se versiona lo listado.
+/*
+!/.gitignore
+!/.github/
+!/.claude/
+!/app/
+!/bin/
+!/ui/
+!/docs/
+!/estilos/
+!/herramientas/
+!/pruebas/
+!/ejemplos/
+!/escritorio/
+!/README.md
+!/AGENTS.md
+!/CLAUDE.md
+!/GEMINI.md
+!/CONTRIBUTING.md
+!/CODE_OF_CONDUCT.md
+!/LICENSE
+app/.build/
+escritorio/node_modules/
+escritorio/vendor/
+escritorio/dist/
+__pycache__/
+.terminos-privados
+capturas/
+# Videos: solo los ficticios de la demo y de las pruebas
+*.mp4
+*.mov
+*.webm
+!/ui/demo/ana.mp4
+!/pruebas/datos/ana-corto.mp4
+!/docs/img/antes.mp4
+!/docs/img/despues.mp4

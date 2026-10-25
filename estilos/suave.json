@@ -1,0 +1,19 @@
+{
+ "formato": 1,
+ "id": "suave",
+ "nombre": "Suave",
+ "fuente": "Poppins SemiBold",
+ "peso": 600,
+ "tamano": 6.6,
+ "color": "#FFFFFF",
+ "color_activo": "#9FD3FF",
+ "borde": 0,
+ "color_borde": "#000000",
+ "sombra": 6,
+ "mayusculas": false,
+ "fondo": false,
+ "color_fondo": "#000000",
+ "animacion": "ninguna",
+ "notas": "Minimalista, sin borde, solo una sombra suave.",
+ "autor": "Corta"
+}

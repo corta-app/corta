@@ -1,0 +1,30 @@
+# Publica la página (docs/) y la vista previa de la app con datos ficticios (ui/ en /demo/) en GitHub Pages.
+name: Página
+on:
+  push:
+    branches: [main]
+    paths: [docs/**, ui/**, .github/workflows/pagina.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pagina
+  cancel-in-progress: true
+jobs:
+  publicar:
+    runs-on: ubuntu-24.04
+    environment: { name: github-pages, url: "${{ steps.despliegue.outputs.page_url }}" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Armar el sitio
+        run: |
+          mkdir -p _sitio
+          cp -R docs/. _sitio/
+          mkdir -p _sitio/demo && cp -R ui/. _sitio/demo/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: _sitio }
+      - id: despliegue
+        uses: actions/deploy-pages@v4
