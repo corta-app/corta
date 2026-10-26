@@ -200,7 +200,10 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   await p.evaluate((t) => { document.querySelector("#video").currentTime = t; }, palabras[pausa].f + 0.45);
   await p.waitForTimeout(950);
   const callado = await p.evaluate(() => { const a = window.Corta._pruebas.musica(); return { sonando: !a.paused, vol: a.volume, texto: document.querySelector("#musica-ahora")?.textContent }; });
-  if (!hablando.sonando || !hablando.video) falla("la música no suena en la vista previa: " + JSON.stringify(hablando));
+  // El Chromium de Playwright en GitHub no trae H.264: ahí el video de la demo no se reproduce y no hay cómo probar que suene.
+  const h264 = await p.evaluate(() => document.createElement("video").canPlayType('video/mp4; codecs="avc1.42E01E"') !== "");
+  if (!h264 && !hablando.video) console.log("  - Música en la vista previa: este Chromium no reproduce H.264, se prueba solo la lógica");
+  else if (!hablando.sonando || !hablando.video) falla("la música no suena en la vista previa: " + JSON.stringify(hablando));
   else if (!(hablando.vol < 0.06 && callado.vol > 0.1)) falla(`la música no baja cuando hablas: ${hablando.vol.toFixed(3)} hablando, ${callado.vol.toFixed(3)} en la pausa`);
   else console.log(`  ✓ Música suena y baja cuando hablas (volumen ${hablando.vol.toFixed(3)} hablando, ${callado.vol.toFixed(3)} en la pausa: «${callado.texto}»)`);
   await p.click('[data-accion="escuchar-musica"]');
