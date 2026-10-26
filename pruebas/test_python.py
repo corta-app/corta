@@ -183,6 +183,64 @@ class Exportar(unittest.TestCase):
         self.assertTrue(r["archivo"].endswith("exportado-1x1.mp4"))
 
 
+def tono(ruta, segundos=3.0, hz=440.0):
+    """Un tono ficticio (biblioteca estándar) para probar la música sin usar canciones de nadie."""
+    import math
+    import struct
+    import wave
+    with wave.open(ruta, "w") as f:
+        f.setnchannels(1)
+        f.setsampwidth(2)
+        f.setframerate(16000)
+        f.writeframes(b"".join(struct.pack("<h", int(8000 * math.sin(2 * math.pi * hz * k / 16000))) for k in range(int(segundos * 16000))))
+
+
+class Musica(unittest.TestCase):
+    def test_elegir_copia_sin_pisar_y_exporta(self):
+        carpeta = proyecto_de_prueba()
+        origen = os.path.join(TMP, "Mi canción: libre.wav")
+        tono(origen)
+        r = correr("musica.py", carpeta, origen)
+        self.assertTrue(r["ok"], r)
+        p = proyecto.cargar(carpeta)
+        self.assertEqual(p["musica"], {"archivo": "musica/Mi canción libre.wav", "volumen": 0.15}, "el formato de siempre: {archivo, volumen}")
+        self.assertTrue(os.path.exists(os.path.join(carpeta, "musica", "Mi canción libre.wav")))
+        self.assertTrue(os.path.exists(origen), "el archivo original no se mueve")
+        # Mismo archivo otra vez: no duplica. Otro contenido con el mismo nombre: no pisa la copia anterior (deshacer la usa).
+        p["musica"]["volumen"] = 0.3
+        proyecto.guardar(carpeta, p)
+        self.assertEqual(correr("musica.py", carpeta, origen)["proyecto"]["musica"], {"archivo": "musica/Mi canción libre.wav", "volumen": 0.3})
+        tono(origen, hz=330)
+        self.assertEqual(correr("musica.py", carpeta, origen)["proyecto"]["musica"]["archivo"], "musica/Mi canción libre (2).wav")
+        self.assertEqual(len(os.listdir(os.path.join(carpeta, "musica"))), 2)
+        # Exportar con la música (sidechain de render.py): el video dura lo mismo y tiene audio.
+        r = correr("render.py", carpeta)
+        self.assertTrue(r["ok"], r)
+        info = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=codec_type", "-of", "json", r["archivo"]],
+                                         capture_output=True, text=True).stdout)
+        self.assertIn("audio", [s["codec_type"] for s in info["streams"]])
+        self.assertAlmostEqual(float(info["format"]["duration"]), proyecto.duracion_final(proyecto.cargar(carpeta)), delta=0.25)
+
+    def test_rechaza_lo_que_no_es_musica(self):
+        carpeta = proyecto_de_prueba()
+        falso = os.path.join(TMP, "no-es-musica.mp3")
+        with open(falso, "w") as f:
+            f.write("hola")
+        texto = os.path.join(TMP, "notas.txt")
+        with open(texto, "w") as f:
+            f.write("hola")
+        for ruta in (falso, texto, os.path.join(TMP, "no-existe.mp3")):
+            r = correr("musica.py", carpeta, ruta)
+            self.assertFalse(r["ok"], ruta)
+        self.assertIsNone(proyecto.cargar(carpeta)["musica"])
+
+    def test_nombre_seguro(self):
+        import musica
+        self.assertEqual(musica.nombre_seguro("../../etc/Canción?.MP3"), "Canción.mp3")
+        self.assertEqual(musica.nombre_seguro("C:\\x\\..\\.wav"), "musica.wav")
+        self.assertLessEqual(len(musica.nombre_seguro("a" * 300 + ".ogg")), 84)
+
+
 class IA(unittest.TestCase):
     def test_pedir_aplica_solo_lo_valido(self):
         carpeta = proyecto_de_prueba()

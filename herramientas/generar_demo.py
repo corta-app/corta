@@ -1,9 +1,11 @@
 """Genera el video y los datos FICTICIOS de la vista previa (ui/demo/) y de las pruebas (pruebas/datos/).
 
 Uso: python3 herramientas/generar_demo.py     (necesita Pillow y ffmpeg; solo para quien desarrolla, la app no lo usa)
+     python3 herramientas/generar_demo.py --solo-musica    (solo la música de la vista previa, ui/demo/musica-demo.mp3)
 
 Dibuja a «Ana», una presentadora animada en un video horizontal (16:9) que habla con pausas y muletillas, para mostrar el
 encuadre vertical, la limpieza de silencios y los subtítulos. La «voz» son sílabas sintéticas: no es una persona real.
+La música de la demo también se sintetiza aquí (acordes y un arpegio hechos con senos): no es música de terceros.
 """
 import json
 import math
@@ -130,11 +132,52 @@ def video(palabras, duracion, salida):
         proc.wait()
 
 
+def musica_demo(salida, segundos=8.0):
+    """Un loop de 8 s (4 compases a 120 ppm: La menor, Fa, Do, Sol) hecho con senos, para probar la música de fondo sin usar
+    canciones de nadie. Termina donde empieza, así se puede repetir sin salto."""
+    sr = SR
+    n = int(segundos * sr)
+    acordes = [(220.0, 261.63, 329.63), (174.61, 220.0, 261.63), (130.81, 164.81, 196.0), (196.0, 246.94, 293.66)]
+    compas = segundos / len(acordes)
+    m = [0.0] * n
+    for c, notas in enumerate(acordes):
+        a, b = int(c * compas * sr), int((c + 1) * compas * sr)
+        for k in range(a, b):
+            x, t = (k - a) / (b - a), k / sr
+            env = min(1.0, x * 12) * (1 - x) ** 0.5
+            m[k] += 0.09 * env * sum(math.sin(2 * math.pi * f * t) for f in notas)
+        for paso in range(8):  # arpegio en corcheas, una octava arriba
+            f = notas[paso % 3] * 2 * (2 if paso in (3, 7) else 1)
+            i0 = a + int(paso * compas / 8 * sr)
+            largo = int(compas / 8 * sr * 0.9)
+            for k in range(i0, min(i0 + largo, n)):
+                x, t = (k - i0) / largo, (k - i0) / sr
+                m[k] += 0.08 * math.exp(-x * 5) * math.sin(2 * math.pi * f * t)
+        for golpe in range(4):  # bombo suave en cada tiempo
+            i0 = a + int(golpe * compas / 4 * sr)
+            for k in range(i0, min(i0 + int(0.12 * sr), n)):
+                t = (k - i0) / sr
+                m[k] += 0.22 * math.exp(-t * 30) * math.sin(2 * math.pi * (55 + 90 * math.exp(-t * 40)) * t)
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = os.path.join(tmp, "musica.wav")
+        with wave.open(wav, "w") as f:
+            f.setnchannels(1)
+            f.setsampwidth(2)
+            f.setframerate(sr)
+            f.writeframes(b"".join(struct.pack("<h", int(max(-1, min(1, s)) * 30000)) for s in m))
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", wav, "-c:a", "libmp3lame", "-b:a", "64k", "-ac", "1",
+                        "-map_metadata", "-1", salida], check=True)
+
+
 def main():
+    if "--solo-musica" in sys.argv:
+        musica_demo(os.path.join(RAIZ, "ui", "demo", "musica-demo.mp3"))
+        return print("✓ música de la demo")
     palabras, duracion = tiempos()
     demo_dir = os.path.join(RAIZ, "ui", "demo")
     os.makedirs(demo_dir, exist_ok=True)
     video(palabras, duracion, os.path.join(demo_dir, "ana.mp4"))
+    musica_demo(os.path.join(demo_dir, "musica-demo.mp3"))
     p = proyecto.nuevo("Ahorra una hora editando", {"archivo": "demo/ana.mp4", "ancho": W, "alto": H, "duracion": duracion})
     p["encuadre"] = {"x": 0.45, "y": 0.5}
     p["palabras"] = palabras

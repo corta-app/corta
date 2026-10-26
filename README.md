@@ -21,6 +21,8 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 - **Vertical primero:** 9:16, 1:1, 4:5 o 16:9, con encuadre ajustable o fondo borroso para videos horizontales.
 - **Dile a tu IA lo que quieres:** «pon zoom cuando digo el precio», «saca la parte donde me equivoco», «pon un título al inicio».
 - **Shorts desde un video largo:** tu IA elige los mejores momentos de una clase, un podcast o un live, y cada uno queda como un video nuevo.
+- **Música de fondo que baja sola cuando hablas**, y una **línea de tiempo con pistas** (video, subtítulos, textos y música) donde
+  arrastras los bordes con el mouse, el dedo o el teclado.
 
 ## Tus videos son tuyos
 - Transcripción (whisper.cpp) y exportación (ffmpeg) en tu computador. **No hay servidores de Corta**, ni cuentas, ni telemetría.
@@ -43,8 +45,8 @@ tu video ──► whisper (en tu computador) ──► palabras con tiempos ─
 ```
 
 ## Formato del proyecto
-Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal cual), `proyecto.json`, `historial/` (para deshacer) y
-lo que exportas. `proyecto.json` es abierto: puedes armar tus propios scripts encima (ver [`ejemplos/`](ejemplos/)).
+Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal cual), `proyecto.json`, `historial/` (para deshacer),
+`musica/` (una copia de la música que elegiste) y lo que exportas. `proyecto.json` es abierto: puedes armar tus propios scripts encima (ver [`ejemplos/`](ejemplos/)).
 
 | Campo | Qué guarda |
 |---|---|
@@ -54,7 +56,7 @@ lo que exportas. `proyecto.json` es abierto: puedes armar tus propios scripts en
 | `cortes` | `[{i, f, motivo}]`: lo que no va. `motivo`: `silencio`, `muletilla`, `manual`, `ia` o `fuera` (fuera de un Short). |
 | `subtitulos` | `{activos, estilo, palabras_por_linea, posicion}` |
 | `zooms`, `textos` | `[{i, f, escala}]` y `[{i, f, texto, y}]` |
-| `musica` | `null` o `{archivo, volumen}` (la música baja sola cuando hablas). |
+| `musica` | `null` o `{archivo, volumen}`: `archivo` relativo a la carpeta del proyecto (la app copia la canción a `musica/`) o una ruta absoluta; `volumen` de 0 a 1. La música baja sola cuando hablas. |
 
 Todos los tiempos están en segundos **del video original**: los cortes dicen qué se saca y lo demás se conserva.
 
@@ -79,5 +81,6 @@ tienes que publicar tu código con la misma licencia. Las tipografías de `ui/fu
 **Corta** ("cut") is a free, open-source editor for Shorts, Reels and TikTok. It transcribes your video on your computer, so you edit
 the video by editing its text; it removes silences and filler words in one click, adds animated captions in any language, reframes
 landscape footage to vertical, and lets your own AI (Claude Code, Codex or Gemini, with your account) apply edits from plain requests
-or pick the best moments of a long video as new Shorts. Videos never leave your computer, there's no watermark, and the project is a
+or pick the best moments of a long video as new Shorts. Add background music that ducks itself under your voice and fine-tune cuts,
+zooms and text on a multi-track timeline. Videos never leave your computer, there's no watermark, and the project is a
 plain open JSON file. Caption styles are data-only files anyone can create. Spanish-first, English included. Licensed under AGPL-3.0.

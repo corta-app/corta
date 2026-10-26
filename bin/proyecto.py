@@ -5,6 +5,7 @@
   original.<ext>         el video tal como lo trajiste (o un enlace a él)
   audio.wav              audio a 16 kHz para transcribir (se borra al terminar)
   exportado-<lienzo>.mp4 lo que exportaste
+  musica/                copia de la música elegida (bin/musica.py); "musica": {"archivo": "musica/<nombre>", "volumen"}
   historial/             copias de proyecto.json antes de cada cambio (para deshacer)
 ~/Corta/.corta/config.json   ajustes de la app
 ~/Corta/.corta/estilos/      estilos de subtítulos descargados (ganan sobre los incluidos)

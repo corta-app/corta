@@ -10,6 +10,7 @@
     pestana: "texto", seleccion: null, ancla: null, ia: { texto: "", enviando: false, historial: [] }, shorts: null, buscandoShorts: false,
     limpiando: false, ultimoAhorro: null, exportar: null, bv: null, bvCerrada: false, ajustes: false, probando: {}, resultadoIA: {},
     descarga: null, actualizacion: { hay: false }, act: null, buscando: null, idioma: "es", textos: {}, soltar: false,
+    lt: { zoom: 1, sel: null, ancho: 0 },  // línea de tiempo: zoom horizontal, tramo elegido ({lista, k}) y ancho visible en px
   };
   const ENLACES = { sitio: "https://corta-app.github.io/corta/", codigo: "https://github.com/corta-app/corta",
     comunidad: "https://github.com/corta-app/corta/discussions", guiaIA: "https://corta-app.github.io/corta/ia.html" };
@@ -44,6 +45,16 @@
       else if (window._faltantes) window._faltantes.add(plantilla);
     }
     t = esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(String(v));
+    return t;
+  }
+  /** Como T(), pero en texto plano (para atributos como aria-label; escápalo con esc() al ponerlo). */
+  function Tp(plantilla, valores = {}) {
+    let t = plantilla;
+    if (E.idioma !== "es") {
+      if (E.textos[plantilla]) t = E.textos[plantilla];
+      else if (window._faltantes) window._faltantes.add(plantilla);
+    }
     for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(String(v));
     return t;
   }
@@ -161,8 +172,10 @@
     const t = $("#toast"); t.textContent = tr(texto); t.classList.add("visible");
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("visible"), 2200);
   }
+  let guardarLuego = null;  // al mover un borde con el teclado se guarda una vez, al soltar las flechas
   /** Guarda el proyecto (la app lo valida y deja respaldo para deshacer). */
   function guardar(p, aviso) {
+    clearTimeout(guardarLuego);
     host.enviar("guardarProyecto", { carpeta: E.sel, proyecto: p });
     if (aviso) toast(aviso);
     pintar();
@@ -171,13 +184,14 @@
   // ───────────── Pintar ─────────────
   function pintar() {
     const raiz = $("#app");
-    const scroll = $(".cuerpo-panel")?.scrollTop || 0;
+    const scroll = $(".cuerpo-panel")?.scrollTop || 0, scrollLT = $("#lt-vista")?.scrollLeft || 0;
     // El <video> se reutiliza entre repintadas (si es el mismo archivo) para que no se recargue ni se corte la reproducción.
     const viejo = $("#video");
     const activo = document.activeElement?.id;
     raiz.innerHTML = `<div class="app">${barra()}${lateral()}${principal()}</div>${dialogos()}`;
     traducirDOM(raiz);
     const cp = $(".cuerpo-panel"); if (cp) cp.scrollTop = scroll;
+    const vl = $("#lt-vista"); if (vl) vl.scrollLeft = scrollLT;
     const nuevo = $("#video");
     if (nuevo && viejo && viejo.getAttribute("src") === nuevo.getAttribute("src")) nuevo.replaceWith(viejo);
     if ($("#video")) ajustarPantalla();  // el tamaño sale del proyecto, no hace falta esperar a que cargue el video
@@ -233,15 +247,8 @@
   }
 
   function escenario() {
-    const p = P(), cortes = unir(p.cortes), dur = p.fuente.duracion;
+    const p = P(), dur = p.fuente.duracion;
     const horizontal = p.fuente.ancho > p.fuente.alto && p.lienzo !== "16:9";
-    const marcas = cortes.map((c) => `<span class="corte" style="left:${(c.i / dur * 100).toFixed(2)}%;width:${((c.f - c.i) / dur * 100).toFixed(2)}%"></span>`).join("");
-    const zooms = (p.zooms || []).map((z) => `<span class="zoom" style="left:${(z.i / dur * 100).toFixed(2)}%;width:${((z.f - z.i) / dur * 100).toFixed(2)}%"></span>`).join("");
-    const onda = Array.from({ length: 120 }, (_, k) => {
-      const t = (k + 0.5) / 120 * dur;
-      const habla = p.palabras.some((w) => w.i <= t && t <= w.f);
-      return `<i style="height:${habla ? 30 + ((k * 37) % 50) : 4}%"></i>`;
-    }).join("");
     return `<div class="escenario" id="escenario"><div class="pantalla" id="pantalla">
         ${p.relleno === "desenfoque" ? `<canvas id="fondo-borroso" aria-hidden="true"></canvas>` : ""}
         <div class="capa-zoom" id="capa-zoom"><video id="video" src="${esc(fuenteVideo())}" playsinline preload="auto"></video></div>
@@ -252,8 +259,7 @@
         ${horizontal ? `<label class="encuadre"><span>Encuadre</span><input type="range" min="0" max="1" step="0.01" value="${p.encuadre.x}" data-encuadre aria-label="Mover el encuadre"></label>
           <select data-relleno aria-label="Relleno"><option value="recorte" ${p.relleno === "recorte" ? "selected" : ""}>Recortar</option><option value="desenfoque" ${p.relleno === "desenfoque" ? "selected" : ""}>Fondo borroso</option></select>` : ""}
       </div>
-      <div class="linea-tiempo" id="linea" role="slider" aria-label="Línea de tiempo" aria-valuemin="0" aria-valuemax="${Math.round(dur)}" tabindex="0">
-        <div class="onda">${onda}</div>${marcas}${zooms}<span class="cabezal" id="cabezal" style="left:0"></span></div>`;
+      ${lineaTiempo()}`;
   }
   function fuenteVideo() {
     const x = proy(), archivo = x.proyecto.fuente.archivo;
@@ -261,9 +267,9 @@
     return `corta://video/${encodeURIComponent(x.carpeta + "/" + archivo)}`;
   }
 
-  const PESTANAS = [["texto", "Texto"], ["subtitulos", "Subtítulos"], ["ia", "IA"], ["shorts", "Shorts"]];
+  const PESTANAS = [["texto", "Texto"], ["subtitulos", "Subtítulos"], ["musica", "Música"], ["ia", "IA"], ["shorts", "Shorts"]];
   function panel() {
-    const cuerpo = { texto: panelTexto, subtitulos: panelSubtitulos, ia: panelIA, shorts: panelShorts }[E.pestana]();
+    const cuerpo = { texto: panelTexto, subtitulos: panelSubtitulos, musica: panelMusica, ia: panelIA, shorts: panelShorts }[E.pestana]();
     return `<div class="pestanas" role="tablist">${PESTANAS.map(([id, n]) => `<button class="pestana" role="tab" data-pestana="${id}" aria-selected="${E.pestana === id}">${n}</button>`).join("")}</div>
       <div class="cuerpo-panel">${cuerpo}</div>`;
   }
@@ -322,6 +328,30 @@
       <p class="nota">¿Quieres otro estilo? Los estilos son archivos simples que cualquiera puede crear y compartir con la comunidad.</p>`;
   }
 
+  /** Música de fondo: el proyecto guarda {archivo, volumen} y render.py la baja sola cuando hay voz (sidechain). */
+  function panelMusica() {
+    const p = P(), m = p.musica;
+    const derechos = `<div class="tarjeta derechos"><b>Usa solo música tuya o libre</b>
+      <p class="nota">Las canciones conocidas tienen derechos de autor: YouTube, Instagram y TikTok pueden silenciar tu video, bloquearlo o quitarle las ganancias. Usa música que hiciste tú, que tiene una licencia que permite usarla en videos o que es libre de derechos. Si la licencia pide nombrar a quien la hizo, ponlo en la descripción.</p></div>`;
+    if (!m) {
+      return `<div class="tarjeta"><h3>Música de fondo</h3>
+        <p class="nota" style="margin:0 0 12px">Elige una canción de tu computador. Suena bajo tu voz y baja sola cuando hablas, para que siempre se entienda lo que dices.</p>
+        <button class="boton principal" data-accion="elegir-musica">♪ <span>Elegir música</span></button>
+        <p class="nota">MP3, M4A, WAV, OGG o FLAC. Si es más corta que el video, se repite.</p></div>${derechos}`;
+    }
+    const nombre = m.archivo.split(/[\\/]/).pop();
+    const vol = Math.round(m.volumen * 100);
+    return `<div class="tarjeta"><h3>Música de fondo</h3>
+      <div class="fila archivo-m"><span class="disco" aria-hidden="true">♪</span><div class="txt"><b data-sin-traducir title="${esc(nombre)}">${esc(nombre)}</b><small>Se repite si es más corta que el video.</small></div>
+        <span class="acciones-m"><button class="boton chico" data-accion="elegir-musica">Cambiar</button><button class="boton sutil chico" data-accion="quitar-musica">Quitar</button></span></div>
+      <div class="fila"><div class="txt"><b>Volumen</b><small>Cuando no hablas. Al hablar, baja sola.</small></div>
+        <input type="range" min="0" max="1" step="0.01" value="${m.volumen}" data-musica-volumen aria-label="Volumen de la música"><output id="musica-vol" class="num" data-sin-traducir>${vol} %</output></div>
+      <div class="medidor"><div class="barra-prog"><i id="musica-nivel" style="width:100%"></i></div><small id="musica-ahora">Volumen normal</small></div>
+      <button class="boton grande" data-accion="escuchar-musica">▶ <span>Escuchar cómo queda</span></button>
+      ${!p.palabras.length ? `<p class="nota">Sin transcripción, la vista previa no baja la música mientras hablas. Al exportar sí baja.</p>` : ""}
+      ${!fuenteMusica(p) ? `<p class="nota">Esta música está fuera de la carpeta del proyecto: no suena en la vista previa, pero sí al exportar. Elígela de nuevo para traerla a la carpeta.</p>` : ""}</div>${derechos}`;
+  }
+
   const EJEMPLOS_IA = ["Saca la parte donde me equivoco", "Pon zoom cuando digo algo importante", "Pon un título grande al inicio", "Subtítulos de una palabra a la vez", "Hazlo cuadrado para Instagram"];
   function panelIA() {
     const ia = E.ia, nombre = esc(nombreIA());
@@ -350,6 +380,217 @@
       <p class="nota" style="margin-top:0">${frase("{ia} lee la transcripción y elige los momentos de 20 a 60 segundos que se entienden solos y enganchan desde el principio. Cada uno queda como un video nuevo, vertical y con subtítulos.", { ia: nombre })}</p>
       ${!largo ? `<p class="nota">Este video es corto: funciona mejor con videos de más de un minuto y medio (una clase, un podcast, un live).</p>` : ""}
       <div style="margin-top:12px"><button class="boton ${largo ? "principal" : ""}" data-accion="buscar-shorts" ${E.buscandoShorts || !p.palabras.length ? "disabled" : ""}>✨ <span>Buscar los mejores momentos</span></button></div></div>${cuerpo}`;
+  }
+
+  // ───────────── Línea de tiempo con pistas: video (cortes y zooms), subtítulos, textos y música ─────────────
+  // El formato no cambia: todo sigue siendo tramos {i, f} en segundos del original. La línea de tiempo los muestra en el tiempo del
+  // original (lo cortado se ve rayado) y solo mueve sus bordes; nunca crea campos nuevos.
+  const MIN_TRAMO = 0.05;
+  const ZOOMS_LT = [1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32];
+  const zoomMax = (dur) => Math.max(1, dur / 2);  // con el zoom máximo se ven unos 2 segundos
+  const NOMBRES_BORDE = { cortes: ["Inicio del corte {n}", "Fin del corte {n}"], zooms: ["Inicio del zoom {n}", "Fin del zoom {n}"],
+    textos: ["Inicio del texto {n}", "Fin del texto {n}"] };
+  const MOTIVOS = { silencio: "Silencio", muletilla: "Muletilla", manual: "Corte manual", ia: "Corte de la IA", fuera: "Fuera del Short" };
+  const relojFino = (s) => {
+    s = Math.max(0, s || 0); const m = Math.floor(s / 60), x = (s - m * 60).toFixed(1).padStart(4, "0");
+    return `${m}:${E.idioma === "es" ? x.replace(".", ",") : x}`;
+  };
+  /** Hasta dónde se puede mover un borde: sin dar vuelta el tramo (mínimo 0,05 s), sin salir del video y sin pisar a sus vecinos. */
+  function limitesBorde(lista, k, borde, dur) {
+    const t = lista[k];
+    if (borde === "i") {
+      let lo = 0;
+      lista.forEach((o, j) => { if (j !== k && o.f <= t.i + 1e-9) lo = Math.max(lo, o.f); });
+      return [r3(lo), r3(Math.max(lo, t.f - MIN_TRAMO))];
+    }
+    let hi = dur;
+    lista.forEach((o, j) => { if (j !== k && o.i >= t.f - 1e-9) hi = Math.min(hi, o.i); });
+    return [r3(Math.min(hi, t.i + MIN_TRAMO)), r3(hi)];
+  }
+  /** Mueve un borde (i o f) del tramo k dentro de sus límites. Solo cambia ese número: el resto del tramo queda igual. */
+  function moverBorde(lista, k, borde, t, dur) {
+    const [lo, hi] = limitesBorde(lista, k, borde, dur);
+    lista[k][borde] = r3(Math.max(lo, Math.min(hi, t)));
+    return lista[k][borde];
+  }
+  // Cuándo baja la música en la vista previa. Al exportar, ffmpeg la baja escuchando la voz (sidechaincompress, ataque 20 ms y
+  // retorno 400 ms); aquí se imita con las palabras que quedan: desde un poco antes de cada palabra hasta 0,4 s después.
+  const BAJA = 0.25, VOZ_ANTES = 0.03, VOZ_DESPUES = 0.4;
+  function tramosVoz(p) {
+    const cortes = unir(p.cortes || []);
+    return unir(p.palabras.filter((w) => !palabraCortada(p, w, cortes)).map((w) => ({ i: Math.max(0, w.i - VOZ_ANTES), f: w.f + VOZ_DESPUES })));
+  }
+  const cuantoBaja = (voz, t) => (voz.some((x) => x.i <= t && t <= x.f) ? BAJA : 1);
+  let vozCache = null;
+  function voz() {
+    const p = P(), k = JSON.stringify(p.cortes) + p.palabras.length;
+    if (!vozCache || vozCache.p !== p || vozCache.k !== k) vozCache = { p, k, t: tramosVoz(p) };
+    return vozCache.t;
+  }
+
+  function marcasRegla() {
+    const p = P(), dur = p.fuente.duracion, pxs = (E.lt.ancho || 600) * E.lt.zoom / dur;
+    const paso = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800].find((s) => s * pxs >= 64) || 3600;
+    let html = "";
+    for (let t = 0; t < dur - paso * 0.5; t += paso) html += `<span class="marca" style="left:${(t / dur * 100).toFixed(3)}%">${esc(paso < 1 ? relojFino(t) : reloj(t))}</span>`;
+    return html;
+  }
+  function lineaTiempo() {
+    const p = P(), dur = p.fuente.duracion, sel = E.lt.sel;
+    const pct = (t) => (Math.max(0, Math.min(dur, t)) / dur * 100).toFixed(3) + "%";
+    const pos = (o) => `left:${pct(o.i)};width:${((Math.min(dur, o.f) - Math.max(0, o.i)) / dur * 100).toFixed(3)}%`;
+    const bordes = (lista, k, o) => ["i", "f"].map((b) => {
+      const [lo, hi] = limitesBorde(p[lista], k, b, dur), nombre = Tp(NOMBRES_BORDE[lista][b === "i" ? 0 : 1], { n: k + 1 });
+      return `<span class="borde ${b}" id="lt-${lista}-${k}-${b}" role="slider" tabindex="0" data-borde="${b}" aria-label="${esc(nombre)}"
+        aria-valuemin="${lo}" aria-valuemax="${hi}" aria-valuenow="${o[b]}" aria-valuetext="${esc(relojFino(o[b]))}" data-sin-traducir></span>`;
+    }).join("");
+    const bloque = (lista, k, o, clase, etiqueta = "", titulo = "") => `<div class="bloque ${clase} ${sel?.lista === lista && sel.k === k ? "sel" : ""}"
+      data-lt="${lista}" data-k="${k}" style="${pos(o)}"${titulo ? ` title="${esc(titulo)}"` : ""}>${bordes(lista, k, o)}<span class="etq" data-sin-traducir>${etiqueta}</span></div>`;
+    const onda = Array.from({ length: 120 }, (_, k) => {
+      const t = (k + 0.5) / 120 * dur, habla = p.palabras.some((w) => w.i <= t && t <= w.f);
+      return `<i style="height:${habla ? 30 + ((k * 37) % 50) : 4}%"></i>`;
+    }).join("");
+    const cortes = p.cortes.map((c, k) => bloque("cortes", k, c, "b-corte", "", MOTIVOS[c.motivo] || "")).join("");
+    const zooms = p.zooms.map((z, k) => bloque("zooms", k, z, "b-zoom", esc(`🔍 ${z.escala}×`))).join("");
+    const textos = p.textos.map((x, k) => bloque("textos", k, x, "b-texto", esc(x.texto))).join("");
+    const cortados = unir(p.cortes);
+    const subs = lineas(p.palabras.filter((w) => !palabraCortada(p, w, cortados)), p.subtitulos.palabras_por_linea)
+      .map((g) => `<div class="bloque b-sub" style="${pos({ i: g[0].i, f: g[g.length - 1].f })}"><span class="etq" data-sin-traducir>${esc(g.map((w) => w.t).join(" "))}</span></div>`).join("");
+    const sombras = cortados.map((c) => `<span style="${pos(c)}"></span>`).join("");
+    let musica = `<button class="lt-agregar" data-accion="elegir-musica">＋ <span>Agregar música</span></button>`;
+    if (p.musica) {
+      const N = 200, vz = voz(), puntos = ["0,100"];
+      for (let k = 0; k <= N; k++) {
+        const t = k / N * dur, alto = palabraCortada(p, { i: t, f: t }, cortados) ? 0 : cuantoBaja(vz, t) === 1 ? 88 : 30;
+        puntos.push(`${k},${100 - alto}`);
+      }
+      puntos.push(`${N},100`);
+      musica = `<svg class="envolvente ${p.musica.volumen ? "" : "muda"}" viewBox="0 0 ${N} 100" preserveAspectRatio="none" aria-hidden="true"><polygon points="${puntos.join(" ")}"/></svg>
+        <span class="nombre-m" data-sin-traducir>♪ ${esc(p.musica.archivo.split(/[\\/]/).pop())}</span>`;
+    }
+    const niveles = ZOOMS_LT.filter((z) => z <= zoomMax(dur));
+    return `<div class="lt" id="lt">
+      <div class="lt-herr"><div class="lt-info" id="lt-sel">${infoSel()}</div>
+        <div class="lt-zoom" role="group" aria-label="Zoom de la línea de tiempo">
+          <button class="icono" data-lt-zoom="-1" title="Alejar" aria-label="Alejar" ${E.lt.zoom <= 1 ? "disabled" : ""}>−</button>
+          <span class="num" data-sin-traducir>${esc(String(E.lt.zoom).replace(".", E.idioma === "es" ? "," : "."))}×</span>
+          <button class="icono" data-lt-zoom="1" title="Acercar" aria-label="Acercar" ${E.lt.zoom >= niveles[niveles.length - 1] ? "disabled" : ""}>＋</button>
+          <button class="icono" data-lt-zoom="0" title="Ver todo" aria-label="Ver todo" ${E.lt.zoom <= 1 ? "disabled" : ""}>⤢</button></div></div>
+      <div class="lt-cuerpo"><div class="lt-nombres" aria-hidden="true"><span></span><span>Video</span><span>Subtítulos</span><span>Textos</span><span>Música</span></div>
+        <div class="lt-vista" id="lt-vista"><div class="lt-contenido" id="lt-contenido" style="width:${E.lt.zoom * 100}%">
+          <div class="lt-regla" id="linea" role="slider" tabindex="0" aria-label="Línea de tiempo" aria-valuemin="0" aria-valuemax="${Math.round(dur)}" aria-valuenow="0">
+            <span id="lt-marcas">${marcasRegla()}</span></div>
+          <div class="pista pista-video" role="group" aria-label="Video"><div class="fila-zoom">${zooms}</div><div class="fila-cortes"><div class="onda">${onda}</div>${cortes}</div></div>
+          <div class="pista pista-subtitulos ${p.subtitulos.activos ? "" : "apagada"}" role="group" aria-label="Subtítulos"${p.subtitulos.activos ? "" : ` title="Subtítulos apagados"`}>
+            ${subs || `<span class="lt-vacia">Sin transcripción</span>`}</div>
+          <div class="pista pista-textos" role="group" aria-label="Textos">${textos || `<span class="lt-vacia">Sin textos</span>`}</div>
+          <div class="pista pista-musica" role="group" aria-label="Música">${musica}</div>
+          <div class="lt-sombras" aria-hidden="true">${sombras}</div>
+          <span class="cabezal" id="cabezal" style="left:0"></span></div></div></div></div>`;
+  }
+  function infoSel() {
+    const p = P(), s = E.lt.sel, o = s && p?.[s.lista]?.[s.k];
+    if (!o) return `<span class="nota">Arrastra los bordes de un tramo para ajustarlo. Con el teclado, usa las flechas.</span>`;
+    const v = { a: esc(relojFino(o.i)), b: esc(relojFino(o.f)) };
+    const txt = { cortes: "Corte de {a} a {b}", zooms: "Zoom de {a} a {b}", textos: "Texto de {a} a {b}" }[s.lista];
+    return `${frase(txt, v, "b")}<button class="boton sutil chico" data-accion="lt-quitar">${s.lista === "cortes" ? "Volver a poner" : "Quitar"}</button>`;
+  }
+  function pintarInfo() { const el = $("#lt-sel"); if (el) { el.innerHTML = infoSel(); traducirDOM(el); } }
+  function seleccionar(lista, k) {
+    E.lt.sel = lista ? { lista, k } : null;
+    document.querySelectorAll(".bloque.sel").forEach((el) => el.classList.remove("sel"));
+    if (lista) document.querySelector(`.bloque[data-lt="${lista}"][data-k="${k}"]`)?.classList.add("sel");
+    pintarInfo();
+  }
+  /** Mientras se arrastra no se repinta todo (se perdería el puntero): solo el tramo y sus bordes. */
+  function pintarBloque(lista, k) {
+    const p = P(), o = p[lista][k], dur = p.fuente.duracion, el = document.querySelector(`.bloque[data-lt="${lista}"][data-k="${k}"]`);
+    if (!el) return;
+    el.style.left = (Math.max(0, o.i) / dur * 100).toFixed(3) + "%";
+    el.style.width = ((Math.min(dur, o.f) - Math.max(0, o.i)) / dur * 100).toFixed(3) + "%";
+    for (const b of ["i", "f"]) {
+      const h = $(`#lt-${lista}-${k}-${b}`), [lo, hi] = limitesBorde(p[lista], k, b, dur);
+      if (!h) continue;
+      h.setAttribute("aria-valuemin", lo); h.setAttribute("aria-valuemax", hi);
+      h.setAttribute("aria-valuenow", o[b]); h.setAttribute("aria-valuetext", relojFino(o[b]));
+    }
+    pintarInfo();
+  }
+  function quitarBloque(lista, k) {
+    const p = P();
+    p[lista].splice(k, 1);
+    E.lt.sel = null;
+    guardar(p, { cortes: "Corte quitado", zooms: "Zoom quitado", textos: "Texto quitado" }[lista]);
+  }
+  function tiempoEn(x) {
+    const c = $("#lt-contenido"), p = P();
+    if (!c || !p) return 0;
+    const r = c.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (x - r.left) / r.width)) * p.fuente.duracion;
+  }
+  function irA(t) {
+    const v = $("#video"), p = P();
+    if (!v || !p) return;
+    E.rango = null; v.currentTime = Math.max(0, Math.min(p.fuente.duracion, t)); actualizarCapas();
+  }
+  /** Imán: al arrastrar, el borde se pega al principio o fin de una palabra o al cabezal si pasa a menos de 8 px (Alt lo apaga). */
+  function iman(p, t, cabezal) {
+    const c = $("#lt-contenido"), umbral = 8 / (c.getBoundingClientRect().width / p.fuente.duracion);
+    let mejor = t, dist = umbral;
+    const ver = (v) => { const d = Math.abs(v - t); if (d < dist) { dist = d; mejor = v; } };
+    for (const w of p.palabras) { ver(w.i); ver(w.f); }
+    if (cabezal != null) ver(cabezal);
+    return mejor;
+  }
+  function cambiarZoom(dir, centro) {
+    const p = P(), niveles = ZOOMS_LT.filter((z) => z <= zoomMax(p.fuente.duracion));
+    const k = Math.max(0, niveles.indexOf(E.lt.zoom));
+    const nuevo = dir === 0 ? 1 : niveles[Math.max(0, Math.min(niveles.length - 1, k + dir))];
+    if (nuevo === E.lt.zoom) return;
+    // Lo que está bajo el centro (o el cabezal) queda en el mismo lugar de la pantalla.
+    const vista = $("#lt-vista"), t = centro ?? $("#video")?.currentTime ?? 0, dur = p.fuente.duracion;
+    let rel = vista ? (t / dur * vista.scrollWidth - vista.scrollLeft) / vista.clientWidth : 0.5;
+    if (!(rel >= 0 && rel <= 1)) rel = 0.5;
+    E.lt.zoom = nuevo;
+    pintar();
+    const v2 = $("#lt-vista"); if (v2) v2.scrollLeft = t / dur * v2.scrollWidth - rel * v2.clientWidth;
+  }
+
+  // ───────────── Música en la vista previa: suena de verdad, sigue el tiempo del video exportado y baja cuando hablas ─────────────
+  const musicaAudio = typeof Audio === "function" ? new Audio() : null;
+  if (musicaAudio) { musicaAudio.loop = true; musicaAudio.preload = "auto"; }
+  let gananciaMusica = 1, srcMusica = "";
+  function fuenteMusica(p) {
+    const a = p?.musica?.archivo;
+    if (!a) return "";
+    if (/^([\\/]|[A-Za-z]:)/.test(a)) return "";  // fuera de la carpeta: la app solo sirve archivos de ~/Corta
+    if (HOST === "web") return a;
+    return `corta://video/${encodeURIComponent(proy().carpeta + "/" + a)}`;
+  }
+  function sincronizarMusica(dt = 0) {
+    if (!musicaAudio) return;
+    const p = P(), v = $("#video"), src = p ? fuenteMusica(p) : "";
+    if (src !== srcMusica) { srcMusica = src; if (src) musicaAudio.src = src; else { musicaAudio.pause(); musicaAudio.removeAttribute("src"); musicaAudio.load(); } }
+    if (!p?.musica || !v) return;
+    // Baja rápido (como el ataque de 20 ms) y vuelve lento (como el retorno de 400 ms).
+    const objetivo = p.palabras.length ? cuantoBaja(voz(), v.currentTime) : 1;
+    const tau = objetivo < gananciaMusica ? 0.03 : 0.4;
+    gananciaMusica = dt > 0 ? gananciaMusica + (objetivo - gananciaMusica) * (1 - Math.exp(-dt / tau)) : objetivo;
+    if (!src || v.paused) { if (!musicaAudio.paused) musicaAudio.pause(); return; }
+    musicaAudio.volume = Math.max(0, Math.min(1, p.musica.volumen * gananciaMusica));
+    const salida = aSalida(p, v.currentTime, tramos()), d = musicaAudio.duration;
+    if (salida != null && d > 0) {  // en el video exportado la música parte en 0 y se repite: aquí igual
+      const meta = salida % d, dif = Math.abs(musicaAudio.currentTime - meta);
+      if (Math.min(dif, d - dif) > 0.3) musicaAudio.currentTime = meta;
+    }
+    if (musicaAudio.paused) musicaAudio.play().catch(() => {});
+  }
+  function reproducir() {
+    const v = $("#video"); if (!v) return;
+    E.rango = null;
+    const tr_ = tramos(); if (tr_.length && v.currentTime >= tr_[tr_.length - 1].f - 0.05) v.currentTime = tr_[0].i;
+    v.play().catch(() => {});
+    sincronizarMusica();  // dentro del clic, para que el navegador deje sonar la música
   }
 
   // ───────────── Diálogos ─────────────
@@ -437,6 +678,9 @@
     const c = $("#fondo-borroso");
     if (c) { c.width = Math.round(pw / 4); c.height = Math.round(ph / 4); Object.assign(c.style, { inset: "0", width: pw + "px", height: ph + "px", filter: "blur(14px) brightness(.85)", transform: "scale(1.1)" }); }
     pant.dataset.escala = pw / W;
+    // La línea de tiempo: con su ancho real se eligen cada cuánto van las marcas de la regla.
+    const vista = $("#lt-vista");
+    if (vista && vista.clientWidth && vista.clientWidth !== E.lt.ancho) { E.lt.ancho = vista.clientWidth; const m = $("#lt-marcas"); if (m) m.innerHTML = marcasRegla(); }
     actualizarCapas();
   }
   let tramosCache = null, tramosDe = null;
@@ -449,7 +693,22 @@
     // Reloj y cabezal
     const salida = aSalida(p, t, tramos());
     const rel = $("#reloj"); if (rel && salida != null) rel.innerHTML = T("**{a}** de {b}", { a: esc(reloj(salida)), b: esc(reloj(duracionFinal(p))) });
-    const cab = $("#cabezal"); if (cab) cab.style.left = (t / p.fuente.duracion * 100).toFixed(2) + "%";
+    const cab = $("#cabezal"); if (cab) cab.style.left = (t / p.fuente.duracion * 100).toFixed(3) + "%";
+    const regla = $("#linea");
+    if (regla && regla.getAttribute("aria-valuenow") !== String(Math.round(t))) { regla.setAttribute("aria-valuenow", Math.round(t)); regla.setAttribute("aria-valuetext", relojFino(t)); }
+    // Con zoom, la línea de tiempo sigue al cabezal mientras se reproduce.
+    const vista = $("#lt-vista");
+    if (vista && E.lt.zoom > 1 && !v.paused && !arrastre) {
+      const x = t / p.fuente.duracion * vista.scrollWidth;
+      if (x < vista.scrollLeft || x > vista.scrollLeft + vista.clientWidth - 24) vista.scrollLeft = x - vista.clientWidth * 0.2;
+    }
+    // Medidor de la música (pestaña Música)
+    const nivel = $("#musica-nivel");
+    if (nivel && p.musica) {
+      nivel.style.width = Math.round(gananciaMusica * 100) + "%";
+      const ahora = $("#musica-ahora"), txt = tr(gananciaMusica < 0.6 ? "La música baja: estás hablando" : "Volumen normal");
+      if (ahora && ahora.textContent !== txt) ahora.textContent = txt;
+    }
     // Zoom
     const z = (p.zooms || []).find((x) => x.i <= t && t <= x.f);
     const capa = $("#capa-zoom"); if (capa) capa.style.transform = z ? `scale(${z.escala})` : "none";
@@ -490,8 +749,11 @@
       if (ts.dataset.html !== h2) { ts.innerHTML = h2; ts.dataset.html = h2; }
     }
   }
-  /** Mientras se reproduce: si cae dentro de un corte, salta al siguiente tramo; al final, se detiene. */
-  function bucle() {
+  /** Mientras se reproduce: si cae dentro de un corte, salta al siguiente tramo; al final, se detiene. La música la sigue. */
+  let ultimoCuadro = 0;
+  function bucle(ahora = 0) {
+    const dt = ultimoCuadro ? Math.min(0.25, (ahora - ultimoCuadro) / 1000) : 0;
+    ultimoCuadro = ahora;
     const p = P(), v = $("#video");
     if (p && v && !v.paused) {
       const t = v.currentTime, tr_ = tramos();
@@ -502,6 +764,7 @@
       }
       const b = $("#boton-play"); if (b) b.textContent = "❚❚";
     } else { const b = $("#boton-play"); if (b && b.textContent !== "▶") b.textContent = "▶"; }
+    sincronizarMusica(dt);
     actualizarCapas();
     requestAnimationFrame(bucle);
   }
@@ -525,12 +788,12 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],#linea");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
-    if (el.id === "linea" && p && v) { const r = el.getBoundingClientRect(); v.currentTime = Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * p.fuente.duracion; return; }
+    if (d.ltZoom != null) return cambiarZoom(Number(d.ltZoom));
     if (d.enlace) { ev.preventDefault(); return host.enviar("abrirEnlace", { url: d.enlace }); }
-    if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; return pintar(); }
+    if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; E.lt.sel = null; return pintar(); }
     if (d.pestana) { E.pestana = d.pestana; return pintar(); }
     if (d.w != null) {
       const k = Number(d.w);
@@ -555,7 +818,10 @@
     if (d.bv) { E.bv = Number(d.bv); return pintar(); }
     switch (d.accion) {
       case "nuevo": return host.enviar("elegirVideo");
-      case "play": if (v) { if (v.paused) { E.rango = null; v.play().catch(() => {}); } else v.pause(); } return;
+      case "play": case "escuchar-musica": if (v) { if (v.paused) reproducir(); else v.pause(); } return;
+      case "elegir-musica": if (v) v.pause(); return host.enviar("elegirMusica", { carpeta: E.sel });
+      case "quitar-musica": p.musica = null; return guardar(p, "Música quitada");
+      case "lt-quitar": if (E.lt.sel && p[E.lt.sel.lista]?.[E.lt.sel.k]) quitarBloque(E.lt.sel.lista, E.lt.sel.k); return;
       case "cortar-sel": return cortarSeleccion();
       case "restaurar-sel": return restaurarSeleccion();
       case "zoom-sel": { const [a, b] = E.seleccion; p.zooms.push({ i: p.palabras[a].i, f: p.palabras[b].f, escala: 1.25 }); E.seleccion = null; return guardar(p, "Zoom agregado"); }
@@ -586,11 +852,12 @@
     if (!p) return;
     if (ds.encuadre != null) { p.encuadre.x = Number(ev.target.value); return ajustarPantalla(); }
     if (ds.subPosicion != null) { p.subtitulos.posicion = Number(ev.target.value); return actualizarCapas(); }
+    if (ds.musicaVolumen != null && p.musica) { p.musica.volumen = Math.round(Number(ev.target.value) * 100) / 100; const o = $("#musica-vol"); if (o) o.textContent = Math.round(p.musica.volumen * 100) + " %"; return; }
     if (ev.target.id === "pedido-ia") E.ia.texto = ev.target.value;
   });
   document.addEventListener("change", async (ev) => {
     const ds = ev.target.dataset || {}, p = P();
-    if (ds.encuadre != null || ds.subPosicion != null) return guardar(p);
+    if (ds.encuadre != null || ds.subPosicion != null || (ds.musicaVolumen != null && p?.musica)) return guardar(p);
     if (ds.relleno != null) { p.relleno = ev.target.value; return guardar(p); }
     if (ds.subActivos != null) { p.subtitulos.activos = ev.target.checked; return guardar(p); }
     if (ds.subPalabras != null) { p.subtitulos.palabras_por_linea = Number(ev.target.value); return guardar(p); }
@@ -602,12 +869,90 @@
   });
   document.addEventListener("keydown", (ev) => {
     const escribiendo = ev.target.closest?.("input, textarea, select, [contenteditable]");
-    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.seleccion = null; return pintar(); }
+    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.seleccion = null; E.lt.sel = null; return pintar(); }
+    if (teclaLinea(ev)) return;
     if (escribiendo) { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey) && ev.target.id === "pedido-ia") $("[data-accion=pedir-ia]")?.click(); return; }
     if ((ev.key === "Backspace" || ev.key === "Delete") && E.seleccion) { ev.preventDefault(); return cortarSeleccion(); }
     if (ev.key === " " && P()) { ev.preventDefault(); return $("[data-accion=play]")?.click(); }
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "z" && P()) { ev.preventDefault(); host.enviar("deshacer", { carpeta: E.sel }); }
   });
+  // Línea de tiempo: arrastrar bordes (mouse, toque o lápiz con los mismos eventos de puntero), mover el cabezal y teclado.
+  let arrastre = null;
+  document.addEventListener("pointerdown", (ev) => {
+    const vista = ev.target.closest?.("#lt-vista"), p = P();
+    if (!vista || !p || ev.button > 0) return;
+    const v = $("#video"), h = ev.target.closest(".borde");
+    if (h) {
+      const bl = h.closest(".bloque"), lista = bl.dataset.lt, k = Number(bl.dataset.k), borde = h.dataset.borde;
+      ev.preventDefault();
+      h.focus({ preventScroll: true });
+      try { h.setPointerCapture(ev.pointerId); } catch {}
+      if (v && !v.paused) v.pause();
+      arrastre = { tipo: "borde", lista, k, borde, antes: p[lista][k][borde], cabezal: v?.currentTime, id: ev.pointerId };
+      return seleccionar(lista, k);
+    }
+    const bl = ev.target.closest(".bloque[data-lt]");
+    if (bl) { seleccionar(bl.dataset.lt, Number(bl.dataset.k)); return irA(tiempoEn(ev.clientX)); }
+    if (ev.target.closest("button")) return;
+    if (E.lt.sel) seleccionar(null);
+    // Arrastrar en la regla (o en una pista con el mouse) mueve el cabezal; con el dedo, las pistas se desplazan.
+    arrastre = { tipo: "cabezal", id: ev.pointerId };
+    if (ev.pointerType === "mouse" || ev.target.closest("#linea")) { try { vista.setPointerCapture(ev.pointerId); } catch {} }
+    irA(tiempoEn(ev.clientX));
+  });
+  document.addEventListener("pointermove", (ev) => {
+    if (!arrastre || ev.pointerId !== arrastre.id) return;
+    const p = P(); if (!p) return;
+    if (arrastre.tipo === "cabezal") return irA(tiempoEn(ev.clientX));
+    const t = ev.altKey ? tiempoEn(ev.clientX) : iman(p, tiempoEn(ev.clientX), arrastre.cabezal);
+    const valor = moverBorde(p[arrastre.lista], arrastre.k, arrastre.borde, t, p.fuente.duracion);
+    pintarBloque(arrastre.lista, arrastre.k);
+    irA(valor);  // se ve el cuadro justo en el borde
+  });
+  const soltarArrastre = (ev) => {
+    if (!arrastre || ev.pointerId !== arrastre.id) return;
+    const a = arrastre, p = P();
+    arrastre = null;
+    if (a.tipo === "borde" && p && p[a.lista][a.k][a.borde] !== a.antes) guardar(p);
+  };
+  document.addEventListener("pointerup", soltarArrastre);
+  document.addEventListener("pointercancel", soltarArrastre);
+  document.addEventListener("focusin", (ev) => {
+    const bl = ev.target.closest?.(".borde")?.closest(".bloque");
+    if (bl && !(E.lt.sel?.lista === bl.dataset.lt && E.lt.sel.k === Number(bl.dataset.k))) seleccionar(bl.dataset.lt, Number(bl.dataset.k));
+  });
+  document.addEventListener("wheel", (ev) => {  // Ctrl/⌘ + rueda (o pellizcar en el trackpad): zoom de la línea de tiempo
+    if (!(ev.ctrlKey || ev.metaKey) || !ev.target.closest?.("#lt-vista") || !P()) return;
+    ev.preventDefault();
+    cambiarZoom(ev.deltaY < 0 ? 1 : -1, tiempoEn(ev.clientX));
+  }, { passive: false });
+  /** Teclado en la línea de tiempo. Bordes: flechas 0,1 s (Mayús 1 s, Alt 0,01 s), Re Pág/Av Pág 1 s, Inicio/Fin hasta el límite,
+   *  Suprimir quita el tramo. Regla: flechas mueven el cabezal 1 s (Mayús 5 s). Devuelve true si usó la tecla. */
+  function teclaLinea(ev) {
+    const p = P(); if (!p) return false;
+    const dur = p.fuente.duracion, h = ev.target.closest?.(".borde");
+    if (ev.target.id === "linea") {
+      const t = $("#video")?.currentTime || 0, paso = ev.shiftKey ? 5 : 1;
+      const nuevo = { ArrowLeft: t - paso, ArrowDown: t - paso, ArrowRight: t + paso, ArrowUp: t + paso, Home: 0, End: dur }[ev.key];
+      if (nuevo == null) return false;
+      ev.preventDefault(); irA(nuevo); return true;
+    }
+    if (!h) return false;
+    const bl = h.closest(".bloque"), lista = bl.dataset.lt, k = Number(bl.dataset.k), b = h.dataset.borde;
+    if (ev.key === "Delete" || ev.key === "Backspace") { ev.preventDefault(); quitarBloque(lista, k); return true; }
+    const actual = p[lista][k][b], paso = ev.shiftKey ? 1 : ev.altKey ? 0.01 : 0.1, [lo, hi] = limitesBorde(p[lista], k, b, dur);
+    const nuevo = { ArrowLeft: actual - paso, ArrowDown: actual - paso, ArrowRight: actual + paso, ArrowUp: actual + paso,
+      PageDown: actual - 1, PageUp: actual + 1, Home: lo, End: hi }[ev.key];
+    if (nuevo == null) return false;
+    ev.preventDefault();
+    const valor = moverBorde(p[lista], k, b, nuevo, dur);
+    pintarBloque(lista, k); irA(valor);
+    clearTimeout(guardarLuego);
+    const carpeta = E.sel;
+    guardarLuego = setTimeout(() => { if (E.sel === carpeta) guardar(p); else host.enviar("guardarProyecto", { carpeta, proyecto: p }); }, 700);
+    return true;
+  }
+
   for (const tipo of ["dragover", "dragleave", "drop"]) {
     document.addEventListener(tipo, (ev) => {
       if (!ev.dataTransfer?.types?.includes("Files")) return;
@@ -651,9 +996,15 @@
     iaProbada(r) { delete E.probando[r.id]; E.resultadoIA[r.id] = r; if (r.ok) { E.config.ia = r.id; toast("Lista para usar"); } pintar(); },
     modeloProgreso(r) { E.descarga = { id: r.id, pct: r.pct }; pintar(); },
     modeloListo(r) { E.descarga = null; if (r.ok) { const m = E.modelos.lista.find((x) => x.id === r.id); if (m) m.listo = true; E.config.modelo = r.id; toast("Descargado"); } else toast(r.error || "No se pudo descargar"); pintar(); },
+    /** Respuesta a elegirMusica: {ok, carpeta, proyecto} o {ok: false, error} ({ok: false} sin error si la persona canceló). */
+    musicaElegida(r) {
+      if (r.ok) return window.Corta.proyectoActualizado({ carpeta: r.carpeta, proyecto: r.proyecto, aviso: r.aviso || "Música lista" });
+      if (r.error) toast(r.error);
+    },
     actualizacionRevisada(r) { E.buscando = r.hay ? null : r.sinConexion ? "sinConexion" : "alDia"; if (r.hay) E.actualizacion = r; pintar(); },
     _probar(f) { f(E); pintar(); },
-    _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir },
+    _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
+      tramosVoz, cuantoBaja, musica: () => musicaAudio, ganancia: () => gananciaMusica },
   };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
@@ -703,6 +1054,12 @@
         A.proyectoActualizado({ carpeta, proyecto: clonar(q), seleccionar: true, aviso: "Short creado" });
       });
       case "exportar": { let pct = 0; const iv = setInterval(() => { pct += 9; if (pct >= 100) { clearInterval(iv); A.exportado({ ok: true, duracion: duracionFinal(demoProy(d.carpeta).proyecto), archivo: "exportado-9x16.mp4" }); } else A.exportarProgreso({ pct }); }, 220); return; }
+      case "elegirMusica": return luego(300, () => {  // la demo usa una música hecha con código (herramientas/generar_demo.py)
+        const x = demoProy(d.carpeta);
+        (historial[d.carpeta] ||= []).push(clonar(x.proyecto));
+        x.proyecto.musica = { archivo: "demo/musica-demo.mp3", volumen: x.proyecto.musica?.volumen ?? 0.15 };
+        A.musicaElegida({ ok: true, carpeta: d.carpeta, proyecto: clonar(x.proyecto), aviso: "En la vista previa suena una música de prueba hecha por Corta" });
+      });
       case "elegirVideo": case "soltarVideo": return toast("En la app, aquí eliges un video de tu computador");
       case "transcribir": return toast("En la app, aquí se transcribe el video");
       case "probarIA": return luego(500, () => { DEMO.config.ia = d.id; A.iaProbada({ id: d.id, ok: true }); });

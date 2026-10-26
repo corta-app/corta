@@ -22,9 +22,9 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 
 | Ruta | Qué es |
 |---|---|
-| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + encuadre + zoom, concat, subtítulos, música con sidechain), `importar.py` (copiar el video, ffprobe, transcribir con `whisper-cli -ml 1 -sow -oj`), `editar_ia.py` (pedidos, Shorts y crear un Short), `ia.py` (la IA del usuario). El último argumento de cada script es la ruta del JSON de salida. |
+| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + encuadre + zoom, concat, subtítulos, música con sidechain), `importar.py` (copiar el video, ffprobe, transcribir con `whisper-cli -ml 1 -sow -oj`), `musica.py` (copia la canción elegida a `musica/` del proyecto, sin pisar copias anteriores, y la deja en `musica`), `editar_ia.py` (pedidos, Shorts y crear un Short), `ia.py` (la IA del usuario). El último argumento de cada script es la ruta del JSON de salida. |
 | `estilos/` | Estilos de subtítulos incluidos y `README.md` con el formato. |
-| `ui/` | Interfaz única (`app.js`, `app.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` (se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
+| `ui/` | Interfaz única (`app.js`, `app.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
 | `docs/` | Página pública (GitHub Pages); `pagina.yml` publica también `ui/` en `/demo/`. |
 | `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
 | `herramientas/` | `generar_demo.py` (Pillow, solo para desarrollo), `imagenes.mjs` (capturas de la página), `revisar_privacidad.sh`. |
@@ -34,12 +34,21 @@ La misma regla existe en Python (para exportar) y en `ui/app.js` (para la vista 
 `restaurar`, `cortes_por_palabras` (limpiar) y `lineas` (subtítulos). Si cambias una, cambia las dos y su caso en `pruebas/casos.json`.
 Todos los tiempos son segundos del video original; una palabra está cortada si su punto medio cae en un corte.
 
+La línea de tiempo de `ui/app.js` tiene pistas (Video con cortes y zooms, Subtítulos, Textos y Música) en el tiempo del original y
+solo mueve los bordes `i`/`f` de `cortes`, `zooms` y `textos` (`limitesBorde`, `moverBorde`: sin dar vuelta un tramo ni pisar a sus
+vecinos); el formato no cambia. Los bordes se arrastran con eventos de puntero (mouse, toque y lápiz) y son `role="slider"` para el
+teclado. En la vista previa la música suena en el tiempo del video exportado (parte en 0 y se repite, como en `render.py`) y baja con
+las palabras que quedan (`tramosVoz`, `cuantoBaja`), imitando el sidechain que ffmpeg hace con la voz al exportar.
+
 ## Puente interfaz ↔ app
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Corta.<funcion>(json)`; en el navegador responde `simular()`.
 Acciones: `listo, config, guardarProyecto, deshacer, elegirVideo, soltarVideo, transcribir, limpiar, pedirIA, buscarShorts, crearShort,
-exportar, probarIA, descargarModelo, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar`. Respuestas: `estado,
+exportar, probarIA, descargarModelo, elegirMusica, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar`. Respuestas: `estado,
 proyectoActualizado, progreso, limpiado, iaRespondio, shortsListos, exportarProgreso, exportado, iaProbada, modeloProgreso,
-modeloListo, actualizacionRevisada`. El video se sirve como `corta://video/<carpeta>/<archivo>` (solo dentro de `~/Corta`, con rangos).
+modeloListo, musicaElegida, actualizacionRevisada`. El video se sirve como `corta://video/<carpeta>/<archivo>` (solo dentro de `~/Corta`, con rangos).
+`elegirMusica` (`{carpeta}`) abre el selector de archivos de audio y corre `bin/musica.py <carpeta> <archivo>`; responde
+`musicaElegida` con `{ok, carpeta, proyecto}` o `{ok: false, error}` (sin `error` si la persona canceló). La música queda dentro de la
+carpeta y se sirve igual que el video (`corta://video/<carpeta>/musica/<nombre>`). Quitarla o cambiar el volumen es `guardarProyecto`.
 
 ## Reglas al cambiar cosas
 - Código, comentarios, commits y textos en **español** (de Chile neutro). Todo texto nuevo visible va con su traducción en
