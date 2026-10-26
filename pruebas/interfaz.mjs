@@ -3,7 +3,8 @@
 // Revisa: 1) la lógica de ui/app.js da lo mismo que Python (pruebas/casos.json); 2) ninguna vista tira errores de JavaScript
 // (español e inglés, escritorio y celular); 3) todo texto tiene traducción en ui/idiomas/en.json; 4) nada se sale de la pantalla a
 // ancho de celular; 5) contraste del botón principal; 6) editar por texto corta de verdad; 7) la línea de tiempo mueve bordes con
-// mouse, toque y teclado sin cambiar el formato, y la música suena y baja cuando hablas. Con CAPTURAS=carpeta guarda capturas.
+// mouse, toque y teclado sin cambiar el formato, y la música suena y baja cuando hablas; 8) en el primer uso lo primero es elegir
+// el idioma (con teclado) y lo que sigue sale en ese idioma. Con CAPTURAS=carpeta guarda capturas.
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -107,8 +108,8 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
       p.on("pageerror", (e) => falla(`error de JavaScript (${idioma}, ${modo}): ${e.message}`));
       await p.addInitScript(() => { window._faltantes = new Set(); });
       await p.goto(BASE + "?" + [consulta, bv ? "bienvenida" : ""].filter(Boolean).join("&"));
-      await p.waitForFunction(() => window.Corta && document.querySelector(".app"));
-      const pasos = bv ? [0, 1, 2].map((n) => [`bienvenida-${n}`, `E=>{E.bv=${n}}`]) : VISTAS;
+      await p.waitForFunction((sel) => window.Corta && document.querySelector(sel), bv ? ".capa" : ".app");
+      const pasos = bv ? [0, 1, 2, 3].map((n) => [`bienvenida-${n}`, `E=>{E.bv=${n}}`]) : VISTAS;
       for (const [nombre, f] of pasos) {
         await p.evaluate(`window.Corta._probar(${f})`);
         await p.waitForTimeout(80);
@@ -211,6 +212,39 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   if (!(await p.evaluate(() => window.Corta._pruebas.musica().paused))) falla("la música sigue sonando con el video en pausa");
   await p.click('[data-accion="quitar-musica"]');
   if ((await proyecto()).musica !== null) falla("quitar la música no dejó musica: null");
+  await p.close();
+}
+
+// 8) Primer uso: lo primero es el idioma, antes que cualquier otra cosa
+for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {
+  const p = await navegador.newPage({ viewport: { width: ancho, height: 844 }, colorScheme: esquema, locale: "es-CL" });
+  p.on("pageerror", (e) => falla("error de JavaScript (idioma): " + e.message));
+  await p.goto(BASE + "?bienvenida"); await p.waitForSelector(".capa");
+  const primera = await p.evaluate(() => ({
+    titulo: document.querySelector("#t-bv")?.textContent.replace(/\s+/g, " ").trim(), detras: !!document.querySelector(".app, video"),
+    opciones: [...document.querySelectorAll("[data-elegir-idioma]")].map((b) => b.querySelector("b").textContent), foco: document.activeElement?.id,
+    ancho: document.documentElement.scrollWidth }));
+  if (primera.titulo !== "Elige tu idioma · Choose your language" || primera.detras || primera.opciones.join() !== "Español,English")
+    falla("la primera pantalla de la bienvenida no es la del idioma: " + JSON.stringify(primera));
+  else if (primera.foco !== "idioma-es") falla("el idioma del sistema no quedó enfocado: " + primera.foco);
+  else if (primera.ancho > ancho + 2) falla(`la pantalla del idioma se sale a ${ancho}px (${primera.ancho}px)`);
+  // Con teclado: Tab hasta «English» (foco visible) y Enter
+  await p.keyboard.press("Tab");
+  const foco = await p.evaluate(() => [document.activeElement?.id, getComputedStyle(document.activeElement).outlineStyle]);
+  if (foco[0] !== "idioma-en" || foco[1] === "none") falla("Tab no llevó a «English» con foco visible: " + JSON.stringify(foco));
+  await p.keyboard.press("Enter");
+  await p.waitForFunction(() => document.querySelector("#t-bv")?.textContent === "Hi, this is Corta", null, { timeout: 3000 })
+    .catch(() => falla("después de elegir English el siguiente paso no salió en inglés"));
+  const despues = await p.evaluate(() => ({ guardado: window.Corta._pruebas.demoConfig()?.idioma_ui, lang: document.documentElement.lang,
+    boton: document.querySelector('.pie-dialogo [data-bv="2"]')?.textContent }));
+  if (despues.guardado !== "en" || despues.lang !== "en" || despues.boton !== "Next") falla("elegir English no guardó idioma_ui o no cambió la app: " + JSON.stringify(despues));
+  else if (esquema === "light") console.log("  ✓ Primer uso: lo primero es el idioma; con teclado se elige English, se guarda idioma_ui y lo que sigue sale en inglés");
+  await p.close();
+}
+{
+  const p = await navegador.newPage();
+  await p.goto(BASE); await p.waitForSelector(".app");
+  if (await p.$(".capa")) falla("con la bienvenida ya hecha se volvió a mostrar"); else console.log("  ✓ Con la bienvenida ya hecha no se repite");
   await p.close();
 }
 

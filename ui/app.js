@@ -73,9 +73,10 @@
       for (const a of ["title", "aria-label", "placeholder"]) { const v = el.getAttribute(a); if (v) el.setAttribute(a, tr(v)); }
     }
   }
-  async function cargarIdioma() {
+  /** Carga el idioma: el que la persona acaba de elegir (Ajustes o la bienvenida), ?idioma= de la vista previa, el guardado o el del sistema. */
+  async function cargarIdioma(elegido) {
     const pedido = new URLSearchParams(location.search).get("idioma");
-    const codigo = pedido || E.config.idioma_ui || ((navigator.language || "es").startsWith("es") ? "es" : "en");
+    const codigo = elegido || pedido || E.config.idioma_ui || ((navigator.language || "es").startsWith("es") ? "es" : "en");
     if (codigo === E.idioma && (codigo === "es" || Object.keys(E.textos).length)) return;
     E.idioma = codigo; E.textos = {};
     if (codigo !== "es") { try { E.textos = (await (await fetch(`idiomas/${codigo}.json`)).json()).textos || {}; } catch { E.idioma = "es"; } }
@@ -168,7 +169,9 @@
   const segundos = (s) => (Math.round(s * 10) / 10).toLocaleString(E.idioma === "es" ? "es-CL" : "en-US");
   const estilo = () => E.estilos.find((s) => s.id === P()?.subtitulos.estilo) || E.estilos[0];
   const nombreIA = () => E.ias.find((i) => i.id === E.config.ia)?.nombre || tr("tu IA");
+  let avisosPendientes = [];  // avisos que llegan mientras la persona elige el idioma: se muestran después, ya traducidos
   function toast(texto) {
+    if (E.bv === 0) { avisosPendientes.push(texto); return; }
     const t = $("#toast"); t.textContent = tr(texto); t.classList.add("visible");
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("visible"), 2200);
   }
@@ -188,8 +191,10 @@
     // El <video> se reutiliza entre repintadas (si es el mismo archivo) para que no se recargue ni se corte la reproducción.
     const viejo = $("#video");
     const activo = document.activeElement?.id;
-    raiz.innerHTML = `<div class="app">${barra()}${lateral()}${principal()}</div>${dialogos()}`;
+    // En el primer uso lo primero es el idioma: hasta elegirlo no se pinta nada más (ni la app detrás, ni el video).
+    raiz.innerHTML = E.bv === 0 ? dialogos() : `<div class="app">${barra()}${lateral()}${principal()}</div>${dialogos()}`;
     traducirDOM(raiz);
+    if (E.bv === 0 && !document.activeElement?.closest?.(".dialogo")) $(".opcion-idioma.principal")?.focus();
     const cp = $(".cuerpo-panel"); if (cp) cp.scrollTop = scroll;
     const vl = $("#lt-vista"); if (vl) vl.scrollLeft = scrollLT;
     const nuevo = $("#video");
@@ -638,22 +643,47 @@
         <div class="enlaces"><a href="#" data-enlace="${ENLACES.sitio}">Sitio web</a><a href="#" data-enlace="${ENLACES.codigo}">Código</a><a href="#" data-enlace="${ENLACES.comunidad}">Comunidad</a></div></div>
       <div class="pie-dialogo"><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
   }
+  /** Paso 0 de la bienvenida: el idioma, antes que cualquier otra cosa. Cada opción va escrita en su propio idioma (no se traduce)
+   *  y la del sistema (o la ya guardada) queda marcada como sugerida y con el foco. */
+  function pasoIdioma() {
+    const sugerido = E.idioma === "en" ? "en" : "es";
+    const opcion = (codigo, nombre, detalle, etiqueta) => `<button class="boton opcion-idioma${codigo === sugerido ? " principal" : ""}" id="idioma-${codigo}" lang="${codigo}" data-elegir-idioma="${codigo}">
+      <b>${nombre}</b><small>${detalle}</small>${codigo === sugerido ? `<em class="sugerido">${etiqueta}</em>` : ""}</button>`;
+    return `<div class="idioma-bv" data-sin-traducir>${LOGO}
+      <h2 id="t-bv" tabindex="-1"><span lang="es">Elige tu idioma</span> <span class="punto" aria-hidden="true">·</span> <span lang="en">Choose your language</span></h2>
+      <div class="opciones-idioma">${opcion("es", "Español", "Continuar en español", "Sugerido")}${opcion("en", "English", "Continue in English", "Suggested")}</div>
+      <p class="nota-idioma"><span lang="es">Puedes cambiarlo cuando quieras en Ajustes.</span> <span lang="en">You can change it anytime in Settings.</span></p></div>`;
+  }
+  async function elegirIdioma(codigo) {
+    E.config.idioma_ui = codigo;
+    host.enviar("config", { idioma_ui: codigo });  // el mismo camino que el selector de Ajustes
+    await cargarIdioma(codigo);
+    E.bv = 1;
+    pintar();
+    $("#t-bv")?.focus();
+    const avisos = avisosPendientes; avisosPendientes = [];
+    if (avisos.length) toast(avisos[avisos.length - 1]);
+  }
   function bienvenida() {
     const paso = E.bv;
+    const puntos = `<div class="pasos-bv" aria-hidden="true">${[0, 1, 2, 3].map((i) => `<i class="${i <= paso ? "hecho" : ""}"></i>`).join("")}</div>`;
+    if (paso === 0) return puntos + pasoIdioma();
     const modeloListo = (E.modelos.lista || []).some((m) => m.listo);
     const pasos = [
+      null,  // 0: el idioma (pasoIdioma)
       ["Hola, esto es Corta", `<p>Un editor para Shorts, Reels y TikTok que funciona en tu computador. Lo transcribe todo, editas el texto y tu propia IA hace el trabajo pesado. Gratis y sin marca de agua.</p>`, true],
       ["Elige tu IA", `<p>Corta usa la IA que ya tienes, con tu cuenta. La probamos con una pregunta corta.</p><div class="seccion">${filasIA()}</div>`, !!E.config.ia],
       ["Descarga el transcriptor", `<p>Convierte la voz en texto dentro de tu computador. Se descarga una sola vez.</p><div class="seccion">${filasModelo()}</div>`, modeloListo],
     ];
     const [titulo, cuerpo, puede] = pasos[paso];
-    return `<div class="pasos-bv">${pasos.map((_, i) => `<i class="${i <= paso ? "hecho" : ""}"></i>`).join("")}</div><h2 id="t-bv">${titulo}</h2>${cuerpo}
-      <div class="pie-dialogo">${paso ? `<button class="boton izq" data-bv="${paso - 1}">Atrás</button>` : ""}<button class="boton" data-accion="bv-fin">Lo hago después</button>
+    return `${puntos}<h2 id="t-bv" tabindex="-1">${titulo}</h2>${cuerpo}
+      <div class="pie-dialogo"><button class="boton izq" data-bv="${paso - 1}">Atrás</button><button class="boton" data-accion="bv-fin">Lo hago después</button>
         ${paso < pasos.length - 1 ? `<button class="boton principal" data-bv="${paso + 1}" ${puede ? "" : "disabled"}>Siguiente</button>` : `<button class="boton principal" data-accion="bv-fin">Empezar</button>`}</div>`;
   }
   function dialogos() {
     const capa = (id, html) => `<div class="capa"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="${id}">${html}</div></div>`;
     if (E.exportar) return capa("t-exp", dialogoExportar());
+    if (E.bv === 0) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bienvenida()}</div></div>`;
     if (E.bv !== null) return capa("t-bv", bienvenida());
     if (E.ajustes) return capa("t-aj", dialogoAjustes());
     return "";
@@ -788,9 +818,10 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom]");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
+    if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
     if (d.ltZoom != null) return cambiarZoom(Number(d.ltZoom));
     if (d.enlace) { ev.preventDefault(); return host.enviar("abrirEnlace", { url: d.enlace }); }
     if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; E.lt.sel = null; return pintar(); }
@@ -863,12 +894,13 @@
     if (ds.subPalabras != null) { p.subtitulos.palabras_por_linea = Number(ev.target.value); return guardar(p); }
     if (ds.config) {
       E.config[ds.config] = ev.target.value; host.enviar("config", { [ds.config]: ev.target.value });
-      if (ds.config === "idioma_ui") await cargarIdioma();
+      if (ds.config === "idioma_ui") await cargarIdioma(ev.target.value);
       return pintar();
     }
   });
   document.addEventListener("keydown", (ev) => {
     const escribiendo = ev.target.closest?.("input, textarea, select, [contenteditable]");
+    if (E.bv !== null) return;  // con la bienvenida abierta, los atajos del editor no corren detrás
     if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.seleccion = null; E.lt.sel = null; return pintar(); }
     if (teclaLinea(ev)) return;
     if (escribiendo) { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey) && ev.target.id === "pedido-ia") $("[data-accion=pedir-ia]")?.click(); return; }
@@ -957,6 +989,7 @@
     document.addEventListener(tipo, (ev) => {
       if (!ev.dataTransfer?.types?.includes("Files")) return;
       ev.preventDefault();
+      if (E.bv === 0) return;  // mientras se elige el idioma no se importa nada
       const encima = tipo === "dragover";
       if (E.soltar !== encima) { E.soltar = encima; const z = $("[data-soltar]"); if (z) z.classList.toggle("encima", encima); }
       if (tipo === "drop") host.enviar("soltarVideo", { nombres: [...ev.dataTransfer.files].map((f) => f.name) });
@@ -1004,7 +1037,7 @@
     actualizacionRevisada(r) { E.buscando = r.hay ? null : r.sinConexion ? "sinConexion" : "alDia"; if (r.hay) E.actualizacion = r; pintar(); },
     _probar(f) { f(E); pintar(); },
     _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
-      tramosVoz, cuantoBaja, musica: () => musicaAudio, ganancia: () => gananciaMusica },
+      tramosVoz, cuantoBaja, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
   };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
