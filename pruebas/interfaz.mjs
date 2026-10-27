@@ -71,6 +71,13 @@ const VISTAS = [
   ["vacio", "E=>{E.ajustes=false;E.proyectos=[];E.sel=null}"],
 ];
 const navegador = await chromium.launch();
+// Cualquier bloqueo de la Content-Security-Policy es un error: la interfaz tiene que funcionar entera con ella.
+const abrirPagina = navegador.newPage.bind(navegador);
+navegador.newPage = async (opciones) => {
+  const p = await abrirPagina(opciones);
+  p.on("console", (m) => { if (/Content Security Policy/i.test(m.text())) falla("CSP: " + m.text().slice(0, 200)); });
+  return p;
+};
 
 // 1) Lógica compartida con Python
 {

@@ -279,6 +279,41 @@ class IA(unittest.TestCase):
         self.assertEqual(importar.palabras_de_whisper({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
 
 
+class Seguridad(unittest.TestCase):
+    """Content-Security-Policy de la interfaz y de la página pública (docs/)."""
+
+    def csp(self, html):
+        import re
+        m = re.search(r'<meta http-equiv="Content-Security-Policy" content="([^"]+)">', html)
+        self.assertTrue(m, "falta la Content-Security-Policy")
+        return m.group(1)
+
+    def test_interfaz(self):
+        csp = self.csp(open(os.path.join(RAIZ, "ui", "index.html"), encoding="utf-8").read())
+        for parte in ("default-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'none'"):
+            self.assertIn(parte, csp)
+        self.assertNotIn("unsafe-eval", csp)
+        self.assertNotIn("script-src", csp, "los scripts solo desde la app misma (default-src 'self'), nunca en línea")
+
+    def test_pagina_publica(self):
+        # Cada <script> en línea de docs/ va con su huella en script-src: si cambias uno, pon aquí la huella nueva que pide esta prueba.
+        import base64
+        import glob
+        import hashlib
+        import re
+        for f in glob.glob(os.path.join(RAIZ, "docs", "*.html")):
+            html = open(f, encoding="utf-8").read()
+            csp = self.csp(html)
+            self.assertNotIn("unsafe-eval", csp)
+            self.assertNotRegex(csp, r"script-src[^;]*'unsafe-inline'")
+            self.assertNotRegex(html, r"<[^>]+\son[a-z]+=", "sin manejadores en línea (onclick=…): la CSP los bloquea")
+            for attrs, cuerpo in re.findall(r"<script([^>]*)>(.*?)</script>", html, re.S):
+                if "ld+json" in attrs or "src=" in attrs:
+                    continue
+                huella = "'sha256-" + base64.b64encode(hashlib.sha256(cuerpo.encode()).digest()).decode() + "'"
+                self.assertIn(huella, csp, f"{os.path.basename(f)}: el script en línea cambió; pon {huella} en script-src")
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=1)
