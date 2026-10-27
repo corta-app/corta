@@ -88,7 +88,10 @@ def _tiempo(s):
 
 
 def _escapar(t):
-    return t.replace("\\", "\\\\").replace("{", "(").replace("}", ")").replace("\n", " ")
+    """Texto seguro dentro de una línea Dialogue: sin bloques {…} de ASS y sin saltos ni caracteres de control (un «\\r» o un
+    separador de línea en una palabra o un texto podría abrir una línea nueva en el archivo .ass y agregarle estilos o eventos)."""
+    t = re.sub(r"[\x00-\x1f\x7f\u0085\u2028\u2029]", " ", t)
+    return t.replace("\\", "\\\\").replace("{", "(").replace("}", ")")
 
 
 def ass(p, estilo, ancho, alto):

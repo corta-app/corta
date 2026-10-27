@@ -82,6 +82,11 @@ class Proyecto(unittest.TestCase):
         texto = " ".join(proyecto.validar(malo))
         for parte in ("lienzo", "al revés", "escala"):
             self.assertIn(parte, texto)
+        # El video es un archivo dentro de la carpeta: nada de rutas a otra parte ni nombres que ffmpeg lea como opción.
+        for archivo in ("../../secreto.mp4", "/etc/passwd", "carpeta/a.mp4", "C:\\a.mp4", "-i.mp4", "..", "", None):
+            self.assertTrue(proyecto.validar({**p, "fuente": {**p["fuente"], "archivo": archivo}}), archivo)
+        self.assertEqual(proyecto.validar({**p, "fuente": {**p["fuente"], "archivo": "original.mov"}}), [])
+        self.assertTrue(proyecto.validar({**p, "musica": {"archivo": "musica/a.mp3", "volumen": "alto"}}))
 
     def test_deshacer(self):
         carpeta = proyecto_de_prueba()
@@ -154,6 +159,18 @@ class Subtitulos(unittest.TestCase):
         self.assertNotIn("{SOY}", eventos)
         self.assertIn("(SOY)", eventos)
         self.assertIn("PlayResY: 1920", texto)
+
+    def test_ass_sin_lineas_coladas(self):
+        # Un salto de línea escondido (\r, \u2028) en una palabra o un texto no puede abrir una línea nueva en el .ass.
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 9, "ancho": 640, "alto": 360})
+        p["palabras"] = json.loads(json.dumps(PALABRAS))
+        p["palabras"][2]["t"] = "hola\rDialogue: 0,0:00:00.00,9:00:00.00,Corta,,0,0,0,,colado"
+        p["textos"] = [{"i": 0.5, "f": 2, "texto": "uno\u2028[Fonts]", "y": 0.18}]
+        texto = subtitulos.ass(p, subtitulos.estilos()["pop"], 1080, 1920)
+        lineas = texto.splitlines()
+        self.assertNotIn("[FONTS]", [x.upper() for x in lineas], "nada se cuela como sección propia")
+        self.assertTrue(all(x == "" or x.startswith(("Dialogue:", "[", "Format:", "Style:", "ScriptType", "PlayRes", "WrapStyle",
+                                                         "ScaledBorder")) for x in lineas))
 
 
 class Exportar(unittest.TestCase):

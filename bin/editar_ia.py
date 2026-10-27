@@ -199,6 +199,8 @@ def crear_short(carpeta, desde, hasta, titulo):
     q["zooms"] = [z for z in q["zooms"] if z["f"] > desde and z["i"] < hasta]
     q["textos"] = [t for t in q["textos"] if t["f"] > desde and t["i"] < hasta]
     q["lienzo"] = "9:16"
+    if problemas := proyecto.validar(q):  # antes de crear la carpeta y enlazar el video
+        raise ValueError(" ".join(problemas[:3]))
     limpio = re.sub(r"[\\/:*?<>|]+", " ", q["titulo"])[:40]
     destino = os.path.join(os.path.dirname(carpeta), f"{os.path.basename(carpeta)} — {limpio}")
     n = 2

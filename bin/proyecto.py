@@ -59,6 +59,11 @@ def nuevo(titulo, fuente):
             "zooms": [], "textos": [], "musica": None, "creado": time.strftime("%Y-%m-%dT%H:%M:%S")}
 
 
+# El video del proyecto es un archivo dentro de su carpeta («original.mp4»): sin «/» ni «\\», sin empezar con «-» (ffmpeg lo
+# tomaría como opción) y sin caracteres de control. Así un proyecto.json cambiado a mano no hace leer ni enlazar archivos de afuera.
+ARCHIVO_FUENTE = re.compile(r"[^\\/\x00-\x1f\-][^\\/\x00-\x1f]{0,199}")
+
+
 def validar(p):
     """Lista de problemas (vacía = válido). Todo cambio que propone la IA pasa por aquí antes de guardarse."""
     if not isinstance(p, dict):
@@ -70,6 +75,9 @@ def validar(p):
     if not isinstance(dur, (int, float)) or dur <= 0:
         e.append("fuente.duracion debe ser un número mayor que 0.")
         dur = 1e9
+    archivo = (p.get("fuente") or {}).get("archivo")
+    if not (isinstance(archivo, str) and ARCHIVO_FUENTE.fullmatch(archivo) and archivo not in (".", "..")):
+        e.append("fuente.archivo debe ser el nombre del video dentro de la carpeta del proyecto (sin carpetas).")
     if p.get("lienzo") not in LIENZOS:
         e.append("lienzo debe ser " + ", ".join(LIENZOS) + ".")
     if p.get("relleno") not in ("recorte", "desenfoque"):
@@ -109,7 +117,9 @@ def validar(p):
     if not (isinstance(s.get("posicion"), (int, float)) and 0.1 <= s["posicion"] <= 0.95):
         e.append("subtitulos.posicion debe estar entre 0.1 y 0.95.")
     m = p.get("musica")
-    if m is not None and not (isinstance(m, dict) and isinstance(m.get("archivo"), str) and 0 <= m.get("volumen", -1) <= 1):
+    if m is not None and not (isinstance(m, dict) and isinstance(m.get("archivo"), str) and m["archivo"].strip()
+                              and "\x00" not in m["archivo"] and isinstance(m.get("volumen"), (int, float))
+                              and not isinstance(m["volumen"], bool) and 0 <= m["volumen"] <= 1):
         e.append("musica debe ser null o {archivo, volumen entre 0 y 1}.")
     return e
 
