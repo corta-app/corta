@@ -37,6 +37,8 @@ Si algo falta te lo pedimos con un comentario; casi nunca cerramos un aporte sin
 ¿Buscas por dónde empezar? Mira los issues con la etiqueta
 [`good first issue`](https://github.com/corta-app/corta/labels/good%20first%20issue) o pregunta en Discussions.
 
+**¿Encontraste una falla de seguridad?** No abras un issue: repórtala en privado como explica [SECURITY.md](SECURITY.md).
+
 Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
 
 ---
@@ -47,3 +49,4 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
 - **Code (with or without AI):** read [`AGENTS.md`](AGENTS.md), fork, branch, run `bash pruebas/correr.sh` and open a pull request.
   Code and comments are in Spanish; UI text needs its English entry in `ui/idiomas/en.json`; never commit real videos or personal data.
 - **Review:** everything goes through a pull request and a maintainer merges it. Contributions are licensed under AGPL-3.0.
+- **Security issues:** don't open a public issue; report them privately as explained in [SECURITY.md](SECURITY.md).

@@ -71,3 +71,8 @@ transcriptor. Quien ya hizo la bienvenida no la repite; el idioma se cambia en A
 Todo entra por pull request y lo junta quien mantiene el proyecto, solo con su aprobación. Leer todo el diff antes de correr nada
 (alerta roja: workflows, scripts de instalación, red nueva, dependencias nuevas, binarios, cambios en cómo se arma el comando de
 ffmpeg o de la IA). Estilos nuevos: válidos, con fuente libre incluida y una captura. Detalle en `CONTRIBUTING.md`.
+
+**Seguridad** ([SECURITY.md](SECURITY.md)): las fallas se reportan en privado. Las actions van fijadas por SHA completo con su versión en un
+comentario (Dependabot las sube), con `permissions` mínimos, `persist-credentials: false`, nunca `pull_request_target` ni
+`${{ github.event.* }}` dentro de `run:`. La página de `docs/` tiene una Content-Security-Policy con la huella de cada script en
+línea: si cambias uno, `pruebas/test_python.py` (clase `Seguridad`) dice la huella nueva para `script-src`.

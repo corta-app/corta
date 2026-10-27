@@ -10,6 +10,7 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 <a href="https://corta-app.github.io/corta/demo/">Vista previa</a> ·
 <a href="https://github.com/corta-app/corta/discussions">Comunidad</a> ·
 <a href="CONTRIBUTING.md">Cómo aportar</a> ·
+<a href="SECURITY.md">Seguridad</a> ·
 <a href="#english">English</a></p>
 
 ---
