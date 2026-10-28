@@ -27,6 +27,9 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 - **Cortes, efectos y filtros:** divide en el cabezal, borra o recorta un tramo, y ponle a todo el video o a un momento un filtro
   (blanco y negro, cálido, vintage…), un zoom o una transición. Los efectos son archivos simples: la comunidad crea más en el
   [catálogo](https://github.com/corta-app/corta-catalogo) y los descargas gratis desde la app, ordenados por categoría.
+- **Plantillas:** elige una (presentación de producto, pitch en 30 s, antes y después, recuerdos del mes, receta rápida…), pon tus
+  clips o fotos y se arma sola, con sus cortes, transiciones, efectos y textos. Después la retocas como cualquier video. La comunidad
+  aporta más en el [catálogo](https://github.com/corta-app/corta-catalogo#plantillas), por categorías y gratis.
 - **Música de fondo que baja sola cuando hablas**, y una **línea de tiempo con pistas** (video, subtítulos, textos y música) donde
   arrastras los bordes con el mouse, el dedo o el teclado.
 
@@ -64,7 +67,8 @@ tu video ──► whisper (en tu computador) ──► palabras con tiempos ─
 
 ## Formato del proyecto
 Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal cual), `proyecto.json`, `historial/` (para deshacer),
-`musica/` (una copia de la música que elegiste) y lo que exportas. `proyecto.json` es abierto: puedes armar tus propios scripts encima (ver [`ejemplos/`](ejemplos/)).
+`musica/` (una copia de la música que elegiste) y lo que exportas. Un video hecho con una plantilla tiene `clips/` (copias de tus
+clips y fotos) y `plantilla-N.mp4` (los clips ya armados) en vez de `original.<ext>`. `proyecto.json` es abierto: puedes armar tus propios scripts encima (ver [`ejemplos/`](ejemplos/)).
 
 | Campo | Qué guarda |
 |---|---|
@@ -75,7 +79,8 @@ Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal c
 | `subtitulos` | `{activos, estilo, palabras_por_linea, posicion}` |
 | `zooms`, `textos` | `[{i, f, escala}]` y `[{i, f, texto, y}]` |
 | `efectos` | (opcional) `[{efecto, pasos, i?, f?, origen?}]`: los efectos aplicados, con sus pasos copiados (formato en [`efectos/README.md`](efectos/README.md)). Sin `i`/`f`, a todo el video. |
-| `divisiones` | (opcional) `[segundos]`: dónde dividiste el video en la línea de tiempo (para elegir tramos; al exportar no cambian nada). |
+| `divisiones` | (opcional) `[segundos]`: dónde dividiste el video en la línea de tiempo (para elegir tramos). Al exportar no cortan nada: una transición del tramo pestañea ahí, como en un corte. |
+| `plantilla` | (opcional, solo en un video hecho con una plantilla) `{id, huecos: [{archivo, tipo, desde, dur, duracion}]}`: qué clip o foto (una copia en `clips/`) va en cada hueco, desde qué segundo y cuánto dura el hueco. Lo cambia solo la app (pestaña Clips), que vuelve a armar el video (`fuente`). |
 | `cambios_ia` | (opcional) Lo que hizo tu IA, para quitar justo ese cambio aunque hayas seguido editando: `[{id, estado: "aplicado" \| "quitado", pedido, resumen, fecha, agregados: {zooms, textos, cortes}, ajustes?: [{campo, antes, despues}], restaurados?: {antes, despues}, palabras?: [{antes, despues}], conservados?}]` (los últimos 20). Lo que agregó la IA lleva `"origen": "<id>"`. |
 | `musica` | `null` o `{archivo, volumen}`: `archivo` relativo a la carpeta del proyecto (la app copia la canción a `musica/`) o una ruta absoluta; `volumen` de 0 a 1. La música baja sola cuando hablas. |
 
@@ -95,6 +100,13 @@ Los efectos son JSON de solo datos (formato en [`efectos/README.md`](efectos/REA
 que descargas del [catálogo de la comunidad](https://github.com/corta-app/corta-catalogo) quedan en `~/Corta/.corta/efectos/`. La
 app solo descarga desde `raw.githubusercontent.com/corta-app/corta-catalogo`, compara la huella SHA-256 del índice y valida cada
 efecto con el mismo formato que el catálogo antes de guardarlo.
+
+### Plantillas
+Las plantillas son JSON de solo datos (formato en [`plantillas/README.md`](plantillas/README.md)): huecos con su duración, efectos y
+transiciones por nombre, textos y el ritmo de la música para el que se pensaron (nunca un archivo de audio). Vienen 10 incluidas
+(`plantillas/`) y las que descargas del [catálogo](https://github.com/corta-app/corta-catalogo#plantillas) quedan en
+`~/Corta/.corta/plantillas/`, con la misma descarga verificada que los efectos. Si una plantilla usa un efecto del catálogo que no
+tienes, Corta te ofrece descargarlo.
 
 ## Desarrollo
 Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`). La app de Mac está en
@@ -123,6 +135,9 @@ zooms and text on a multi-track timeline. Videos never leave your computer, ther
 plain open JSON file. Caption styles are data-only files anyone can create. Fix any caption word in place (Corta remembers your
 brand names for future videos), split and trim segments, and add filters, zooms and transitions to the whole video or one moment;
 the community shares more effects in the [catalog](https://github.com/corta-app/corta-catalogo), downloadable for free from the app.
+**Templates:** pick one (product showcase, 30-second pitch, before and after, month in memories, quick recipe…), add your clips or
+photos and it builds itself with its cuts, transitions, effects and texts; then edit it like any other video. Templates are data-only
+JSON too, and the community shares more by category in the catalog.
 Spanish-first, English included. Licensed under AGPL-3.0.
 
 **Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256). Until a release is

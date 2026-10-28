@@ -2,6 +2,7 @@
 
 Uso: python3 herramientas/generar_demo.py     (necesita Pillow y ffmpeg; solo para quien desarrolla, la app no lo usa)
      python3 herramientas/generar_demo.py --solo-musica    (solo la música de la vista previa, ui/demo/musica-demo.mp3)
+     python3 herramientas/generar_demo.py --solo-plantillas (las fotos dibujadas y las plantillas de ui/demo.json, sin tocar el video)
 
 Dibuja a «Ana», una presentadora animada en un video horizontal (16:9) que habla con pausas y muletillas, para mostrar el
 encuadre vertical, la limpieza de silencios y los subtítulos. La «voz» son sílabas sintéticas: no es una persona real.
@@ -22,6 +23,7 @@ from PIL import Image, ImageDraw, ImageFilter
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 import efectos  # noqa: E402
+import plantillas  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
 
@@ -180,7 +182,62 @@ def catalogo_demo():
         return json.load(f).get("catalogo", [])
 
 
+def catalogo_plantillas_demo():
+    """Las plantillas de la comunidad que muestra la vista previa: las del catálogo si está al lado, si no las de antes."""
+    indice = os.path.join(RAIZ, "..", "corta-catalogo", "plantillas", "index.json")
+    if os.path.exists(indice):
+        with open(indice, encoding="utf-8") as f:
+            return plantillas.validar_indice(json.load(f))
+    with open(os.path.join(RAIZ, "ui", "demo.json"), encoding="utf-8") as f:
+        return json.load(f).get("catalogo_plantillas", [])
+
+
+def fotos_demo(carpeta):
+    """Dos «fotos» dibujadas (una taza y un pastel, sin personas ni lugares reales) para llenar plantillas en la vista previa."""
+    for nombre, fondo, dibujo in (("foto-1.jpg", ((247, 214, 170), (196, 120, 80)), "taza"), ("foto-2.jpg", ((190, 220, 240), (120, 90, 170)), "pastel")):
+        im = Image.new("RGB", (720, 960))
+        d = ImageDraw.Draw(im)
+        for y in range(960):
+            a = y / 959
+            d.line([(0, y), (720, y)], fill=tuple(int(fondo[0][k] * (1 - a) + fondo[1][k] * a) for k in range(3)))
+        if dibujo == "taza":
+            d.ellipse((170, 640, 550, 720), fill=(250, 245, 235))
+            d.rounded_rectangle((230, 380, 490, 660), 40, fill=(255, 255, 250))
+            d.arc((450, 440, 570, 580), -90, 90, fill=(255, 255, 250), width=26)
+            d.ellipse((250, 360, 470, 410), fill=(110, 70, 45))
+            for k in range(3):
+                d.arc((270 + k * 60, 200, 330 + k * 60, 340), 200, 340, fill=(255, 255, 255), width=8)
+        else:
+            d.rounded_rectangle((180, 470, 540, 720), 24, fill=(255, 240, 245))
+            d.rectangle((180, 560, 540, 600), fill=(240, 120, 150))
+            d.ellipse((170, 430, 550, 510), fill=(255, 250, 252))
+            for k in range(3):
+                x = 270 + k * 90
+                d.rectangle((x, 330, x + 16, 450), fill=(120, 200, 230))
+                d.ellipse((x - 6, 296, x + 22, 336), fill=(255, 200, 60))
+        im = im.filter(ImageFilter.GaussianBlur(1.2))
+        im.save(os.path.join(carpeta, nombre), quality=82)
+
+
+def solo_plantillas():
+    demo_dir = os.path.join(RAIZ, "ui", "demo")
+    fotos_demo(demo_dir)
+    ruta = os.path.join(RAIZ, "ui", "demo.json")
+    with open(ruta, encoding="utf-8") as f:
+        demo = json.load(f)
+    demo["efectos"] = list(efectos.disponibles().values())
+    demo["catalogo"] = catalogo_demo()
+    demo["plantillas"] = list(plantillas.disponibles().values())
+    demo["catalogo_plantillas"] = catalogo_plantillas_demo()
+    with open(ruta, "w", encoding="utf-8") as f:
+        json.dump(demo, f, ensure_ascii=False, indent=1)
+        f.write("\n")
+
+
 def main():
+    if "--solo-plantillas" in sys.argv:
+        solo_plantillas()
+        return print("✓ fotos y plantillas de la demo")
     if "--solo-musica" in sys.argv:
         musica_demo(os.path.join(RAIZ, "ui", "demo", "musica-demo.mp3"))
         return print("✓ música de la demo")
@@ -189,6 +246,7 @@ def main():
     os.makedirs(demo_dir, exist_ok=True)
     video(palabras, duracion, os.path.join(demo_dir, "ana.mp4"))
     musica_demo(os.path.join(demo_dir, "musica-demo.mp3"))
+    fotos_demo(demo_dir)
     p = proyecto.nuevo("Ahorra una hora editando", {"archivo": "demo/ana.mp4", "ancho": W, "alto": H, "duracion": duracion})
     p["encuadre"] = {"x": 0.45, "y": 0.5}
     p["palabras"] = palabras
@@ -201,6 +259,7 @@ def main():
             "modelos": {"recomendado": "turbo", "lista": [{"id": "turbo", "nombre": "Preciso", "detalle": "Mejor para cualquier idioma. 574 MB.", "mb": 574, "listo": True},
                                                           {"id": "small", "nombre": "Rápido", "detalle": "Más liviano, un poco menos preciso. 190 MB.", "mb": 190, "listo": False}]},
             "estilos": list(estilos.values()), "efectos": list(efectos.disponibles().values()), "catalogo": catalogo_demo(),
+            "plantillas": list(plantillas.disponibles().values()), "catalogo_plantillas": catalogo_plantillas_demo(),
             "vocabulario": {"formato": 1, "reemplazos": [], "palabras": []},
             "proyectos": [{"carpeta": "~/Corta/2026-10-25 Ahorra una hora editando", "proyecto": p},
                           {"carpeta": "~/Corta/2026-10-24 Mi rutina de mañana", "proyecto": {**p, "titulo": "Mi rutina de mañana", "palabras": [], "creado": "2026-10-24T09:10:00"}}]}

@@ -277,6 +277,7 @@ def crear_short(carpeta, desde, hasta, titulo):
     q["efectos"] = [x for x in q.get("efectos", []) if "i" not in x or (x["f"] > desde and x["i"] < hasta)]
     q["lienzo"] = "9:16"
     q["cambios_ia"] = []  # los cambios de la IA se quitan en el video donde se hicieron
+    q.pop("plantilla", None)  # un Short de un video de plantilla es un video normal (sus clips quedan en el original)
     if problemas := proyecto.validar(q):  # antes de crear la carpeta y enlazar el video
         raise ValueError(" ".join(problemas[:3]))
     limpio = re.sub(r"[\\/:*?<>|]+", " ", q["titulo"])[:40]

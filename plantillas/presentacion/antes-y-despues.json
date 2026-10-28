@@ -1,0 +1,78 @@
+{
+ "formato": 1,
+ "id": "antes-y-despues",
+ "categoria": "presentacion",
+ "nombre": {
+  "es": "Antes y después",
+  "en": "Before and after"
+ },
+ "descripcion": {
+  "es": "El cambio en dos tomas: antes en blanco y negro, después a todo color.",
+  "en": "The change in two shots: before in black and white, after in full color."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "cambio",
+  "transformación",
+  "makeover",
+  "resultado"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 3,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Cómo estaba antes",
+    "en": "How it was before"
+   },
+   "efectos": [
+    "blanco-y-negro"
+   ],
+   "transicion": "destello"
+  },
+  {
+   "dur": 4,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Cómo quedó",
+    "en": "How it turned out"
+   },
+   "efectos": [
+    "vivido",
+    "zoom-lento"
+   ]
+  },
+  {
+   "dur": 3,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Un detalle del resultado",
+    "en": "A detail of the result"
+   },
+   "zoom": "alejar"
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "Antes",
+    "en": "Before"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 1,
+   "texto": {
+    "es": "Después",
+    "en": "After"
+   },
+   "posicion": 0.18
+  }
+ ],
+ "subtitulos": {
+  "estilo": "titular",
+  "activos": true
+ }
+}

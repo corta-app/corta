@@ -1,0 +1,88 @@
+{
+ "formato": 1,
+ "id": "un-dia-conmigo",
+ "categoria": "recuerdos",
+ "nombre": {
+  "es": "Un día conmigo",
+  "en": "A day with me"
+ },
+ "descripcion": {
+  "es": "Mañana, tarde y noche, cada parte con su luz.",
+  "en": "Morning, afternoon and night, each with its own light."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "vlog",
+  "rutina",
+  "routine",
+  "día"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 4,
+   "tipo": "video",
+   "pista": {
+    "es": "La mañana",
+    "en": "The morning"
+   },
+   "efectos": [
+    "luminoso"
+   ],
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 4,
+   "tipo": "video",
+   "pista": {
+    "es": "La tarde",
+    "en": "The afternoon"
+   },
+   "efectos": [
+    "calido"
+   ],
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 4,
+   "tipo": "video",
+   "pista": {
+    "es": "La noche",
+    "en": "The night"
+   },
+   "efectos": [
+    "frio"
+   ]
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "Mañana",
+    "en": "Morning"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 1,
+   "texto": {
+    "es": "Tarde",
+    "en": "Afternoon"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 2,
+   "texto": {
+    "es": "Noche",
+    "en": "Night"
+   },
+   "posicion": 0.18
+  }
+ ],
+ "subtitulos": {
+  "estilo": "pop",
+  "activos": true
+ }
+}

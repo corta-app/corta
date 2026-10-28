@@ -32,6 +32,8 @@ import efecto_formato  # noqa: E402
 import efectos  # noqa: E402
 import importar  # noqa: E402
 import limpiar  # noqa: E402
+import plantilla_formato  # noqa: E402
+import plantillas  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
 import vocabulario  # noqa: E402
@@ -467,6 +469,203 @@ class Efectos(unittest.TestCase):
         self.assertTrue(proyecto.validar(q))
 
 
+class Plantillas(unittest.TestCase):
+    """Plantillas como datos: formato estricto, referencias a efectos y estilos que existen, llenar huecos igual que la interfaz y
+    armar de verdad con ffmpeg (clips y fotos, transición en la unión) con una lista blanca de filtros."""
+
+    def test_incluidas_validas(self):
+        todas = plantillas.disponibles()
+        self.assertGreaterEqual(len(todas), 8)
+        self.assertGreaterEqual(len({p["categoria"] for p in todas.values()}), 4)
+        tipos = plantillas.tipos_de_efectos({i: e for i, e in efectos.disponibles().items() if e["origen"] == "incluido"})
+        for p in todas.values():
+            self.assertEqual(p["origen"], "incluida")
+            self.assertEqual(plantilla_formato.referencias(p, tipos, set(subtitulos.estilos())), [], p["id"])
+            self.assertTrue(p["nombre"].get("en") and p["descripcion"].get("en"), f"{p['id']}: falta el inglés")
+            for h in p["huecos"]:
+                self.assertTrue("pista" not in h or h["pista"].get("en"), p["id"])
+            for t in p.get("textos", []):
+                self.assertTrue(t["texto"].get("en"), p["id"])
+
+    def test_incluidos_que_conoce_el_formato(self):
+        # El catálogo revisa las plantillas contra lo que trae la app (EFECTOS_INCLUIDOS y ESTILOS_INCLUIDOS): tiene que ser igual.
+        incluidos = {i: e for i, e in efectos.disponibles().items() if e["origen"] == "incluido"}
+        self.assertEqual(plantillas.tipos_de_efectos(incluidos), plantilla_formato.EFECTOS_INCLUIDOS)
+        base = os.path.join(RAIZ, "estilos")
+        self.assertEqual(sorted(n[:-5] for n in os.listdir(base) if n.endswith(".json")), sorted(plantilla_formato.ESTILOS_INCLUIDOS))
+
+    def test_rechaza_lo_raro(self):
+        bueno = {"formato": 1, "id": "dos", "categoria": "recuerdos", "nombre": {"es": "Dos"}, "proporcion": "9:16",
+                 "huecos": [{"dur": 2, "tipo": "video", "transicion": "destello"}, {"dur": 3, "tipo": "foto"}]}
+        self.assertEqual(plantilla_formato.validar_plantilla(bueno, "plantillas/recuerdos/dos.json"), [])
+        h = bueno["huecos"]
+        malos = [
+            {**bueno, "css": "x"}, {**bueno, "musica": {"archivo": "cancion.mp3"}}, {**bueno, "musica": {"bpm": 400}},
+            {**bueno, "huecos": []}, {**bueno, "huecos": [{"dur": 0.2, "tipo": "video"}]}, {**bueno, "huecos": [{"dur": 16, "tipo": "video"}]},
+            {**bueno, "huecos": [{"dur": 15, "tipo": "video"}] * 7}, {**bueno, "huecos": [{"dur": "2", "tipo": "video"}]},
+            {**bueno, "huecos": [{"dur": True, "tipo": "video"}]}, {**bueno, "huecos": [{"dur": float("nan"), "tipo": "video"}]},
+            {**bueno, "huecos": [{"dur": 2, "tipo": "audio"}]}, {**bueno, "huecos": [{"dur": 2, "tipo": "video", "filtro": "drawtext=text=x"}]},
+            {**bueno, "huecos": [{"dur": 2, "tipo": "video", "efectos": ["../x"]}]}, {**bueno, "huecos": [{"dur": 2, "tipo": "video", "efectos": ["a", "a"]}]},
+            {**bueno, "huecos": [{"dur": 2, "tipo": "video", "transicion": "destello"}]}, {**bueno, "huecos": [{"dur": 2, "tipo": "foto", "zoom": 2}]},
+            {**bueno, "huecos": [{"dur": 2, "tipo": "foto", "pista": {"es": "<b>x</b>"}}]}, {**bueno, "textos": [{"en_hueco": 2, "texto": {"es": "x"}}]},
+            {**bueno, "textos": [{"en_hueco": 0, "texto": {"es": "a{\\pos(1,1)}"}}]}, {**bueno, "textos": [{"en_hueco": 0, "texto": {"es": "x" * 61}}]},
+            {**bueno, "textos": [{"en_hueco": 0, "texto": {"es": "x"}, "posicion": 1.5}]}, {**bueno, "textos": [{"en_hueco": True, "texto": {"es": "x"}}]},
+            {**bueno, "subtitulos": {"estilo": "../pop"}}, {**bueno, "subtitulos": {"estilo": "pop", "css": 1}}, {**bueno, "efectos": "calido"},
+            {**bueno, "proporcion": "2:1"}, {**bueno, "categoria": "sonido"}, {**bueno, "nombre": {"en": "Two"}}, {**bueno, "id": "Dos"},
+            {**bueno, "formato": 2}, [h],
+        ]
+        for m in malos:
+            self.assertTrue(plantilla_formato.validar_plantilla(m), m)
+        self.assertTrue(plantilla_formato.validar_plantilla(bueno, "plantillas/recuerdos/otra.json"), "el archivo se llama <id>.json")
+
+    def test_referencias(self):
+        tipos = plantilla_formato.EFECTOS_INCLUIDOS
+        base = {"formato": 1, "id": "x1", "categoria": "recuerdos", "nombre": {"es": "X"}, "proporcion": "9:16"}
+        def errores(huecos, **extra):
+            d = {**base, "huecos": huecos, **extra}
+            self.assertEqual(plantilla_formato.validar_plantilla(d), [])
+            return plantilla_formato.referencias(d, tipos, plantilla_formato.ESTILOS_INCLUIDOS)
+        self.assertEqual(errores([{"dur": 2, "tipo": "video", "efectos": ["calido"], "transicion": "destello"}, {"dur": 2, "tipo": "foto"}],
+                                 subtitulos={"estilo": "pop"}, efectos=["fundido-salida"]), [])
+        self.assertTrue(errores([{"dur": 2, "tipo": "video", "efectos": ["no-existe"]}]))
+        self.assertTrue(errores([{"dur": 2, "tipo": "video", "transicion": "fundido-salida"}, {"dur": 2, "tipo": "video"}]), "un fundido no es transición entre clips")
+        self.assertTrue(errores([{"dur": 2, "tipo": "video", "transicion": "calido"}, {"dur": 2, "tipo": "video"}]))
+        self.assertTrue(errores([{"dur": 2, "tipo": "video", "efectos": ["destello"]}]), "una transición no va en efectos del hueco")
+        self.assertTrue(errores([{"dur": 2, "tipo": "video"}], subtitulos={"estilo": "no-existe"}))
+
+    def test_casos(self):
+        c = CASOS["plantillas"]
+        for x in c["llenar"]:
+            self.assertEqual(plantillas.llenar(x["huecos"], x["clips"]), x["esperado"], x)
+        for x in c["aplicar"]:
+            self.assertEqual(plantillas.aplicar(x["plantilla"], x["tipos"], x["idioma"], c["efectos"], set(x["estilos"])), x["esperado"])
+        u = c["uniones"]
+        for x in u["casos"]:
+            self.assertEqual(efectos.uniones(u["proyecto"], x["i"], x["f"]), x["esperado"], x)
+
+    def test_grafo_solo_lista_blanca(self):
+        import re
+        g = plantillas.grafo([{"tipo": "video", "desde": 1.5, "dur": 2, "audio": True}, {"tipo": "foto", "desde": 0, "dur": 3},
+                              {"tipo": "video", "desde": 0, "dur": 1, "audio": False}], 1080, 1920)
+        permitidos = {"trim", "setpts", "tpad", "fps", "scale", "crop", "setsar", "format", "atrim", "asetpts", "aresample",
+                      "aformat", "apad", "anullsrc", "concat"}
+        for filtro in re.split(r"[,;]", re.sub(r"\[[^\]]*\]", "", g)):
+            self.assertIn(filtro.split("=")[0], permitidos, filtro)
+        self.assertRegex(g, r"^[0-9A-Za-z_.=:,;\[\]\-]*$", "solo números, nombres de filtros y etiquetas")
+
+    def _clips(self):
+        carpeta = os.path.join(TMP, "clips")
+        os.makedirs(carpeta, exist_ok=True)
+        rojo, azul = os.path.join(carpeta, "rojo.mp4"), os.path.join(carpeta, "azul.png")
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=red:s=640x360:d=3:r=30", "-f", "lavfi", "-i", "sine=d=3",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", rojo], check=True)
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=c=blue:s=300x400", "-frames:v", "1", azul], check=True)
+        return rojo, azul
+
+    def _instalar(self, d):
+        crudo = json.dumps(d).encode()
+        archivo = os.path.join(TMP, "plantilla.json")
+        with open(archivo, "wb") as f:
+            f.write(crudo)
+        import hashlib
+        return con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": d["id"], "sha256": hashlib.sha256(crudo).hexdigest()})
+
+    def _color(self, video, t):
+        cuadro = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(t), "-i", video, "-frames:v", "1", "-vf", "scale=8:8,format=rgb24",
+                                 "-f", "rawvideo", "-"], capture_output=True).stdout
+        n = len(cuadro) // 3
+        return [sum(cuadro[k::3]) // n for k in range(3)]
+
+    def test_crear_armar_exportar_y_cambiar(self):
+        rojo, azul = self._clips()
+        pl = {"formato": 1, "id": "prueba-dos", "categoria": "recuerdos", "nombre": {"es": "Prueba dos", "en": "Two test"}, "proporcion": "9:16",
+              "huecos": [{"dur": 2, "tipo": "video", "transicion": "destello"}, {"dur": 2.5, "tipo": "foto"}],
+              "textos": [{"en_hueco": 1, "texto": {"es": "Hola", "en": "Hi"}}], "subtitulos": {"estilo": "titular"}}
+        self.assertTrue(self._instalar(pl)["ok"])
+        r = con_entrada("plantillas.py", "entrada", {"accion": "crear", "plantilla": "prueba-dos", "archivos": [azul, rojo], "idioma": "en"})
+        self.assertTrue(r["ok"], r)
+        carpeta, p = r["carpeta"], r["proyecto"]
+        self.assertEqual(proyecto.validar(p), [])
+        self.assertEqual([h["archivo"] for h in p["plantilla"]["huecos"]], ["clips/02.mp4", "clips/01.png"], "el video al hueco de video")
+        self.assertEqual((p["lienzo"], p["divisiones"], p["textos"][0]["texto"], p["subtitulos"]["estilo"]), ("9:16", [2.0], "Hi", "titular"))
+        self.assertEqual([e["efecto"] for e in p["efectos"]], ["destello", "zoom-lento"])
+        fuente = os.path.join(carpeta, p["fuente"]["archivo"])
+        info = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration:stream=width,height", "-of", "json", fuente],
+                                         capture_output=True, text=True).stdout)
+        self.assertAlmostEqual(float(info["format"]["duration"]), 4.5, delta=0.1)
+        self.assertEqual((info["streams"][0]["width"], info["streams"][0]["height"]), (1080, 1920))
+        # Exportar con el render de siempre: rojo en el primer hueco, azul en el segundo y un destello blanco en la unión.
+        e = correr("render.py", carpeta)
+        self.assertTrue(e["ok"], e)
+        a, b, union = self._color(e["archivo"], 0.8), self._color(e["archivo"], 3.5), self._color(e["archivo"], 2.0)
+        self.assertTrue(a[0] > 180 and a[2] < 80, a)
+        self.assertTrue(b[2] > 180 and b[0] < 80, b)
+        self.assertTrue(min(union) > 200, f"en la unión se ve el destello: {union}")
+        # La interfaz no cambia qué clip va en cada hueco; ajustar y cambiar sí (vuelven a armar el video).
+        q = json.loads(json.dumps(p))
+        q["plantilla"]["huecos"][0]["archivo"] = "clips/99.mp4"
+        q["lienzo"] = "1:1"
+        self.assertTrue(con_entrada("guardar.py", "proyecto", {"carpeta": carpeta, "proyecto": q})["ok"])
+        self.assertEqual(proyecto.cargar(carpeta)["plantilla"], p["plantilla"])
+        r = con_entrada("plantillas.py", "entrada", {"accion": "ajustar", "carpeta": carpeta, "hueco": 0, "desde": 0.6})
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["proyecto"]["plantilla"]["huecos"][0]["desde"], 0.6)
+        self.assertNotEqual(r["proyecto"]["fuente"]["archivo"], p["fuente"]["archivo"])
+        self.assertFalse(os.path.exists(fuente), "el video armado anterior se borra")
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "ajustar", "carpeta": carpeta, "hueco": 1, "desde": 1})["ok"], "una foto no tiene «desde»")
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "ajustar", "carpeta": carpeta, "hueco": 5, "desde": 1})["ok"])
+        r = con_entrada("plantillas.py", "entrada", {"accion": "cambiar", "carpeta": carpeta, "hueco": 1, "archivo": rojo})
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["proyecto"]["plantilla"]["huecos"][1]["archivo"], "clips/02-2.mp4")
+        self.assertFalse(os.path.exists(os.path.join(carpeta, "clips", "01.png")), "el clip que ya no se usa se borra")
+        # Deshacer vuelve a lo editado, pero con el video armado de ahora.
+        d = con_entrada("guardar.py", "deshacer", {"carpeta": carpeta})
+        self.assertTrue(d["ok"])
+        self.assertEqual(d["proyecto"]["fuente"], r["proyecto"]["fuente"])
+        self.assertTrue(os.path.exists(os.path.join(carpeta, d["proyecto"]["fuente"]["archivo"])))
+        self.assertIn(os.path.realpath(carpeta), [x["carpeta"] for x in correr("estado.py")["proyectos"]])
+        os.remove(os.path.join(plantillas.DESCARGADAS, "prueba-dos.json"))
+
+    def test_crear_rechaza(self):
+        rojo, _ = self._clips()
+        malos = [{"plantilla": "no-existe", "archivos": [rojo]}, {"plantilla": "producto-en-15", "archivos": []},
+                 {"plantilla": "producto-en-15", "archivos": ["relativo.mp4"]}, {"plantilla": "producto-en-15", "archivos": [os.path.join(RAIZ, "README.md")]}]
+        antes = set(os.listdir(proyecto.BASE)) if os.path.isdir(proyecto.BASE) else set()
+        for m in malos:
+            self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "crear", **m})["ok"], m)
+        self.assertEqual(set(os.listdir(proyecto.BASE)) if os.path.isdir(proyecto.BASE) else set(), antes, "no deja carpetas a medias")
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 4, "ancho": 640, "alto": 360})
+        for raro in ({"id": "x1", "huecos": [{"archivo": "../../etc/passwd", "tipo": "video", "desde": 0, "dur": 4, "duracion": 4}]},
+                     {"id": "x1", "huecos": [{"archivo": "clips/01.mp4", "tipo": "video", "desde": 0, "dur": 3, "duracion": 4}]},
+                     {"id": "x1", "huecos": [{"archivo": "clips/01.mp4", "tipo": "foto", "desde": 0, "dur": 4, "duracion": 4}]}):
+            self.assertTrue(proyecto.validar({**p, "plantilla": raro}), raro)
+        self.assertEqual(proyecto.validar({**p, "plantilla": {"id": "x1", "huecos": [{"archivo": "clips/01.mp4", "tipo": "video", "desde": 0, "dur": 4, "duracion": 9}]}}), [])
+
+    def test_catalogo(self):
+        bueno = {"formato": 1, "id": "tres", "categoria": "celebracion", "nombre": {"es": "Tres"}, "proporcion": "1:1", "huecos": [{"dur": 2, "tipo": "foto"}]}
+        crudo = json.dumps(bueno).encode()
+        import hashlib
+        huella = hashlib.sha256(crudo).hexdigest()
+        entrada = {**bueno, "archivo": "plantillas/celebracion/tres.json", "sha256": huella, "bytes": len(crudo)}
+        indice = {"formato": 1, "plantillas": [entrada, {**entrada, "id": "otra"}, {**entrada, "archivo": "efectos/filtro/tres.json"},
+                                               {**entrada, "bytes": 10 ** 6}, {**entrada, "id": "x2", "archivo": "plantillas/celebracion/x2.json", "huecos": []}]}
+        self.assertEqual([e["id"] for e in plantillas.validar_indice(indice)], ["tres"])
+        self.assertTrue(self._instalar(bueno)["ok"])
+        self.assertEqual(plantillas.disponibles()["tres"]["origen"], "descargada")
+        archivo = os.path.join(TMP, "plantilla.json")
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", "sha256": "0" * 64})["ok"])
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otra"})["ok"])
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "borrar_todo"})["ok"])
+        os.remove(os.path.join(plantillas.DESCARGADAS, "tres.json"))
+
+    def test_mismo_formato_que_el_catalogo(self):
+        otro = os.path.join(RAIZ, "..", "corta-catalogo", "herramientas", "plantilla_formato.py")
+        if not os.path.exists(otro):
+            self.skipTest("corta-catalogo no está al lado")
+        with open(otro, encoding="utf-8") as a, open(os.path.join(RAIZ, "bin", "plantilla_formato.py"), encoding="utf-8") as b:
+            self.assertEqual(a.read(), b.read(), "bin/plantilla_formato.py y el del catálogo deben ser iguales")
+
+
 class Vocabulario(unittest.TestCase):
     """Corregir palabras sin perder los tiempos y el vocabulario que se aplica al transcribir (marca inventada: «Kalumi»)."""
 
@@ -611,7 +810,7 @@ class App(unittest.TestCase):
             self.assertNotEqual(proyecto.programa("ffprobe"), os.path.join(falsos, "ffprobe"))
         finally:
             del os.environ["CORTA_PROGRAMAS"]
-        for script in ("render.py", "importar.py", "limpiar.py"):
+        for script in ("render.py", "importar.py", "limpiar.py", "plantillas.py"):
             fuente = open(os.path.join(RAIZ, "bin", script), encoding="utf-8").read()
             self.assertNotRegex(fuente, r'"-i", (?!proyecto\.entrada)', f"{script}: cada -i va con proyecto.entrada()")
             self.assertNotIn('["ffmpeg"', fuente)

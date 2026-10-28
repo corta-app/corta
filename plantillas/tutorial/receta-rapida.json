@@ -1,0 +1,120 @@
+{
+ "formato": 1,
+ "id": "receta-rapida",
+ "categoria": "tutorial",
+ "nombre": {
+  "es": "Receta rápida",
+  "en": "Quick recipe"
+ },
+ "descripcion": {
+  "es": "Ingredientes, tres pasos y el plato listo, en 15 segundos.",
+  "en": "Ingredients, three steps and the finished dish, in 15 seconds."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "cocina",
+  "comida",
+  "cooking",
+  "food"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 3,
+   "tipo": "foto",
+   "pista": {
+    "es": "Los ingredientes",
+    "en": "The ingredients"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "Primer paso",
+    "en": "First step"
+   }
+  },
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "Segundo paso",
+    "en": "Second step"
+   }
+  },
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "Tercer paso",
+    "en": "Third step"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 3,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "El plato listo",
+    "en": "The finished dish"
+   },
+   "efectos": [
+    "zoom-lento"
+   ]
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "Ingredientes",
+    "en": "Ingredients"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 1,
+   "texto": {
+    "es": "Paso 1",
+    "en": "Step 1"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 2,
+   "texto": {
+    "es": "Paso 2",
+    "en": "Step 2"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 3,
+   "texto": {
+    "es": "Paso 3",
+    "en": "Step 3"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 4,
+   "texto": {
+    "es": "¡A comer!",
+    "en": "Enjoy!"
+   },
+   "posicion": 0.18
+  }
+ ],
+ "subtitulos": {
+  "estilo": "caja",
+  "activos": true
+ },
+ "efectos": [
+  "calido"
+ ],
+ "musica": {
+  "bpm": 110
+ }
+}

@@ -1531,5 +1531,641 @@
     ]
    }
   ]
+ },
+ "plantillas": {
+  "_nota": "bin/plantillas.py ↔ ui/app.js: llenar (qué clip va en cada hueco y desde qué segundo), aplicar (lo que la plantilla pone en el proyecto) y uniones con divisiones (bin/efectos.py)",
+  "llenar": [
+   {
+    "huecos": [
+     {
+      "dur": 2.5,
+      "tipo": "video"
+     },
+     {
+      "dur": 2.5,
+      "tipo": "video"
+     },
+     {
+      "dur": 2.5,
+      "tipo": "foto"
+     },
+     {
+      "dur": 2.5,
+      "tipo": "cualquiera"
+     },
+     {
+      "dur": 3,
+      "tipo": "foto"
+     },
+     {
+      "dur": 2,
+      "tipo": "cualquiera"
+     }
+    ],
+    "clips": [
+     {
+      "tipo": "video",
+      "duracion": 4
+     },
+     {
+      "tipo": "foto",
+      "duracion": null
+     },
+     {
+      "tipo": "video",
+      "duracion": 2
+     }
+    ],
+    "esperado": [
+     {
+      "clip": 0,
+      "desde": 0.0
+     },
+     {
+      "clip": 2,
+      "desde": 0.0
+     },
+     {
+      "clip": 1,
+      "desde": 0
+     },
+     {
+      "clip": 0,
+      "desde": 1.5
+     },
+     {
+      "clip": 1,
+      "desde": 0
+     },
+     {
+      "clip": 2,
+      "desde": 0.0
+     }
+    ]
+   },
+   {
+    "huecos": [
+     {
+      "dur": 2,
+      "tipo": "foto"
+     },
+     {
+      "dur": 2,
+      "tipo": "video"
+     },
+     {
+      "dur": 2,
+      "tipo": "cualquiera"
+     }
+    ],
+    "clips": [
+     {
+      "tipo": "video",
+      "duracion": 10
+     },
+     {
+      "tipo": "video",
+      "duracion": 1.2
+     },
+     {
+      "tipo": "foto",
+      "duracion": null
+     },
+     {
+      "tipo": "foto",
+      "duracion": null
+     }
+    ],
+    "esperado": [
+     {
+      "clip": 2,
+      "desde": 0
+     },
+     {
+      "clip": 0,
+      "desde": 4.0
+     },
+     {
+      "clip": 1,
+      "desde": 0.0
+     }
+    ]
+   },
+   {
+    "huecos": [
+     {
+      "dur": 3,
+      "tipo": "video"
+     },
+     {
+      "dur": 3,
+      "tipo": "video"
+     },
+     {
+      "dur": 3,
+      "tipo": "video"
+     },
+     {
+      "dur": 3,
+      "tipo": "video"
+     }
+    ],
+    "clips": [
+     {
+      "tipo": "video",
+      "duracion": 12.5
+     }
+    ],
+    "esperado": [
+     {
+      "clip": 0,
+      "desde": 0.063
+     },
+     {
+      "clip": 0,
+      "desde": 3.188
+     },
+     {
+      "clip": 0,
+      "desde": 6.313
+     },
+     {
+      "clip": 0,
+      "desde": 9.438
+     }
+    ]
+   },
+   {
+    "huecos": [
+     {
+      "dur": 1,
+      "tipo": "cualquiera"
+     }
+    ],
+    "clips": [],
+    "esperado": []
+   }
+  ],
+  "efectos": {
+   "vivido": [
+    {
+     "tipo": "color",
+     "contraste": 1.1,
+     "saturacion": 1.5
+    }
+   ],
+   "alejar": [
+    {
+     "tipo": "zoom",
+     "desde": 1.2,
+     "hasta": 1,
+     "curva": "suave"
+    }
+   ],
+   "zoom-golpe": [
+    {
+     "tipo": "zoom",
+     "desde": 1,
+     "hasta": 1.25,
+     "curva": "golpe"
+    }
+   ],
+   "zoom-lento": [
+    {
+     "tipo": "zoom",
+     "desde": 1,
+     "hasta": 1.15,
+     "curva": "suave"
+    }
+   ],
+   "destello": [
+    {
+     "tipo": "transicion",
+     "duracion": 0.3,
+     "color": "blanco"
+    }
+   ],
+   "fundido-salida": [
+    {
+     "tipo": "fundido",
+     "salida": 1,
+     "color": "negro"
+    }
+   ]
+  },
+  "aplicar": [
+   {
+    "plantilla": {
+     "formato": 1,
+     "id": "producto-en-15",
+     "categoria": "negocios",
+     "nombre": {
+      "es": "Producto en 15 s",
+      "en": "Product in 15 s"
+     },
+     "descripcion": {
+      "es": "Muestra lo que vendes en seis tomas rápidas, con el precio al final.",
+      "en": "Show what you sell in six quick shots, with the price at the end."
+     },
+     "autor": "Corta",
+     "etiquetas": [
+      "venta",
+      "tienda",
+      "sale",
+      "shop"
+     ],
+     "proporcion": "9:16",
+     "huecos": [
+      {
+       "dur": 2.5,
+       "tipo": "video",
+       "pista": {
+        "es": "Tu producto de frente",
+        "en": "Your product, front view"
+       },
+       "transicion": "destello"
+      },
+      {
+       "dur": 2.5,
+       "tipo": "video",
+       "pista": {
+        "es": "Un detalle de cerca",
+        "en": "A close-up detail"
+       },
+       "efectos": [
+        "zoom-lento"
+       ]
+      },
+      {
+       "dur": 2.5,
+       "tipo": "video",
+       "pista": {
+        "es": "Alguien usándolo",
+        "en": "Someone using it"
+       },
+       "transicion": "destello"
+      },
+      {
+       "dur": 2.5,
+       "tipo": "cualquiera",
+       "pista": {
+        "es": "Otro ángulo",
+        "en": "Another angle"
+       }
+      },
+      {
+       "dur": 3,
+       "tipo": "foto",
+       "pista": {
+        "es": "El precio o la oferta",
+        "en": "The price or the deal"
+       },
+       "transicion": "destello"
+      },
+      {
+       "dur": 2,
+       "tipo": "cualquiera",
+       "pista": {
+        "es": "Tu logo o tu tienda",
+        "en": "Your logo or your shop"
+       }
+      }
+     ],
+     "textos": [
+      {
+       "en_hueco": 0,
+       "texto": {
+        "es": "Nuevo",
+        "en": "New"
+       },
+       "posicion": 0.18
+      },
+      {
+       "en_hueco": 4,
+       "texto": {
+        "es": "Disponible ya",
+        "en": "Available now"
+       },
+       "posicion": 0.7
+      }
+     ],
+     "subtitulos": {
+      "estilo": "pop",
+      "activos": true
+     },
+     "efectos": [
+      "vivido"
+     ],
+     "musica": {
+      "bpm": 120
+     }
+    },
+    "tipos": [
+     "video",
+     "video",
+     "foto",
+     "video",
+     "foto",
+     "video"
+    ],
+    "idioma": "en",
+    "estilos": [
+     "pop",
+     "caja"
+    ],
+    "esperado": {
+     "lienzo": "9:16",
+     "divisiones": [
+      2.5,
+      5.0,
+      7.5,
+      10.0,
+      13.0
+     ],
+     "textos": [
+      {
+       "i": 0.0,
+       "f": 2.5,
+       "texto": "New",
+       "y": 0.18
+      },
+      {
+       "i": 10.0,
+       "f": 13.0,
+       "texto": "Available now",
+       "y": 0.7
+      }
+     ],
+     "efectos": [
+      {
+       "efecto": "destello",
+       "pasos": [
+        {
+         "tipo": "transicion",
+         "duracion": 0.3,
+         "color": "blanco"
+        }
+       ],
+       "i": 2.0,
+       "f": 3.0
+      },
+      {
+       "efecto": "zoom-lento",
+       "pasos": [
+        {
+         "tipo": "zoom",
+         "desde": 1,
+         "hasta": 1.15,
+         "curva": "suave"
+        }
+       ],
+       "i": 2.5,
+       "f": 5.0
+      },
+      {
+       "efecto": "zoom-lento",
+       "pasos": [
+        {
+         "tipo": "zoom",
+         "desde": 1,
+         "hasta": 1.15,
+         "curva": "suave"
+        }
+       ],
+       "i": 5.0,
+       "f": 7.5
+      },
+      {
+       "efecto": "destello",
+       "pasos": [
+        {
+         "tipo": "transicion",
+         "duracion": 0.3,
+         "color": "blanco"
+        }
+       ],
+       "i": 7.0,
+       "f": 8.0
+      },
+      {
+       "efecto": "zoom-lento",
+       "pasos": [
+        {
+         "tipo": "zoom",
+         "desde": 1,
+         "hasta": 1.15,
+         "curva": "suave"
+        }
+       ],
+       "i": 10.0,
+       "f": 13.0
+      },
+      {
+       "efecto": "destello",
+       "pasos": [
+        {
+         "tipo": "transicion",
+         "duracion": 0.3,
+         "color": "blanco"
+        }
+       ],
+       "i": 12.5,
+       "f": 13.5
+      },
+      {
+       "efecto": "vivido",
+       "pasos": [
+        {
+         "tipo": "color",
+         "contraste": 1.1,
+         "saturacion": 1.5
+        }
+       ]
+      }
+     ],
+     "subtitulos": {
+      "estilo": "pop",
+      "activos": true
+     },
+     "faltan": []
+    }
+   },
+   {
+    "plantilla": {
+     "proporcion": "1:1",
+     "huecos": [
+      {
+       "dur": 0.6,
+       "tipo": "foto",
+       "transicion": "destello",
+       "zoom": "alejar"
+      },
+      {
+       "dur": 4,
+       "tipo": "foto",
+       "efectos": [
+        "zoom-golpe",
+        "no-esta"
+       ],
+       "transicion": "transicion-negro"
+      },
+      {
+       "dur": 1.25,
+       "tipo": "video",
+       "zoom": "no"
+      }
+     ],
+     "textos": [
+      {
+       "en_hueco": 2,
+       "texto": {
+        "es": "Hola",
+        "en": "Hi"
+       }
+      }
+     ],
+     "subtitulos": {
+      "estilo": "titular"
+     },
+     "efectos": [
+      "fundido-salida",
+      "otro-que-falta"
+     ]
+    },
+    "tipos": [
+     "foto",
+     "foto",
+     "foto"
+    ],
+    "idioma": "es",
+    "estilos": [
+     "pop",
+     "caja"
+    ],
+    "esperado": {
+     "lienzo": "1:1",
+     "divisiones": [
+      0.6,
+      4.6
+     ],
+     "textos": [
+      {
+       "i": 4.6,
+       "f": 5.85,
+       "texto": "Hola",
+       "y": 0.18
+      }
+     ],
+     "efectos": [
+      {
+       "efecto": "alejar",
+       "pasos": [
+        {
+         "tipo": "zoom",
+         "desde": 1.2,
+         "hasta": 1,
+         "curva": "suave"
+        }
+       ],
+       "i": 0.0,
+       "f": 0.6
+      },
+      {
+       "efecto": "destello",
+       "pasos": [
+        {
+         "tipo": "transicion",
+         "duracion": 0.3,
+         "color": "blanco"
+        }
+       ],
+       "i": 0.3,
+       "f": 0.9
+      },
+      {
+       "efecto": "zoom-golpe",
+       "pasos": [
+        {
+         "tipo": "zoom",
+         "desde": 1,
+         "hasta": 1.25,
+         "curva": "golpe"
+        }
+       ],
+       "i": 0.6,
+       "f": 4.6
+      },
+      {
+       "efecto": "fundido-salida",
+       "pasos": [
+        {
+         "tipo": "fundido",
+         "salida": 1,
+         "color": "negro"
+        }
+       ]
+      }
+     ],
+     "subtitulos": null,
+     "faltan": [
+      "no-esta",
+      "transicion-negro",
+      "otro-que-falta"
+     ]
+    }
+   }
+  ],
+  "uniones": {
+   "proyecto": {
+    "fuente": {
+     "duracion": 10
+    },
+    "cortes": [
+     {
+      "i": 2,
+      "f": 3,
+      "motivo": "manual"
+     }
+    ],
+    "divisiones": [
+     1.5,
+     2.5,
+     5,
+     9.99
+    ]
+   },
+   "casos": [
+    {
+     "i": 0,
+     "f": 10,
+     "esperado": [
+      1.5,
+      2.0,
+      4.0
+     ]
+    },
+    {
+     "i": 1,
+     "f": 6,
+     "esperado": [
+      1.5,
+      2.0,
+      4.0
+     ]
+    },
+    {
+     "i": 4.5,
+     "f": 5.5,
+     "esperado": [
+      4.0
+     ]
+    },
+    {
+     "i": 5,
+     "f": 8,
+     "esperado": []
+    }
+   ]
+  }
  }
 }

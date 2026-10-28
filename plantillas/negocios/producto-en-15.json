@@ -1,0 +1,105 @@
+{
+ "formato": 1,
+ "id": "producto-en-15",
+ "categoria": "negocios",
+ "nombre": {
+  "es": "Producto en 15 s",
+  "en": "Product in 15 s"
+ },
+ "descripcion": {
+  "es": "Muestra lo que vendes en seis tomas rápidas, con el precio al final.",
+  "en": "Show what you sell in six quick shots, with the price at the end."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "venta",
+  "tienda",
+  "sale",
+  "shop"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 2.5,
+   "tipo": "video",
+   "pista": {
+    "es": "Tu producto de frente",
+    "en": "Your product, front view"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 2.5,
+   "tipo": "video",
+   "pista": {
+    "es": "Un detalle de cerca",
+    "en": "A close-up detail"
+   },
+   "efectos": [
+    "zoom-lento"
+   ]
+  },
+  {
+   "dur": 2.5,
+   "tipo": "video",
+   "pista": {
+    "es": "Alguien usándolo",
+    "en": "Someone using it"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 2.5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Otro ángulo",
+    "en": "Another angle"
+   }
+  },
+  {
+   "dur": 3,
+   "tipo": "foto",
+   "pista": {
+    "es": "El precio o la oferta",
+    "en": "The price or the deal"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Tu logo o tu tienda",
+    "en": "Your logo or your shop"
+   }
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "Nuevo",
+    "en": "New"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 4,
+   "texto": {
+    "es": "Disponible ya",
+    "en": "Available now"
+   },
+   "posicion": 0.7
+  }
+ ],
+ "subtitulos": {
+  "estilo": "pop",
+  "activos": true
+ },
+ "efectos": [
+  "vivido"
+ ],
+ "musica": {
+  "bpm": 120
+ }
+}

@@ -1,0 +1,81 @@
+{
+ "formato": 1,
+ "id": "intro-de-canal",
+ "categoria": "presentacion",
+ "nombre": {
+  "es": "Intro de canal",
+  "en": "Channel intro"
+ },
+ "descripcion": {
+  "es": "Una entrada horizontal de 8 segundos para tus videos largos.",
+  "en": "An 8-second landscape opener for your long videos."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "youtube",
+  "intro",
+  "canal",
+  "channel"
+ ],
+ "proporcion": "16:9",
+ "huecos": [
+  {
+   "dur": 1.5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Lo que haces",
+    "en": "What you do"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 1.5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Dónde lo haces",
+    "en": "Where you do it"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 1.5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Con quién",
+    "en": "Who with"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 3.5,
+   "tipo": "video",
+   "pista": {
+    "es": "Tú saludando",
+    "en": "You saying hi"
+   },
+   "efectos": [
+    "alejar"
+   ]
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 3,
+   "texto": {
+    "es": "Bienvenidos",
+    "en": "Welcome"
+   },
+   "posicion": 0.2
+  }
+ ],
+ "subtitulos": {
+  "estilo": "suave",
+  "activos": true
+ },
+ "efectos": [
+  "fundido-entrada"
+ ],
+ "musica": {
+  "bpm": 100
+ }
+}

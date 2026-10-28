@@ -7,6 +7,9 @@ Corta es gratis y abierta, y la hacemos entre todos. Hay lugar para cualquiera, 
   compártelo con una captura.
 - **Crea un efecto o un filtro:** también es un JSON corto (formato en [`efectos/README.md`](efectos/README.md)). Se comparte en el
   [catálogo de la comunidad](https://github.com/corta-app/corta-catalogo) y cualquiera lo descarga gratis desde la app.
+- **Crea una plantilla:** huecos para clips o fotos con sus duraciones, efectos, transiciones y textos (formato en
+  [`plantillas/README.md`](plantillas/README.md)). También se comparte en el [catálogo](https://github.com/corta-app/corta-catalogo#plantillas),
+  y ahí la puedes proponer con palabras, sin escribir el JSON.
 - **Pruébala con tus videos** y cuéntanos qué tal: los issues con la etiqueta [`probar`](https://github.com/corta-app/corta/labels/probar)
   piden justo eso.
 - **Conversa:** dudas, ideas o lo que publicaste editado con Corta → [Discussions](https://github.com/corta-app/corta/discussions).
@@ -31,7 +34,8 @@ Todo entra por pull request y lo junta alguien que mantiene el proyecto: nadie p
   aporte, GitHub espera a que aprobemos correr las pruebas (es normal).
 - **Código:** que no cambie el formato del proyecto, que la lógica compartida cambie en Python y JS a la vez, que los textos tengan
   traducción y que no agregue dependencias ni conexiones a internet nuevas sin conversarlo.
-- **Efectos** (en el catálogo): que pasen la validación, que el nombre y la descripción digan lo que hacen y que se vean bien.
+- **Efectos y plantillas** (en el catálogo): que pasen la validación, que el nombre y la descripción digan lo que hacen y que se vean
+  bien. Las plantillas, además, sin música, video ni imágenes de nadie.
 - **Estilos:** que sean válidos, que la fuente sea libre y venga incluida, y que se vean bien en la vista previa y exportados.
 - **Traducciones:** que una persona que hable el idioma revise el texto.
 

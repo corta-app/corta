@@ -18,7 +18,7 @@ Qué puedes esperar:
 - Pedimos no publicar detalles hasta que el arreglo esté disponible (como regla general, 90 días como máximo).
 
 ## Qué cuenta
-- Que un **proyecto, un estilo de subtítulos, un efecto del catálogo o una respuesta de la IA** logre ejecutar código, leer o escribir archivos fuera de la
+- Que un **proyecto, un estilo de subtítulos, un efecto o una plantilla del catálogo o una respuesta de la IA** logre ejecutar código, leer o escribir archivos fuera de la
   carpeta del proyecto, o inyectar algo en el comando de ffmpeg o en la interfaz (XSS).
 - Que un video, una canción o una transcripción hagan que Corta lea o mande datos a otra parte.
 - Cualquier cosa que saque un video, su audio o su texto del computador sin que la persona lo pida.
@@ -39,6 +39,10 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
 - Los efectos de la comunidad son solo datos: la app los baja solo de `raw.githubusercontent.com/corta-app/corta-catalogo`, sin seguir
   redirecciones y con tamaño máximo, compara la huella SHA-256 del índice y los valida con el mismo formato que el catálogo antes de
   guardarlos. Ningún texto de un efecto llega a ffmpeg: el código arma los filtros (de una lista blanca) con sus números.
+- Las plantillas (incluidas o del catálogo) siguen las mismas reglas: solo datos, sin archivos ni rutas (usan efectos y estilos por
+  su id), validadas con el mismo formato que el catálogo (`bin/plantilla_formato.py`). Los clips que eliges se copian a `clips/`
+  del proyecto y se arman con una lista blanca de filtros de ffmpeg y solo números. La interfaz no puede cambiar qué archivo va en
+  cada hueco: eso lo hace `bin/plantillas.py` con lo que elegiste en el selector de archivos.
 
 ---
 
@@ -48,5 +52,5 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
 **fictional data only**), the version or commit and your OS. We reply within **7 days**, keep you posted, publish a GitHub Security
 Advisory with the fix and credit you if you want. Please don't disclose details until a fix is out (90 days at most as a general rule).
 
-In scope: code execution, file access outside the project folder, ffmpeg command or UI (XSS) injection through projects, caption styles, catalog effects or AI responses; anything that makes media or text leave the computer; CI/build issues that let code slip in. Out of scope: bugs in your own AI CLI or in ffmpeg or whisper.cpp, attacks that already require full control of the
+In scope: code execution, file access outside the project folder, ffmpeg command or UI (XSS) injection through projects, caption styles, catalog effects or templates, or AI responses; anything that makes media or text leave the computer; CI/build issues that let code slip in. Out of scope: bugs in your own AI CLI or in ffmpeg or whisper.cpp, attacks that already require full control of the
 device, and headers GitHub Pages can't set.

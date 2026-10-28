@@ -1,0 +1,119 @@
+{
+ "formato": 1,
+ "id": "pitch-30",
+ "categoria": "negocios",
+ "nombre": {
+  "es": "Pitch en 30 s",
+  "en": "30-second pitch"
+ },
+ "descripcion": {
+  "es": "Problema, solución, cómo funciona, quién lo usa y cómo contactarte. Hablando a cámara.",
+  "en": "Problem, solution, how it works, who uses it and how to reach you. Talking to camera."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "emprender",
+  "startup",
+  "inversión",
+  "pitch"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 4,
+   "tipo": "video",
+   "pista": {
+    "es": "Cuenta el problema",
+    "en": "Tell the problem"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 6,
+   "tipo": "video",
+   "pista": {
+    "es": "Tu solución, a cámara",
+    "en": "Your solution, to camera"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 6,
+   "tipo": "video",
+   "pista": {
+    "es": "Muéstralo funcionando",
+    "en": "Show it working"
+   }
+  },
+  {
+   "dur": 6,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Quién ya lo usa",
+    "en": "Who already uses it"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Un número que impresione",
+    "en": "A number that impresses"
+   },
+   "efectos": [
+    "zoom-golpe"
+   ]
+  },
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "Cómo contactarte",
+    "en": "How to reach you"
+   }
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "El problema",
+    "en": "The problem"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 1,
+   "texto": {
+    "es": "La solución",
+    "en": "The solution"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 4,
+   "texto": {
+    "es": "Los números",
+    "en": "The numbers"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 5,
+   "texto": {
+    "es": "Hablemos",
+    "en": "Let's talk"
+   },
+   "posicion": 0.18
+  }
+ ],
+ "subtitulos": {
+  "estilo": "caja",
+  "activos": true
+ },
+ "efectos": [
+  "fundido-entrada",
+  "fundido-salida"
+ ]
+}

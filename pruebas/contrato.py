@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Contrato entre la interfaz (ui/app.js) y las apps: cada host.enviar("x") de la interfaz debe existir en Mac (Ventana.swift)
+"""Contrato entre la interfaz (ui/app.js) y las apps: cada host.enviar("x") de la interfaz debe existir en Mac (Ventana.swift), en la
+vista previa del navegador (simular())
 y, cuando exista, en Windows/Linux (escritorio/src/main.js, objeto ACCIONES). Y cada window.Corta.x que llaman las apps debe existir.
 También revisa que los scripts que llaman las apps existan en bin/ y que el video se pida con el esquema que sirve la app (corta://)."""
 import os
@@ -22,6 +23,10 @@ acciones = set(re.findall(r'host\.enviar\("(\w+)"', ui))
 cuerpo = ui.split("window.Corta = {", 1)[1].split("\n  };", 1)[0]
 funciones_ui = set(re.findall(r"^\s{4}(?:async\s+)?(\w+)\(", cuerpo, re.M))
 problemas = []
+# La vista previa del navegador responde cada acción en simular() (aunque sea con un aviso «en la app, aquí…»).
+simulado = ui.split("function simular(", 1)[1].split("\n  }\n", 1)[0]
+casos_web = set(re.findall(r'case "(\w+)"', simulado))
+problemas += [f'La vista previa (simular) no responde la acción "{a}"' for a in sorted(acciones - casos_web)]
 mac = leer("app/Sources/Corta/Ventana.swift")
 if mac is None:
     problemas.append("Falta app/Sources/Corta/Ventana.swift")

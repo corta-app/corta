@@ -1,0 +1,114 @@
+{
+ "formato": 1,
+ "id": "lanzamiento",
+ "categoria": "negocios",
+ "nombre": {
+  "es": "Lanzamiento",
+  "en": "Launch"
+ },
+ "descripcion": {
+  "es": "Cortes rápidos que crecen hasta mostrar lo nuevo. Ideal para anunciar algo.",
+  "en": "Fast cuts building up to the reveal. Great to announce something."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "anuncio",
+  "estreno",
+  "launch",
+  "teaser"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 1,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Un adelanto",
+    "en": "A teaser"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 1,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Otro adelanto",
+    "en": "Another teaser"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 1,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Un detalle",
+    "en": "A detail"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 1.5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Casi se ve",
+    "en": "Almost there"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "¡Lo nuevo!",
+    "en": "The new thing!"
+   },
+   "efectos": [
+    "zoom-golpe"
+   ]
+  },
+  {
+   "dur": 3.5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Dónde conseguirlo",
+    "en": "Where to get it"
+   }
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "Muy pronto…",
+    "en": "Coming soon…"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 4,
+   "texto": {
+    "es": "Ya está aquí",
+    "en": "It's here"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 5,
+   "texto": {
+    "es": "Link en la descripción",
+    "en": "Link in the description"
+   },
+   "posicion": 0.72
+  }
+ ],
+ "subtitulos": {
+  "estilo": "titular",
+  "activos": true
+ },
+ "efectos": [
+  "contraste"
+ ],
+ "musica": {
+  "bpm": 120
+ }
+}

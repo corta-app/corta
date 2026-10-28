@@ -17,10 +17,15 @@
     efectos: [],       // los que se pueden usar: incluidos y descargados (bin/efectos.py)
     fx: { categoria: "todos", busqueda: "" },
     catalogo: null,    // efectos de la comunidad: {estado: "cargando" | "listo" | "error", efectos, error, categoria, busqueda, bajando: {id: true}}
+    plantillas: [],    // las que se pueden usar: incluidas y descargadas (bin/plantillas.py)
+    // Elegir una plantilla: {fuente: "corta" | "comunidad", categoria, busqueda, ver: id | null, armando, bajando: {id: true},
+    // catalogo: null | {estado, plantillas, efectos, error}, pendiente: id de un efecto que espera el catálogo}
+    pl: null,
+    armando: null,     // hueco de una plantilla que se está volviendo a armar ({carpeta, k})
   };
   const ENLACES = { sitio: "https://corta-app.github.io/corta/", codigo: "https://github.com/corta-app/corta",
     comunidad: "https://github.com/corta-app/corta/discussions", guiaIA: "https://corta-app.github.io/corta/ia.html",
-    catalogo: "https://github.com/corta-app/corta-catalogo#readme" };
+    catalogo: "https://github.com/corta-app/corta-catalogo#readme", plantillas: "https://github.com/corta-app/corta-catalogo#plantillas" };
   const LIENZOS = { "9:16": [1080, 1920], "1:1": [1080, 1080], "4:5": [1080, 1350], "16:9": [1920, 1080] };
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -248,12 +253,15 @@
     }
     return r;
   }
-  /** Dónde se juntan dos pedazos del tramo en el video exportado (ahí van las transiciones). */
+  /** Dónde se juntan dos pedazos del tramo en el video exportado (ahí van las transiciones): un corte en medio o una división
+   *  (donde dividiste o donde una plantilla pasa de un clip al siguiente). */
   function uniones(p, i, f) {
     const r = []; let acumulado = 0, anterior = false;
+    const divs = (p.divisiones || []).filter((x) => typeof x === "number" && Number.isFinite(x) && i + 0.02 < x && x < f - 0.02).sort((a, b) => a - b);
     for (const t of conservados(p)) {
       const dentro = Math.min(t.f, f) - Math.max(t.i, i) >= 0.02;
       if (dentro && anterior) r.push(r3a(acumulado));
+      for (const d of divs) if (t.i + 0.02 < d && d < t.f - 0.02) r.push(r3a(acumulado + d - t.i));
       anterior = dentro; acumulado += t.f - t.i;
     }
     return r;
@@ -299,6 +307,61 @@
     if ("grises" in paso) f.push(`grayscale(${numFx(paso, "grises", 0)})`);
     return f.join(" ");
   }
+  // ───────────── Plantillas: llenar huecos y aplicar (la misma lógica que bin/plantillas.py; casos «plantillas» en pruebas/casos.json) ─────────────
+  /** Dónde empieza cada hueco en el video armado, y al final lo que dura todo. */
+  function iniciosHuecos(huecos) {
+    const r = [0]; let t = 0;
+    for (const h of huecos) { t = r3a(t + h.dur); r.push(t); }
+    return r;
+  }
+  /** Qué clip va en cada hueco y desde qué segundo: el primero sin usar que calza (video, foto o cualquiera), si no el primero sin
+   *  usar, y otra vuelta cuando se usaron todos. Un video usado en m huecos se parte en m pedazos y cada hueco toma el centro del suyo. */
+  function llenar(huecos, clips) {
+    const n = clips.length;
+    if (!n) return [];
+    let usados = new Array(n).fill(false);
+    const asignados = [];
+    for (const h of huecos) {
+      if (usados.every(Boolean)) usados = new Array(n).fill(false);
+      const libres = [...Array(n).keys()].filter((c) => !usados[c]);
+      const calzan = libres.filter((c) => h.tipo === "cualquiera" || clips[c].tipo === h.tipo);
+      const c = (calzan.length ? calzan : libres)[0];
+      usados[c] = true; asignados.push(c);
+    }
+    const usos = clips.map((_, c) => asignados.filter((x) => x === c).length), vez = new Array(n).fill(0);
+    return huecos.map((h, k) => {
+      const c = asignados[k], clip = clips[c];
+      if (clip.tipo === "foto") return { clip: c, desde: 0 };
+      const centro = clip.duracion * (vez[c] + 0.5) / usos[c]; vez[c]++;
+      return { clip: c, desde: r3a(Math.max(0, Math.min(centro - h.dur / 2, clip.duracion - h.dur))) };
+    });
+  }
+  const ZOOM_FOTO = { acercar: "zoom-lento", alejar: "alejar" };
+  /** Lo que la plantilla pone en el proyecto, en el tiempo del video armado. `efectos` = {id: pasos}; `estilos` = ids. */
+  function aplicarPlantilla(pl, tipos, idioma, efectos, estilos) {
+    const huecos = pl.huecos, ini = iniciosHuecos(huecos), faltan = [], lista = [];
+    const poner = (id, desde, hasta) => {
+      if (!(id in efectos)) { if (!faltan.includes(id)) faltan.push(id); return; }
+      const x = { efecto: id, pasos: clonarJSON(efectos[id]) };
+      if (desde != null) Object.assign(x, { i: desde, f: hasta });
+      lista.push(x);
+    };
+    huecos.forEach((h, k) => {
+      for (const id of h.efectos || []) poner(id, ini[k], ini[k + 1]);
+      const conZoom = (h.efectos || []).some((id) => (efectos[id] || []).some((p) => p.tipo === "zoom"));
+      if (tipos[k] === "foto" && (h.zoom || "acercar") !== "no" && !conZoom) poner(ZOOM_FOTO[h.zoom || "acercar"], ini[k], ini[k + 1]);
+      if (h.transicion && k + 1 < huecos.length) {
+        const medio = r3a(Math.min(0.5, h.dur / 2, huecos[k + 1].dur / 2));
+        poner(h.transicion, r3a(ini[k + 1] - medio), r3a(ini[k + 1] + medio));
+      }
+    });
+    for (const id of pl.efectos || []) poner(id);
+    const textos = (pl.textos || []).map((t) => ({ i: ini[t.en_hueco], f: ini[t.en_hueco + 1], texto: t.texto[idioma] || t.texto.es, y: t.posicion ?? 0.18 }));
+    const s = pl.subtitulos, sub = s && estilos.includes(s.estilo) ? { estilo: s.estilo, activos: s.activos ?? true } : null;
+    return { lienzo: pl.proporcion, divisiones: ini.slice(1, -1), textos, efectos: lista.slice(0, 40), subtitulos: sub, faltan };
+  }
+  /** Todos los efectos que usa una plantilla (sin repetir), como plantilla_formato.efectos_usados. */
+  const efectosUsados = (pl) => [...new Set([...(pl.huecos || []).flatMap((h) => [...(h.efectos || []), ...(h.transicion ? [h.transicion] : [])]), ...(pl.efectos || [])])];
   const vinetaCSS = (fuerza) => `radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.85 * fuerza).toFixed(3)}) 100%)`;
 
   // ───────────── Quitar un cambio de la IA (cambios_ia, lo anota bin/editar_ia.py) ─────────────
@@ -400,6 +463,7 @@
         `<button data-lienzo="${l}" aria-pressed="${p.lienzo === l}" data-sin-traducir>${l}</button>`).join("")}</div>
         <button class="icono" data-accion="deshacer" title="Deshacer" aria-label="Deshacer">↶</button>
         <button class="boton principal" data-accion="exportar">Exportar</button>` : ""}
+      <button class="icono solo-angosto" data-accion="plantillas" title="Plantillas" aria-label="Plantillas">▦</button>
       <button class="icono" data-accion="ajustes" title="Ajustes" aria-label="Ajustes">⚙︎</button></header>`;
   }
 
@@ -411,7 +475,8 @@
       return `<button class="item" data-sel="${esc(x.carpeta)}" aria-current="${x.carpeta === E.sel}">
         <span class="t" data-sin-traducir>${esc(p.titulo)}</span><span class="m">${meta}</span></button>`;
     }).join("");
-    return `<aside class="lateral"><div class="caja"><button class="boton principal grande" data-accion="nuevo">＋ <span>Nuevo video</span></button></div>
+    return `<aside class="lateral"><div class="caja"><button class="boton principal grande" data-accion="nuevo">＋ <span>Nuevo video</span></button>
+      <button class="boton sutil grande" data-accion="plantillas">▦ <span>Usar una plantilla</span></button></div>
       <nav class="lista" aria-label="Videos">${E.proyectos.length ? `<h2>Tus videos</h2>${items}` : ""}</nav>
       <div class="pie-lateral"><span aria-hidden="true">🔒</span><span>Tus videos no salen de tu computador.</span></div></aside>`;
   }
@@ -435,6 +500,7 @@
       <p>Trae un video y Corta lo transcribe en tu computador. Después sacas silencios y muletillas, eliges subtítulos y lo exportas vertical para Shorts, Reels o TikTok.</p>
       <div class="soltar ${E.soltar ? "encima" : ""}" data-soltar><span style="font-size:30px" aria-hidden="true">🎬</span>
         <button class="boton principal" data-accion="nuevo">Elegir video</button><small style="color:var(--suave)">MP4, MOV o WebM. También puedes arrastrarlo aquí.</small></div>
+      <p class="o-plantilla"><span>¿Sin video todavía?</span> <button class="boton" data-accion="plantillas">▦ <span>Usar una plantilla</span></button></p>
       <div class="pasos"><div><b>1</b><span>Corta escucha tu video y escribe cada palabra con su tiempo.</span></div>
         <div><b>2</b><span>Editas el texto: lo que borras, se borra del video.</span></div>
         <div><b>3</b><span>Tu IA corta, pone zooms y busca los mejores momentos para Shorts.</span></div></div></div></section>`;
@@ -464,8 +530,11 @@
 
   const PESTANAS = [["texto", "Texto"], ["subtitulos", "Subtítulos"], ["efectos", "Efectos"], ["musica", "Música"], ["ia", "IA"], ["shorts", "Shorts"]];
   function panel() {
-    const cuerpo = { texto: panelTexto, subtitulos: panelSubtitulos, efectos: panelEfectos, musica: panelMusica, ia: panelIA, shorts: panelShorts }[E.pestana]();
-    return `<div class="pestanas" role="tablist">${PESTANAS.map(([id, n]) => `<button class="pestana" role="tab" data-pestana="${id}" aria-selected="${E.pestana === id}">${n}</button>`).join("")}</div>
+    // Un video armado con una plantilla tiene además la pestaña Clips (qué va en cada hueco), primero.
+    const pestanas = P().plantilla ? [["clips", "Clips"], ...PESTANAS] : PESTANAS;
+    if (!pestanas.some(([id]) => id === E.pestana)) E.pestana = "texto";
+    const cuerpo = { clips: panelClips, texto: panelTexto, subtitulos: panelSubtitulos, efectos: panelEfectos, musica: panelMusica, ia: panelIA, shorts: panelShorts }[E.pestana]();
+    return `<div class="pestanas" role="tablist">${pestanas.map(([id, n]) => `<button class="pestana" role="tab" data-pestana="${id}" aria-selected="${E.pestana === id}">${n}</button>`).join("")}</div>
       <div class="cuerpo-panel">${cuerpo}</div>`;
   }
 
@@ -686,6 +755,128 @@
       <div class="pie-dialogo"><button class="boton izq" data-enlace="${ENLACES.catalogo}">Crear el tuyo</button><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
   }
 
+  // ───────────── Plantillas: elegir una, poner tus clips y retocar (solo datos; bin/plantillas.py arma el video) ─────────────
+  const CATEGORIAS_PL = [["todas", "Todas"], ["negocios", "Negocios"], ["presentacion", "Presentación"], ["recuerdos", "Recuerdos"], ["tutorial", "Tutoriales"], ["celebracion", "Celebraciones"]];
+  const enIdioma = (x) => (x?.[E.idioma] || x?.es || "");
+  const plantillaPorId = (id) => E.plantillas.find((x) => x.id === id);
+  const duracionPl = (pl) => iniciosHuecos(pl.huecos).at(-1);
+  const segundosPl = (s) => (Number.isInteger(s) ? String(s) : segundos(s));
+  function coincidePl(pl, categoria, busqueda) {
+    if (categoria !== "todas" && pl.categoria !== categoria) return false;
+    const q = String(busqueda || "").split(/\s+/).map(normalizar).filter(Boolean);
+    if (!q.length) return true;
+    const texto = normalizar([...Object.values(pl.nombre || {}), ...Object.values(pl.descripcion || {}), ...(pl.etiquetas || []), pl.autor || "",
+      ...(pl.huecos || []).flatMap((h) => Object.values(h.pista || {}))].join(" "));
+    return q.every((x) => texto.includes(x));
+  }
+  /** Los efectos que usa una plantilla y la persona no tiene (la app ofrece descargarlos del catálogo). */
+  const faltanPl = (pl) => efectosUsados(pl).filter((id) => !efectoPorId(id));
+  /** Color de un hueco en la vista previa: tonos tranquilos que cambian en cada corte (no es tu video, es la forma de la plantilla). */
+  function colorHueco(id, k) {
+    let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) % 360;
+    const t = (h + k * 53) % 360;
+    return `linear-gradient(160deg, hsl(${t} 42% 60%), hsl(${(t + 28) % 360} 38% 30%))`;
+  }
+  const ICONO_HUECO = { video: "▶", foto: "◼", cualquiera: "＋" };
+  /** Vista previa de una plantilla, sin video: bloques de color con sus cortes, sus textos (en su estilo) y una barra con las uniones.
+   *  La anima `animarPlantillas` (un hueco a la vez, al ritmo de sus duraciones). */
+  function vistaPl(pl, grande = false) {
+    const [W, H] = LIENZOS[pl.proporcion] || LIENZOS["9:16"], ini = iniciosHuecos(pl.huecos), total = ini.at(-1);
+    const alto = grande ? 260 : 150, ancho = W < H ? alto * W / H : grande ? 300 : 160;
+    const st = E.estilos.find((x) => x.id === pl.subtitulos?.estilo) || E.estilos.find((x) => x.id === "pop") || E.estilos[0];
+    const escala = ancho / 1080, filtroTodo = (pl.efectos || []).map((id) => (efectoPorId(id)?.pasos || []).filter((p) => p.tipo === "color").map(cssColor).join(" ")).join(" ").trim();
+    const transicion = (id) => { const p = efectoPorId(id)?.pasos?.find((x) => x.tipo === "transicion"); return p ? (p.color === "negro" ? "negro" : "blanco") : id ? "blanco" : ""; };
+    const bloques = pl.huecos.map((h, k) => {
+      const filtro = (h.efectos || []).map((id) => (efectoPorId(id)?.pasos || []).filter((p) => p.tipo === "color").map(cssColor).join(" ")).join(" ").trim();
+      const tr_ = k ? transicion(pl.huecos[k - 1].transicion) : "";
+      return `<i class="pv-h ${h.tipo}${k ? "" : " on"}" data-k="${k}"${tr_ ? ` data-tr="${tr_}"` : ""} style="background:${colorHueco(pl.id, k)};--d:${h.dur}s${filtro ? `;filter:${filtro}` : ""}">
+        <em aria-hidden="true">${ICONO_HUECO[h.tipo] || ""}</em>${grande && h.pista ? `<small>${esc(enIdioma(h.pista))}</small>` : ""}</i>`;
+    }).join("");
+    const textos = st ? (pl.textos || []).map((t) => `<b class="pv-t${t.en_hueco ? "" : " on"}" data-k="${t.en_hueco}" style="top:${(t.posicion ?? 0.18) * 100}%;${cssEstilo(st, escala)}font-size:${Math.max(7, st.tamano / 100 * ancho * 0.9).toFixed(1)}px">${esc(enIdioma(t.texto))}</b>`).join("") : "";
+    const cortes = ini.slice(1, -1).map((x) => `<i style="left:${(x / total * 100).toFixed(2)}%"></i>`).join("");
+    return `<span class="pv-marco${grande ? " grande" : ""}" aria-hidden="true"><span class="pv-pl" data-pv data-total="${total}" data-inicios="${ini.join(",")}" style="width:${ancho.toFixed(0)}px;aspect-ratio:${W}/${H}${filtroTodo ? `;filter:${filtroTodo}` : ""}">
+      ${bloques}${textos}<span class="pv-barra">${cortes}<em class="pv-cabezal"></em></span></span></span>`;
+  }
+  const quieto = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+  /** Mueve las vistas previas de plantillas que se ven: un hueco a la vez, cada uno lo que dura. */
+  function animarPlantillas(ahora) {
+    if (!E.pl || quieto?.matches) return;
+    for (const el of document.querySelectorAll("[data-pv]")) {
+      const total = Number(el.dataset.total), ini = el.dataset.inicios.split(",").map(Number), t = (ahora / 1000) % total;
+      const k = Math.max(0, ini.findIndex((x, j) => t >= x && t < ini[j + 1]));
+      if (el.dataset.k !== String(k)) { el.dataset.k = k; for (const x of el.querySelectorAll(".pv-h, .pv-t")) x.classList.toggle("on", x.dataset.k === String(k)); }
+      const c = el.querySelector(".pv-cabezal"); if (c) c.style.left = (t / total * 100).toFixed(2) + "%";
+    }
+  }
+  const metaPl = (pl) => T("{d} s · {n} clips", { d: esc(segundosPl(duracionPl(pl))), n: pl.huecos.length });
+  function tarjetaPl(pl) {
+    return `<button class="pl" data-ver-pl="${esc(pl.id)}" data-sin-traducir>${vistaPl(pl)}<span class="nombre">${esc(nombreFx(pl))}</span><small>${metaPl(pl)}</small></button>`;
+  }
+  function dialogoPlantillas() {
+    const x = E.pl;
+    if (x.armando) {
+      return `<h2 id="t-pl">Armando tu video…</h2><p>Cada clip va a su hueco con sus efectos y textos. Esto pasa en tu computador.</p><div class="barra-prog indef"><i></i></div>`;
+    }
+    const comunidad = x.fuente === "comunidad", cat = x.catalogo;
+    const lista = comunidad ? cat?.plantillas || [] : E.plantillas;
+    const verla = x.ver && (lista.find((p) => p.id === x.ver) || plantillaPorId(x.ver));
+    if (verla) return detallePlantilla(verla);
+    const cabeza = `<h2 id="t-pl">Plantillas</h2><p>Elige una, pon tus clips o fotos y se arma sola. Después la retocas como cualquier video.</p>
+      <div class="segmentado ancho" role="group" aria-label="Origen"><button data-pl-fuente="corta" aria-pressed="${!comunidad}">En Corta</button><button data-pl-fuente="comunidad" aria-pressed="${comunidad}">De la comunidad</button></div>`;
+    let cuerpo;
+    if (comunidad && (!cat || cat.estado === "cargando")) cuerpo = `<p class="nota">Buscando plantillas…</p><div class="barra-prog indef"><i></i></div>`;
+    else if (comunidad && cat.estado === "error") cuerpo = `<p class="error-txt" data-sin-traducir>${esc(cat.error || tr("No pude conectarme. Revisa tu conexión."))}</p><div class="pie-dialogo"><button class="boton" data-pl-fuente="comunidad">Reintentar</button></div>`;
+    else {
+      const visibles = lista.filter((p) => coincidePl(p, x.categoria, x.busqueda));
+      cuerpo = `<div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_PL.map(([id, n]) => `<button class="chip" data-pl-cat="${id}" aria-pressed="${x.categoria === id}">${n}</button>`).join("")}</div>
+        <input class="texto buscar-fx" id="buscar-pl" type="search" placeholder="Buscar plantillas" value="${esc(x.busqueda)}" autocomplete="off">
+        ${visibles.length ? `<div class="galeria-pl">${visibles.map(tarjetaPl).join("")}</div>` : `<p class="nota">No hay plantillas con eso.</p>`}`;
+    }
+    return `${cabeza}${cuerpo}
+      <div class="pie-dialogo"><button class="boton izq" data-enlace="${ENLACES.plantillas}">Crear la tuya</button><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
+  }
+  function detallePlantilla(pl) {
+    const x = E.pl, propia = plantillaPorId(pl.id), faltan = faltanPl(pl), catEf = x.catalogo?.efectos || E.catalogo?.efectos || [];
+    const huecos = pl.huecos.map((h, k) => `<li><span class="num">${k + 1}</span><span class="txt">${h.pista ? `<b data-sin-traducir>${esc(enIdioma(h.pista))}</b>` : `<b>Lo que quieras</b>`}</span>
+      <small data-sin-traducir>${esc(tr({ video: "Video", foto: "Foto", cualquiera: "Video o foto" }[h.tipo]))} · ${T("{s} s", { s: esc(segundosPl(h.dur)) })}</small></li>`).join("");
+    const faltaHTML = faltan.length ? `<div class="tarjeta falta-pl"><b>Usa efectos de la comunidad que no tienes</b>${faltan.map((id) => {
+        const ef = catEf.find((e) => e.id === id), bajando = x.bajando[id];
+        return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(ef ? nombreFx(ef) : id)}</b></div>
+          <button class="boton chico" data-pl-bajar-fx="${esc(id)}" ${bajando ? "disabled" : ""} data-sin-traducir>${esc(tr(bajando ? "Descargando…" : "Descargar"))}</button></div>`;
+      }).join("")}<p class="nota">Sin ellos la plantilla igual funciona, pero sin esos efectos.</p></div>` : "";
+    const accion = !propia ? `<button class="boton principal" data-bajar-pl="${esc(pl.id)}" ${x.bajando[pl.id] ? "disabled" : ""}>${x.bajando[pl.id] ? "Descargando…" : "Descargar plantilla"}</button>`
+      : `<button class="boton principal" data-elegir-clips="${esc(pl.id)}" data-sin-traducir>${esc(Tp(pl.huecos.length === 1 ? "Elegir 1 clip o foto" : "Elegir {n} clips o fotos", { n: pl.huecos.length }))}</button>`;
+    const bpm = pl.musica?.bpm ? ` · ${T("pensada para música de ~{b} BPM", { b: Math.round(pl.musica.bpm) })}` : "";
+    return `<button class="boton sutil chico volver-pl" data-ver-pl="">‹ <span>Plantillas</span></button>
+      <div class="detalle-pl">${vistaPl(pl, true)}<div class="txt"><h2 id="t-pl" data-sin-traducir>${esc(nombreFx(pl))}</h2>
+        ${pl.descripcion ? `<p data-sin-traducir>${esc(enIdioma(pl.descripcion))}</p>` : ""}
+        <small class="meta-pl" data-sin-traducir>${metaPl(pl)} · ${esc(pl.proporcion)}${bpm}${pl.autor ? ` · ${esc(Tp("por {x}", { x: pl.autor }))}` : ""}</small></div></div>
+      <ol class="huecos-pl">${huecos}</ol>${faltaHTML}
+      <p class="nota">Si eliges menos, se repiten; si eliges más, sobran. Después puedes cambiar cada uno y elegir qué parte de cada video se usa.</p>
+      <div class="pie-dialogo"><button class="boton" data-ver-pl="">Atrás</button>${accion}</div>`;
+  }
+  /** Un clip o una foto de la plantilla, para verlo en el panel: por corta:// en la app; en la vista previa, la ruta de la demo. */
+  const fuenteClip = (carpeta, archivo) => (HOST === "web" ? archivo : `corta://video/${encodeURIComponent(carpeta + "/" + archivo)}`);
+  function panelClips() {
+    const p = P(), pl = plantillaPorId(p.plantilla.id), ini = iniciosHuecos(p.plantilla.huecos);
+    const filas = p.plantilla.huecos.map((h, k) => {
+      const ocupado = E.armando?.carpeta === E.sel, este = ocupado && E.armando.k === k, max = h.tipo === "video" ? Math.max(0, r3((h.duracion || 0) - h.dur)) : 0;
+      const pista = enIdioma(pl?.huecos?.[k]?.pista);
+      const mini = h.tipo === "foto" ? `<img class="mini-clip" src="${esc(fuenteClip(E.sel, h.archivo))}" alt="">`
+        : `<video class="mini-clip" src="${esc(fuenteClip(E.sel, h.archivo))}" muted playsinline preload="metadata" data-mini="${k}" data-desde="${h.desde}"></video>`;
+      const control = este ? `<small class="ok">${esc(tr("Armando…"))}</small>`
+        : max > 0.05 ? `<label class="desde"><input type="range" min="0" max="${max}" step="0.1" value="${h.desde}" data-hueco-desde="${k}" ${ocupado ? "disabled" : ""} aria-label="${esc(Tp("Desde qué segundo del clip {n}", { n: k + 1 }))}">
+            <output id="desde-${k}">${T("desde {t}", { t: esc(relojFino(h.desde)) })}</output></label>` : "";
+      return `<div class="hueco-fila" data-sin-traducir><span class="num">${k + 1}</span>${mini}<div class="txt"><b>${esc(pista || Tp("Clip {n}", { n: k + 1 }))}</b>
+          <small>${esc(tr(h.tipo === "foto" ? "Foto" : "Video"))} · ${T("{a} a {b}", { a: esc(relojFino(ini[k])), b: esc(relojFino(ini[k + 1])) })}</small>${control}</div>
+        <button class="boton chico" data-cambiar-clip="${k}" ${ocupado ? "disabled" : ""}>${esc(tr("Cambiar"))}</button></div>`;
+    }).join("");
+    return `<div class="tarjeta"><h3>Tus clips</h3>
+      <p class="nota" style="margin:0 0 10px">${pl ? frase("Plantilla «{x}». Cambia un clip o mueve la barra para elegir qué parte del video va en su hueco.", { x: esc(nombreFx(pl)) })
+        : esc(tr("Cambia un clip o mueve la barra para elegir qué parte del video va en su hueco."))}</p>${filas}</div>
+      ${pl?.musica?.bpm ? `<p class="nota">${frase("Los cortes van al ritmo de una música de ~{b} BPM: elige una parecida en Música.", { b: Math.round(pl.musica.bpm) })}</p>` : ""}`;
+  }
+
   /** Música de fondo: el proyecto guarda {archivo, volumen} y render.py la baja sola cuando hay voz (sidechain). */
   function panelMusica() {
     const p = P(), m = p.musica;
@@ -773,7 +964,7 @@
     return `${m}:${E.idioma === "es" ? x.replace(".", ",") : x}`;
   };
   /** Los tramos que quedan, partidos donde la persona dividió (`divisiones`): se eligen en la pista de video para borrarlos,
-   *  recortarlos o ponerles un efecto. Solo en la interfaz: al exportar, las divisiones no cambian nada. */
+   *  recortarlos o ponerles un efecto. Al exportar no cortan nada: solo marcan dónde va una transición (`uniones`). */
   function tramosEdicion(p) {
     const div = [...new Set(p.divisiones || [])].sort((a, b) => a - b), r = [];
     for (const t of conservados(p)) {
@@ -1138,6 +1329,7 @@
     if (E.bv !== null) return capa("t-bv", bienvenida());
     if (E.ajustes) return capa("t-aj", dialogoAjustes());
     if (E.catalogo) return capa("t-cat", dialogoCatalogo());
+    if (E.pl) return capa("t-pl", dialogoPlantillas()).replace('class="dialogo"', 'class="dialogo dialogo-pl"');
     return "";
   }
 
@@ -1168,7 +1360,7 @@
   /** Qué efectos se ven en el segundo t del original (`te`: el mismo momento en el video exportado). */
   let fxCache = null;
   function infoEfectos(p) {
-    const k = JSON.stringify([p.efectos, p.cortes, p.fuente.duracion]);
+    const k = JSON.stringify([p.efectos, p.cortes, p.divisiones, p.fuente.duracion]);
     if (fxCache?.p === p && fxCache.k === k) return fxCache.v;
     const v = (p.efectos || []).map((ap) => {
       const [i, f] = alcanceEf(p, ap), pedazos = intervalosSalida(p, i, f);
@@ -1305,12 +1497,15 @@
     } else { const b = $("#boton-play"); if (b && b.textContent !== "▶") b.textContent = "▶"; }
     sincronizarMusica(dt);
     actualizarCapas();
+    animarPlantillas(ahora);
     requestAnimationFrame(bucle);
   }
   window.addEventListener("resize", () => ajustarPantalla());
   // Las muestras de los efectos usan el cuadro del video: se vuelven a copiar cuando hay un cuadro nuevo en pausa.
   document.addEventListener("seeked", (ev) => { if (ev.target.id === "video") pintarMuestras(); }, true);
   document.addEventListener("loadeddata", (ev) => { if (ev.target.id === "video") pintarMuestras(); }, true);
+  // Cada clip del panel Clips muestra el cuadro donde empieza su parte (sin #t= en la dirección: corta:// no acepta fragmentos).
+  document.addEventListener("loadedmetadata", (ev) => { const d = ev.target.dataset?.desde; if (d != null) ev.target.currentTime = Number(d) + 0.05; }, true);
 
   // ───────────── Eventos ─────────────
   function elegirPalabra(k, extender) {
@@ -1330,7 +1525,7 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo]");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo],[data-ver-pl],[data-pl-cat],[data-pl-fuente],[data-bajar-pl],[data-pl-bajar-fx],[data-elegir-clips],[data-cambiar-clip]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
     if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
@@ -1345,6 +1540,23 @@
     if (d.bajarFx && E.catalogo) { E.catalogo.bajando[d.bajarFx] = true; host.enviar("descargarEfecto", { id: d.bajarFx }); return pintar(); }
     if (d.quitarFx != null) { const ap = p.efectos?.[Number(d.quitarFx)]; if (ap) { p.efectos.splice(Number(d.quitarFx), 1); E.lt.sel = null; guardar(p, "Efecto quitado"); } return; }
     if (d.tramo) return editarTramo(d.tramo);
+    if (d.verPl != null && E.pl) { E.pl.ver = d.verPl || null; pintar(); return $(".dialogo-pl")?.scrollTo?.(0, 0); }
+    if (d.plCat && E.pl) { E.pl.categoria = d.plCat; return pintar(); }
+    if (d.plFuente && E.pl) {
+      E.pl.fuente = d.plFuente;
+      if (d.plFuente === "comunidad" && E.pl.catalogo?.estado !== "listo") { E.pl.catalogo = { estado: "cargando", plantillas: [], efectos: [] }; host.enviar("catalogoPlantillas"); }
+      return pintar();
+    }
+    if (d.bajarPl && E.pl) { E.pl.bajando[d.bajarPl] = true; host.enviar("descargarPlantilla", { id: d.bajarPl }); return pintar(); }
+    if (d.plBajarFx && E.pl) {
+      E.pl.bajando[d.plBajarFx] = true;
+      // Para descargar un efecto la app necesita el índice del catálogo: si todavía no está, primero se pide.
+      if (E.pl.catalogo?.estado === "listo") host.enviar("descargarEfecto", { id: d.plBajarFx });
+      else { E.pl.pendiente = d.plBajarFx; E.pl.catalogo = { estado: "cargando", plantillas: [], efectos: [] }; host.enviar("catalogoPlantillas"); }
+      return pintar();
+    }
+    if (d.elegirClips && E.pl) { const pl = plantillaPorId(d.elegirClips); if (!pl) return; E.pl.armando = true; host.enviar("elegirClips", { plantilla: pl.id, n: pl.huecos.length }); return pintar(); }
+    if (d.cambiarClip != null && p?.plantilla) { E.armando = { carpeta: E.sel, k: Number(d.cambiarClip) }; host.enviar("cambiarClip", { carpeta: E.sel, hueco: Number(d.cambiarClip) }); return pintar(); }
     if (d.quitarIa) {
       const r = quitarCambioIA(p, d.quitarIa);
       if (!r) return;
@@ -1432,7 +1644,8 @@
       case "exportar-ya": E.exportar = { paso: "exportando", pct: 0 }; host.enviar("exportar", { carpeta: E.sel }); return pintar();
       case "mostrar-exportado": return host.enviar("abrirCarpeta", { ruta: E.exportar?.archivo || E.sel });
       case "ajustes": E.ajustes = true; return pintar();
-      case "cerrar": if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; return pintar();
+      case "cerrar": if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; if (!E.pl?.armando) E.pl = null; return pintar();
+      case "plantillas": if ($("#video")) $("#video").pause(); E.pl = { fuente: "corta", categoria: "todas", busqueda: "", ver: null, armando: false, bajando: {}, catalogo: E.pl?.catalogo || null }; return pintar();
       case "abrir-carpeta": return host.enviar("abrirCarpeta", {});
       case "actualizar": E.act = { paso: 1, texto: tr("Preparando…") }; host.enviar("actualizar"); return pintar();
       case "buscar-act": E.buscando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
@@ -1441,11 +1654,23 @@
   });
   document.addEventListener("input", (ev) => {
     const ds = ev.target.dataset || {}, p = P();
+    if (ev.target.id === "buscar-pl" && E.pl) {
+      E.pl.busqueda = ev.target.value;
+      const pos = ev.target.selectionStart; pintar(); const c = document.getElementById("buscar-pl"); c?.focus(); c?.setSelectionRange?.(pos, pos);
+      return;
+    }
     if (!p) return;
     if (ds.encuadre != null) { p.encuadre.x = Number(ev.target.value); return ajustarPantalla(); }
     if (ds.subPosicion != null) { p.subtitulos.posicion = Number(ev.target.value); return actualizarCapas(); }
     if (ds.musicaVolumen != null && p.musica) { p.musica.volumen = Math.round(Number(ev.target.value) * 100) / 100; const o = $("#musica-vol"); if (o) o.textContent = Math.round(p.musica.volumen * 100) + " %"; return; }
     if (ev.target.id === "pedido-ia") E.ia.texto = ev.target.value;
+    if (ds.huecoDesde != null) {
+      // Mientras se arrastra solo se mueve el cuadro del clip; al soltar se vuelve a armar el video (change).
+      const k = ds.huecoDesde, t = Number(ev.target.value), o = document.getElementById("desde-" + k), m = document.querySelector(`[data-mini="${k}"]`);
+      if (o) o.innerHTML = T("desde {t}", { t: esc(relojFino(t)) });
+      if (m) { m.dataset.desde = t; try { m.currentTime = t + 0.05; } catch {} }
+      return;
+    }
     if (ev.target.id === "buscar-fx" || (ev.target.id === "buscar-cat" && E.catalogo)) {
       // Se repinta al escribir: el foco y el cursor vuelven al mismo campo (pintar() recuerda el elemento activo).
       if (ev.target.id === "buscar-fx") E.fx.busqueda = ev.target.value; else E.catalogo.busqueda = ev.target.value;
@@ -1468,6 +1693,11 @@
     if (ds.relleno != null) { p.relleno = ev.target.value; return guardar(p); }
     if (ds.subActivos != null) { p.subtitulos.activos = ev.target.checked; return guardar(p); }
     if (ds.subPalabras != null) { p.subtitulos.palabras_por_linea = Number(ev.target.value); return guardar(p); }
+    if (ds.huecoDesde != null && p?.plantilla) {
+      E.armando = { carpeta: E.sel, k: Number(ds.huecoDesde) };
+      host.enviar("ajustarHueco", { carpeta: E.sel, hueco: Number(ds.huecoDesde), desde: Math.round(Number(ev.target.value) * 1000) / 1000 });
+      return pintar();
+    }
     if (ds.config) {
       E.config[ds.config] = ev.target.value; host.enviar("config", { [ds.config]: ev.target.value });
       if (ds.config === "idioma_ui") await cargarIdioma(ev.target.value);
@@ -1483,7 +1713,7 @@
       return;
     }
     if (ev.target.id === "vocab-nueva" && ev.key === "Enter") { ev.preventDefault(); return $("[data-accion=vocab-agregar]")?.click(); }
-    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; E.seleccion = null; E.lt.sel = null; E.sugerencia = null; return pintar(); }
+    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; if (E.pl?.ver) { E.pl.ver = null; return pintar(); } if (!E.pl?.armando) E.pl = null; E.seleccion = null; E.lt.sel = null; E.sugerencia = null; return pintar(); }
     if (teclaLinea(ev)) return;
     if (escribiendo) { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey) && ev.target.id === "pedido-ia") $("[data-accion=pedir-ia]")?.click(); return; }
     if ((ev.key === "Backspace" || ev.key === "Delete") && E.seleccion) { ev.preventDefault(); return cortarSeleccion(); }
@@ -1588,7 +1818,7 @@
   window.Corta = {
     async estado(e) {
       Object.assign(E, { proyectos: e.proyectos || [], estilos: e.estilos || [], config: e.config || {}, ias: e.ias || [], modelos: e.modelos || { lista: [] },
-        vocabulario: e.vocabulario || { reemplazos: [], palabras: [] }, efectos: e.efectos || [],
+        vocabulario: e.vocabulario || { reemplazos: [], palabras: [] }, efectos: e.efectos || [], plantillas: e.plantillas || [],
         version: e.version || "", carpeta: e.carpeta || "", progreso: e.progreso || {}, actualizacion: e.actualizacion || { hay: false } });
       if (e.seleccionar) E.sel = e.seleccionar;
       if (E.sel && !E.proyectos.some((x) => x.carpeta === E.sel)) E.sel = null;
@@ -1637,15 +1867,43 @@
     /** Respuesta a `descargarEfecto`: {ok, efecto} o {ok: false, id, error}. */
     efectoDescargado(r) {
       if (E.catalogo) delete E.catalogo.bajando[r.ok ? r.efecto.id : r.id];
+      if (E.pl) delete E.pl.bajando[r.ok ? r.efecto.id : r.id];
       if (r.ok) { E.efectos = [...E.efectos.filter((x) => x.id !== r.efecto.id), r.efecto]; toast(Tp("«{x}» quedó en tus efectos", { x: nombreFx(r.efecto) }), true); }
       else toast(r.error || "No pude descargarlo");
+      pintar();
+    },
+    /** Respuesta a `elegirClips`, `ajustarHueco` y `cambiarClip`: {ok, carpeta, proyecto, faltan?, usados?} o {ok: false, error}
+     *  ({ok: false} sin error si la persona canceló). Un video recién armado se abre en la pestaña Clips. */
+    plantillaArmada(r) {
+      const nuevo = E.pl?.armando;
+      E.armando = null;
+      if (E.pl) E.pl.armando = false;
+      if (!r.ok) { if (r.error) toast(r.error); return pintar(); }
+      if (nuevo) { E.pl = null; E.pestana = "clips"; E.seleccion = null; E.lt.sel = null; }
+      const faltan = (r.faltan || []).length;
+      window.Corta.proyectoActualizado({ carpeta: r.carpeta, proyecto: r.proyecto, seleccionar: !!nuevo });
+      if (nuevo) toast(Tp(faltan ? "Listo. Faltan {n} efectos de la comunidad: puedes ponerlos después." : "Listo: tu video está armado", { n: faltan }), true);
+    },
+    /** Respuesta a `catalogoPlantillas`: {ok, plantillas, efectos} (ya validados por bin/) o {ok: false, error}. */
+    catalogoPlantillasListo(r) {
+      if (!E.pl) return;
+      E.pl.catalogo = r.ok ? { estado: "listo", plantillas: r.plantillas || [], efectos: r.efectos || [] } : { estado: "error", error: r.error, plantillas: [], efectos: [] };
+      const id = E.pl.pendiente; E.pl.pendiente = null;
+      if (id) { if (r.ok) host.enviar("descargarEfecto", { id }); else delete E.pl.bajando[id]; }
+      pintar();
+    },
+    /** Respuesta a `descargarPlantilla`: {ok, plantilla} o {ok: false, id, error}. */
+    plantillaDescargada(r) {
+      if (E.pl) delete E.pl.bajando[r.ok ? r.plantilla.id : r.id];
+      if (r.ok) { E.plantillas = [...E.plantillas.filter((x) => x.id !== r.plantilla.id), r.plantilla]; toast(Tp("«{x}» quedó en tus plantillas", { x: nombreFx(r.plantilla) }), true); }
+      else toast(r.error || "No pude descargarla");
       pintar();
     },
     /** Respuesta a `vocabulario`: {ok, vocabulario} o {ok: false, error}. */
     vocabularioActualizado(r) { if (r.ok) E.vocabulario = r.vocabulario; else toast(r.error || "No pude guardar."); pintar(); },
     _probar(f) { f(E); pintar(); },
     _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
-      tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, segmentosZoom, segmentosCapa, valorEn, cssColor, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
+      tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, llenar, aplicarPlantilla, iniciosHuecos, segmentosZoom, segmentosCapa, valorEn, cssColor, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config, demoCatalogoPl: () => clonar(DEMO?.catalogo_plantillas || []) },
   };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
@@ -1727,6 +1985,38 @@
         if (d.accion === "quitar_palabra") v.palabras = v.palabras.filter((x) => normalizar(x) !== normalizar(d.palabra));
         A.vocabularioActualizado({ ok: true, vocabulario: clonar(v) });
       });
+      case "elegirClips": return luego(900, () => {  // en la app: eliges tus clips y bin/plantillas.py arma el video con ffmpeg
+        const pl = (DEMO.plantillas || []).find((x) => x.id === d.plantilla);
+        if (!pl) return A.plantillaArmada({ ok: false, error: tr("No encontré esa plantilla.") });
+        const lugar = llenar(pl.huecos, CLIPS_DEMO), total = iniciosHuecos(pl.huecos).at(-1);
+        const huecos = pl.huecos.map((h, k) => { const c = CLIPS_DEMO[lugar[k].clip]; return { archivo: c.archivo, tipo: c.tipo, desde: lugar[k].desde, dur: h.dur, duracion: c.duracion }; });
+        const a = aplicarPlantilla(pl, huecos.map((h) => h.tipo), E.idioma, Object.fromEntries((DEMO.efectos || []).map((e) => [e.id, e.pasos])), (DEMO.estilos || []).map((e) => e.id));
+        const titulo = nombreFx(pl);
+        let carpeta = `~/Corta/2026-10-28 ${titulo}`, n = 2;
+        while (demoProy(carpeta)) carpeta = `~/Corta/2026-10-28 ${titulo} (${n++})`;
+        // En la vista previa el video armado es el de Ana (en la app, tus clips uno detrás de otro).
+        const p = { formato: 1, titulo, fuente: { archivo: "demo/ana.mp4", duracion: total, ancho: 1280, alto: 720 }, lienzo: a.lienzo, relleno: "recorte",
+          encuadre: { x: 0.45, y: 0.5 }, palabras: [], cortes: [], subtitulos: { activos: true, estilo: "pop", palabras_por_linea: 3, posicion: 0.7, ...(a.subtitulos || {}) },
+          zooms: [], textos: a.textos, efectos: a.efectos, divisiones: a.divisiones, musica: null, plantilla: { id: pl.id, huecos }, creado: "2026-10-28T10:00:00" };
+        DEMO.proyectos.unshift({ carpeta, proyecto: p });
+        A.plantillaArmada({ ok: true, carpeta, proyecto: clonar(p), faltan: a.faltan, usados: CLIPS_DEMO.length });
+      });
+      case "ajustarHueco": return luego(500, () => {
+        const x = demoProy(d.carpeta), h = x?.proyecto.plantilla?.huecos[d.hueco];
+        if (!h) return A.plantillaArmada({ ok: false, error: tr("Ese hueco no existe.") });
+        (historial[d.carpeta] ||= []).push(clonar(x.proyecto));
+        h.desde = r3(Math.max(0, Math.min(d.desde, (h.duracion || 0) - h.dur)));
+        A.plantillaArmada({ ok: true, carpeta: d.carpeta, proyecto: clonar(x.proyecto) });
+      });
+      case "cambiarClip": toast("En la app, aquí eliges otro clip o foto"); return luego(300, () => A.plantillaArmada({ ok: false }));
+      case "catalogoPlantillas": return luego(500, () => A.catalogoPlantillasListo({ ok: true, plantillas: clonar(DEMO.catalogo_plantillas || []), efectos: clonar(DEMO.catalogo || []) }));
+      case "descargarPlantilla": return luego(600, () => {  // en la app: Swift la baja de raw.githubusercontent.com y bin/plantillas.py la valida
+        const x = (DEMO.catalogo_plantillas || []).find((y) => y.id === d.id);
+        if (!x) return A.plantillaDescargada({ ok: false, id: d.id, error: tr("Esa plantilla no es válida.") });
+        const plantilla = { ...Object.fromEntries(Object.entries(x).filter(([k]) => !["archivo", "sha256", "bytes"].includes(k))), origen: "descargada" };
+        DEMO.plantillas = [...(DEMO.plantillas || []).filter((y) => y.id !== d.id), plantilla];
+        A.plantillaDescargada({ ok: true, plantilla: clonar(plantilla) });
+      });
       case "catalogoEfectos": return luego(500, () => A.catalogoListo({ ok: true, efectos: clonar(DEMO.catalogo || []) }));
       case "descargarEfecto": return luego(600, () => {  // en la app: Swift lo baja de raw.githubusercontent.com y bin/efectos.py lo valida
         const ef = (DEMO.catalogo || []).find((x) => x.id === d.id);
@@ -1742,6 +2032,9 @@
     }
   }
 
+  /** Lo que «elige» la vista previa al usar una plantilla: el video de Ana y dos fotos dibujadas (ui/demo/, ficticias). */
+  const CLIPS_DEMO = [{ archivo: "demo/ana.mp4", tipo: "video", duracion: 30.233 }, { archivo: "demo/foto-1.jpg", tipo: "foto", duracion: null },
+    { archivo: "demo/foto-2.jpg", tipo: "foto", duracion: null }];
   const LOGO = `<svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#111214"/><path d="M22 15.5 49 32 22 48.5z" fill="#c6f432"/><path d="M14 44 50 20" stroke="#111214" stroke-width="7" stroke-linecap="round"/><circle cx="14" cy="44" r="4.6" fill="none" stroke="#f4f4f0" stroke-width="2.6"/><circle cx="50" cy="20" r="4.6" fill="none" stroke="#f4f4f0" stroke-width="2.6"/></svg>`;
 
   async function iniciar() {

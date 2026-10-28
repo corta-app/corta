@@ -13,6 +13,7 @@
 Todos los tiempos del proyecto están en segundos del VIDEO ORIGINAL. Los cortes dicen qué partes no van; el resto se conserva.
 """
 import json
+import math
 import os
 import re
 import shutil
@@ -186,12 +187,42 @@ def validar(p):
             isinstance(x, dict) and isinstance(x.get("id"), str) and ORIGEN.fullmatch(x["id"]) and x.get("estado") in ("aplicado", "quitado")
             for x in c)):
         e.append("cambios_ia: lista de {id, estado: aplicado|quitado, …}.")
+    e += validar_plantilla(p.get("plantilla"), dur)
     m = p.get("musica")
     if m is not None and not (isinstance(m, dict) and isinstance(m.get("archivo"), str) and m["archivo"].strip()
                               and "\x00" not in m["archivo"] and isinstance(m.get("volumen"), (int, float))
                               and not isinstance(m["volumen"], bool) and 0 <= m["volumen"] <= 1):
         e.append("musica debe ser null o {archivo, volumen entre 0 y 1}.")
     return e
+
+
+#: Un clip de una plantilla: una copia dentro de clips/ del proyecto, con el nombre que le pone bin/plantillas.py.
+ARCHIVO_CLIP = re.compile(r"clips/[0-9]{2}(-[0-9]{1,4})?\.(mp4|mov|m4v|webm|mkv|jpg|jpeg|png|webp)")
+
+
+def num(v):
+    return isinstance(v, (int, float)) and not isinstance(v, bool) and math.isfinite(v)
+
+
+def validar_plantilla(x, dur):
+    """`plantilla` (opcional): qué clip va en cada hueco del video armado, desde qué segundo y cuánto dura el hueco."""
+    if x is None:
+        return []
+    huecos = x.get("huecos") if isinstance(x, dict) else None
+    if not (isinstance(x, dict) and set(x) == {"id", "huecos"} and isinstance(x["id"], str) and efecto_formato.ID.fullmatch(x["id"])
+            and isinstance(huecos, list) and 1 <= len(huecos) <= 20):
+        return ["plantilla: {id, huecos: [...]}."]
+    total = 0.0
+    for h in huecos:
+        if not (isinstance(h, dict) and set(h) == {"archivo", "tipo", "desde", "dur", "duracion"} and isinstance(h["archivo"], str)
+                and ARCHIVO_CLIP.fullmatch(h["archivo"]) and h["tipo"] in ("video", "foto") and num(h["desde"]) and h["desde"] >= 0
+                and num(h["dur"]) and 0.5 <= h["dur"] <= 15
+                and ((h["tipo"] == "foto" and h["duracion"] is None) or (h["tipo"] == "video" and num(h["duracion"]) and h["duracion"] > 0))):
+            return ["plantilla.huecos: cada uno {archivo: clips/…, tipo: video|foto, desde, dur, duracion}."]
+        total += h["dur"]
+    if abs(total - dur) > 0.05:
+        return ["plantilla: los huecos tienen que durar lo mismo que el video."]
+    return []
 
 
 def unir(tramos, margen=0.0):

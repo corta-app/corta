@@ -4,7 +4,8 @@ import WebKit
 
 /// `corta://video/<carpeta>/<archivo>`: el video y la música de un proyecto para la vista previa, con rangos (Range) para poder
 /// adelantar. La interfaz se carga con acceso de lectura solo a ui/; esto es lo único que puede leer fuera de ahí, y solo:
-///   · el video del proyecto (`fuente.archivo` de su proyecto.json) o un archivo de su carpeta `musica/`,
+///   · el video del proyecto (`fuente.archivo` de su proyecto.json) o un archivo de su carpeta `musica/` o `clips/` (los clips y
+///     fotos de una plantilla, para verlos al elegir qué parte va en cada hueco),
 ///   · de una carpeta directa de ~/Corta con proyecto.json, y
 ///   · sin enlaces simbólicos que lleven fuera de ~/Corta.
 /// Todo lo demás (otra ruta, «..», ~/Corta/.corta, otro esquema) no se sirve.
@@ -24,7 +25,7 @@ final class Medios: NSObject, WKURLSchemeHandler {
         let base = Rutas.baseReal
         guard real.path.hasPrefix(base) else { return nil }
         let partes = real.path.dropFirst(base.count).split(separator: "/", omittingEmptySubsequences: false).map(String.init)
-        guard partes.count == 2 || (partes.count == 3 && partes[1] == "musica"),
+        guard partes.count == 2 || (partes.count == 3 && ["musica", "clips"].contains(partes[1])),
               let carpeta = partes.first, !carpeta.isEmpty, !carpeta.hasPrefix("."), partes.allSatisfy({ !$0.isEmpty }) else { return nil }
         let p = Archivos.leerJSON(URL(fileURLWithPath: base + carpeta).appendingPathComponent("proyecto.json"))
         guard let fuente = p["fuente"] as? [String: Any] else { return nil }

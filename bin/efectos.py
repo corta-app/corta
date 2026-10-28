@@ -99,12 +99,15 @@ def intervalos_salida(p, i, f):
 
 
 def uniones(p, i, f):
-    """Dónde se juntan dos pedazos del tramo i..f en el video exportado (un corte en medio): ahí van las transiciones."""
+    """Dónde se juntan dos pedazos del tramo i..f en el video exportado: un corte en medio o una división (`divisiones`, donde
+    dividiste o donde una plantilla pasa de un clip al siguiente). Ahí van las transiciones."""
     r, acumulado, anterior = [], 0.0, False
+    divs = sorted(x for x in p.get("divisiones", []) if isinstance(x, (int, float)) and not isinstance(x, bool) and i + 0.02 < x < f - 0.02)
     for t in proyecto.conservados(p):
         dentro = min(t["f"], f) - max(t["i"], i) >= 0.02
         if dentro and anterior:
             r.append(_r3(acumulado))
+        r += [_r3(acumulado + d - t["i"]) for d in divs if t["i"] + 0.02 < d < t["f"] - 0.02]
         anterior = dentro
         acumulado += t["f"] - t["i"]
     return r

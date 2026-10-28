@@ -1,0 +1,99 @@
+{
+ "formato": 1,
+ "id": "recuerdos-del-mes",
+ "categoria": "recuerdos",
+ "nombre": {
+  "es": "Recuerdos del mes",
+  "en": "Month in memories"
+ },
+ "descripcion": {
+  "es": "Ocho momentos de tu mes, con tonos cálidos y un final que se apaga solo.",
+  "en": "Eight moments of your month, with warm tones and an ending that fades out."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "recap",
+  "resumen",
+  "fotos",
+  "photos"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 2,
+   "tipo": "foto",
+   "pista": {
+    "es": "El primer recuerdo",
+    "en": "The first memory"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 3,
+   "tipo": "foto",
+   "pista": {
+    "es": "El mejor momento",
+    "en": "The best moment"
+   }
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "Este mes",
+    "en": "This month"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 7,
+   "texto": {
+    "es": "Hasta el próximo",
+    "en": "Until next time"
+   },
+   "posicion": 0.7
+  }
+ ],
+ "subtitulos": {
+  "estilo": "suave",
+  "activos": false
+ },
+ "efectos": [
+  "calido",
+  "fundido-salida"
+ ],
+ "musica": {
+  "bpm": 90
+ }
+}

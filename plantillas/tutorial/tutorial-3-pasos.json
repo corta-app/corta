@@ -1,0 +1,106 @@
+{
+ "formato": 1,
+ "id": "tutorial-3-pasos",
+ "categoria": "tutorial",
+ "nombre": {
+  "es": "Tutorial en 3 pasos",
+  "en": "3-step tutorial"
+ },
+ "descripcion": {
+  "es": "Lo que vas a lograr, tres pasos claros y el resultado. Hablando a cámara.",
+  "en": "What you'll achieve, three clear steps and the result. Talking to camera."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "cómo",
+  "how to",
+  "aprender",
+  "guía"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "Lo que vas a lograr",
+    "en": "What you'll achieve"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 5,
+   "tipo": "video",
+   "pista": {
+    "es": "Paso 1",
+    "en": "Step 1"
+   }
+  },
+  {
+   "dur": 5,
+   "tipo": "video",
+   "pista": {
+    "es": "Paso 2",
+    "en": "Step 2"
+   }
+  },
+  {
+   "dur": 5,
+   "tipo": "video",
+   "pista": {
+    "es": "Paso 3",
+    "en": "Step 3"
+   },
+   "transicion": "transicion-negro"
+  },
+  {
+   "dur": 4,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "El resultado",
+    "en": "The result"
+   },
+   "efectos": [
+    "zoom-golpe"
+   ]
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 1,
+   "texto": {
+    "es": "1",
+    "en": "1"
+   },
+   "posicion": 0.12
+  },
+  {
+   "en_hueco": 2,
+   "texto": {
+    "es": "2",
+    "en": "2"
+   },
+   "posicion": 0.12
+  },
+  {
+   "en_hueco": 3,
+   "texto": {
+    "es": "3",
+    "en": "3"
+   },
+   "posicion": 0.12
+  },
+  {
+   "en_hueco": 4,
+   "texto": {
+    "es": "Listo",
+    "en": "Done"
+   },
+   "posicion": 0.18
+  }
+ ],
+ "subtitulos": {
+  "estilo": "pop",
+  "activos": true
+ }
+}

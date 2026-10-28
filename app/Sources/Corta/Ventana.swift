@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import UniformTypeIdentifiers
 import WebKit
 
@@ -20,6 +21,8 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
 
     static let videos = ["mp4", "mov", "m4v", "webm", "mkv"]
     static let audios = ["mp3", "m4a", "aac", "wav", "ogg", "oga", "opus", "flac"]
+    /// Fotos que acepta una plantilla (las de iPhone, HEIC, se pasan a JPEG antes: ffmpeg no siempre las lee).
+    static let fotos = ["jpg", "jpeg", "png", "webp", "heic", "heif"]
 
     func mostrar() {
         if ventana == nil { crear() }
@@ -197,6 +200,58 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         }
     }
 
+    // MARK: Plantillas
+
+    private func panelClips(multiple: Bool) -> NSOpenPanel {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = multiple
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [.movie, .image] + (Ventana.videos + Ventana.fotos).compactMap { UTType(filenameExtension: $0) }
+        return panel
+    }
+
+    /// Corre bin/plantillas.py (crear, ajustar o cambiar) con los archivos elegidos y responde `plantillaArmada`. Las fotos HEIC se
+    /// pasan antes a JPEG en una carpeta temporal (se borra al terminar). Mientras arma, la app cuenta como ocupada.
+    private func armarPlantilla(_ datos: [String: Any], _ urls: [URL]) {
+        var x = datos
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("corta-clips-\(UUID().uuidString)")
+        var rutas: [String] = []
+        for u in urls.map(\.standardizedFileURL) {
+            let ext = u.pathExtension.lowercased()
+            if ext == "heic" || ext == "heif" {
+                guard let jpg = Ventana.aJPEG(u, en: tmp) else { return llamar("plantillaArmada", ["ok": false, "error": Idioma.t("No pude leer esa foto.")]) }
+                rutas.append(jpg.path)
+            } else {
+                rutas.append(u.path)
+            }
+        }
+        if x["accion"] as? String == "crear" { x["archivos"] = rutas } else if let r = rutas.first { x["archivo"] = r }
+        importando += 1
+        EnOrden.agregar { listo in
+            Procesador.conEntrada("plantillas.py", "entrada", x) { r in
+                try? FileManager.default.removeItem(at: tmp)
+                Ventana.shared.importando -= 1
+                var y = r
+                if r["ok"] as? Bool != true { y["error"] = Idioma.t(r["error"] as? String ?? "No pude armar el video.") }
+                Ventana.shared.llamar("plantillaArmada", y)
+                listo()
+            }
+        }
+    }
+
+    /// Una foto HEIC/HEIF como JPEG (ImageIO, con su orientación aplicada), en `carpeta`.
+    private static func aJPEG(_ u: URL, en carpeta: URL) -> URL? {
+        try? FileManager.default.createDirectory(at: carpeta, withIntermediateDirectories: true)
+        let destino = carpeta.appendingPathComponent(u.deletingPathExtension().lastPathComponent + "-\(UUID().uuidString.prefix(6)).jpg")
+        let opciones: [CFString: Any] = [kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
+                                         kCGImageSourceThumbnailMaxPixelSize: 4096]
+        guard let fuente = CGImageSourceCreateWithURL(u as CFURL, nil),
+              let imagen = CGImageSourceCreateThumbnailAtIndex(fuente, 0, opciones as CFDictionary),
+              let salida = CGImageDestinationCreateWithURL(destino as CFURL, UTType.jpeg.identifier as CFString, 1, nil) else { return nil }
+        CGImageDestinationAddImage(salida, imagen, [kCGImageDestinationLossyCompressionQuality: 0.92] as CFDictionary)
+        return CGImageDestinationFinalize(salida) ? destino : nil
+    }
+
     // MARK: Navegación: la ventana solo muestra la interfaz que viene dentro de la app
 
     /// Carpeta ui/ dentro de la app (sin enlaces simbólicos), para comparar rutas.
@@ -345,6 +400,55 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
                 return llamar("efectoDescargado", ["ok": false, "id": "", "error": Idioma.t("Ese efecto no es válido.")])
             }
             Catalogo.descargar(id) { Ventana.shared.llamar("efectoDescargado", $0) }
+        case "catalogoPlantillas":
+            // Plantillas de la comunidad (y el índice de efectos, para ofrecer los que una plantilla usa y la persona no tiene).
+            Catalogo.listar(tipo: .plantillas) { r in
+                guard r["ok"] as? Bool == true else { return Ventana.shared.llamar("catalogoPlantillasListo", r) }
+                Catalogo.listar(tipo: .efectos) { e in
+                    var x = r
+                    x["efectos"] = e["efectos"] ?? [Any]()
+                    Ventana.shared.llamar("catalogoPlantillasListo", x)
+                }
+            }
+        case "descargarPlantilla":
+            let id = d["id"] as? String ?? ""
+            guard id.range(of: "^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$", options: .regularExpression) != nil else {
+                return llamar("plantillaDescargada", ["ok": false, "id": "", "error": Idioma.t("Esa plantilla no es válida.")])
+            }
+            Catalogo.descargar(id, tipo: .plantillas) { Ventana.shared.llamar("plantillaDescargada", $0) }
+        case "elegirClips":
+            // Una plantilla: la persona elige sus clips o fotos (van a los huecos en orden de nombre) y bin/plantillas.py arma el video.
+            let id = d["plantilla"] as? String ?? ""
+            let n = max(1, min(20, (d["n"] as? NSNumber)?.intValue ?? 1))
+            guard id.range(of: "^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$", options: .regularExpression) != nil, let v = ventana else {
+                return llamar("plantillaArmada", ["ok": false, "error": Idioma.t("No encontré esa plantilla.")])
+            }
+            let panel = panelClips(multiple: true)
+            panel.message = Idioma.t("Elige {n} clips o fotos. Van en orden de nombre; después puedes cambiar cada uno.").replacingOccurrences(of: "{n}", with: String(n))
+            panel.beginSheetModal(for: v) { r in
+                Task { @MainActor in
+                    guard r == .OK, !panel.urls.isEmpty else { return Ventana.shared.llamar("plantillaArmada", ["ok": false]) }
+                    let urls = panel.urls.sorted { $0.lastPathComponent.localizedStandardCompare($1.lastPathComponent) == .orderedAscending }
+                    Ventana.shared.armarPlantilla(["accion": "crear", "plantilla": id, "idioma": Idioma.codigo], urls)
+                }
+            }
+        case "ajustarHueco":
+            guard let carpeta, let hueco = (d["hueco"] as? NSNumber)?.intValue, let desde = (d["desde"] as? NSNumber)?.doubleValue, desde.isFinite else {
+                return llamar("plantillaArmada", ["ok": false, "error": Idioma.t("Ese hueco no existe.")])
+            }
+            armarPlantilla(["accion": "ajustar", "carpeta": carpeta, "hueco": hueco, "desde": desde], [])
+        case "cambiarClip":
+            guard let carpeta, let hueco = (d["hueco"] as? NSNumber)?.intValue, let v = ventana else {
+                return llamar("plantillaArmada", ["ok": false, "error": Idioma.t("Ese hueco no existe.")])
+            }
+            let panel = panelClips(multiple: false)
+            panel.message = Idioma.t("Elige otro clip o foto para este hueco")
+            panel.beginSheetModal(for: v) { r in
+                Task { @MainActor in
+                    guard r == .OK, let u = panel.url else { return Ventana.shared.llamar("plantillaArmada", ["ok": false]) }
+                    Ventana.shared.armarPlantilla(["accion": "cambiar", "carpeta": carpeta, "hueco": hueco], [u])
+                }
+            }
         case "vocabulario":
             // Recordar o quitar palabras del vocabulario (~/Corta/vocabulario.json). El texto va en el archivo de entrada.
             let texto = { (k: String) in String((d[k] as? String ?? "").prefix(60)) }

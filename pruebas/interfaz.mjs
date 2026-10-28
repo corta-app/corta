@@ -4,7 +4,8 @@
 // (español e inglés, escritorio y celular); 3) todo texto tiene traducción en ui/idiomas/en.json; 4) nada se sale de la pantalla a
 // ancho de celular; 5) contraste del botón principal; 6) editar por texto corta de verdad; 7) la línea de tiempo mueve bordes con
 // mouse, toque y teclado sin cambiar el formato, y la música suena y baja cuando hablas; 8) en el primer uso lo primero es elegir
-// el idioma (con teclado) y lo que sigue sale en ese idioma. Con CAPTURAS=carpeta guarda capturas.
+// el idioma (con teclado) y lo que sigue sale en ese idioma; 12) plantillas: elegir una, llenar sus huecos y abrir el proyecto (a
+// 390 px y en escritorio). Con CAPTURAS=carpeta guarda capturas (y las de plantillas, con CAPTURAS_PLANTILLAS=carpeta).
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -16,7 +17,7 @@ const { chromium } = createRequire(import.meta.url)(process.env.PLAYWRIGHT || "p
 const CAPTURAS = process.env.CAPTURAS || "";
 const errores = [];
 const falla = (m) => { errores.push(m); console.log("  ✗ " + m); };
-const tipos = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".mp4": "video/mp4", ".ttf": "font/ttf" };
+const tipos = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".svg": "image/svg+xml", ".mp4": "video/mp4", ".ttf": "font/ttf", ".jpg": "image/jpeg" };
 function servir(q, r, ruta, tipo) {
   // Con rangos (Range), como GitHub Pages: sin esto el navegador no puede adelantar el video.
   const total = fs.statSync(ruta).size, m = /bytes=(\d*)-(\d*)/.exec(q.headers.range || "");
@@ -83,7 +84,19 @@ const VISTAS = [
   ["ajustes", "E=>{E.exportar=null;E.ajustes=true}"],
   ["ajustes-vocabulario", "E=>{E.vocabulario={reemplazos:[{de:'calumi',a:'Kalumi'}],palabras:['Kalumi','Ana']}}"],
   ["ajustes-al-dia", "E=>{E.buscando='alDia'}"],
-  ["vacio", "E=>{E.ajustes=false;E.proyectos=[];E.sel=null}"],
+  ["plantillas", "E=>{E.ajustes=false;E.buscando=null;E.pl={fuente:'corta',categoria:'todas',busqueda:'',ver:null,armando:false,bajando:{},catalogo:null}}"],
+  ["plantillas-categoria", "E=>{E.pl.categoria='recuerdos'}"],
+  ["plantillas-buscar-nada", "E=>{E.pl.categoria='todas';E.pl.busqueda='zzz'}"],
+  ["plantilla-detalle", "E=>{E.pl.busqueda='';E.pl.ver='producto-en-15'}"],
+  ["plantilla-detalle-16x9", "E=>{E.pl.ver='intro-de-canal'}"],
+  ["plantillas-comunidad-cargando", "E=>{E.pl.ver=null;E.pl.fuente='comunidad';E.pl.catalogo={estado:'cargando',plantillas:[],efectos:[]}}"],
+  ["plantillas-comunidad-error", "E=>{E.pl.catalogo={estado:'error',plantillas:[],efectos:[]}}"],
+  ["plantillas-comunidad", "E=>{E.pl.catalogo={estado:'listo',plantillas:window.Corta._pruebas.demoCatalogoPl(),efectos:[]}}"],
+  ["plantilla-comunidad-detalle", "E=>{E.pl.ver='verano-en-fotos';E.pl.bajando={parpadeo:true}}"],
+  ["plantilla-armando", "E=>{E.pl.armando=true}"],
+  ["clips", "E=>{E.pl=null;const p=E.proyectos[0].proyecto;p.plantilla={id:'antes-y-despues',huecos:[{archivo:'demo/ana.mp4',tipo:'video',desde:2,dur:10,duracion:30.233},{archivo:'demo/foto-1.jpg',tipo:'foto',desde:0,dur:10.233,duracion:null},{archivo:'demo/ana.mp4',tipo:'video',desde:12,dur:10,duracion:30.233}]};p.divisiones=[10,20.233];E.pestana='clips'}"],
+  ["clips-armando", "E=>{E.armando={carpeta:E.sel,k:0}}"],
+  ["vacio", "E=>{E.armando=null;E.ajustes=false;E.proyectos=[];E.sel=null}"],
 ];
 const navegador = await chromium.launch();
 // Cualquier bloqueo de la Content-Security-Policy es un error: la interfaz tiene que funcionar entera con ella.
@@ -124,6 +137,10 @@ navegador.newPage = async (opciones) => {
       if (!igual(P.segmentosCapa(x.paso, x.a, x.b, x.juntas, x.pedazos), x.esperado)) m.push("segmentosCapa " + JSON.stringify(P.segmentosCapa(x.paso, x.a, x.b, x.juntas, x.pedazos)));
       for (const [t, v] of x.valores) if (P.valorEn(x.esperado, t, 0) !== v) m.push(`valorEn capa ${t}: ${P.valorEn(x.esperado, t, 0)}`);
     }
+    const pc = c.plantillas;
+    for (const x of pc.llenar) { const r = P.llenar(x.huecos, x.clips); if (!igual(r, x.esperado)) m.push("llenar " + JSON.stringify(r)); }
+    for (const x of pc.aplicar) { const r = P.aplicarPlantilla(x.plantilla, x.tipos, x.idioma, pc.efectos, x.estilos); if (!igual(r, x.esperado)) m.push("aplicarPlantilla " + JSON.stringify(r)); }
+    for (const x of pc.uniones.casos) { const r = P.uniones(pc.uniones.proyecto, x.i, x.f); if (!igual(r, x.esperado)) m.push("uniones con divisiones " + JSON.stringify(r)); }
     // Lo que ves es lo que exportas: los filtros de color de CSS (como los dibuja este navegador) dan los mismos colores que ffmpeg
     for (const x of fx.color) {
       const origen = document.createElement("canvas"); origen.width = 3; origen.height = 1;
@@ -449,6 +466,50 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   if (!(await p.$('[data-fx="neon"]'))) falla("el efecto descargado no aparece en su categoría");
   await p.close();
 }
+
+// 12) Plantillas: abrir, elegir una por categoría, llenar sus huecos con los clips «elegidos», abrir el proyecto y mover un hueco
+const antesPlantillas = errores.length;
+for (const [modo, opciones] of [["celular", { viewport: { width: 390, height: 844 }, colorScheme: "light" }], ["escritorio", { viewport: { width: 1360, height: 860 } }]]) {
+  const p = await navegador.newPage(opciones);
+  p.on("pageerror", (e) => falla(`error de JavaScript (plantillas, ${modo}): ` + e.message));
+  const fotos = process.env.CAPTURAS_PLANTILLAS || "";
+  const foto = async (n) => { if (fotos) await p.screenshot({ path: path.join(fotos, `plantillas-${modo}-${n}.png`) }); };
+  await p.goto(BASE + "?idioma=es"); await p.waitForFunction(() => window.Corta && document.querySelector(".app"));
+  await p.click(modo === "celular" ? '.barra [data-accion="plantillas"]' : '.lateral [data-accion="plantillas"]');
+  await p.waitForSelector(".galeria-pl");
+  await p.waitForTimeout(700);
+  await foto("1-galeria");
+  await p.click('[data-pl-cat="tutorial"]');
+  const ids = await p.$$eval("[data-ver-pl]:not([data-ver-pl=''])", (els) => els.map((e) => e.dataset.verPl));
+  if (ids.join() !== "receta-rapida,tutorial-3-pasos") falla(`categoría Tutoriales (${modo}): ` + ids.join());
+  await p.click('[data-ver-pl="receta-rapida"]');
+  await p.waitForSelector("[data-elegir-clips]");
+  await p.waitForTimeout(1200);
+  await foto("2-detalle");
+  if (modo === "celular" && (await p.evaluate(() => document.documentElement.scrollWidth)) > 392) falla("el detalle de una plantilla se sale a 390 px");
+  await p.click("[data-elegir-clips]");
+  await p.waitForSelector('[data-pestana="clips"][aria-selected="true"]', { timeout: 4000 }).catch(() => falla(`elegir clips no abrió el proyecto en Clips (${modo})`));
+  const q = await p.evaluate(() => { let r; window.Corta._probar((E) => { r = JSON.parse(JSON.stringify(E.proyectos.find((x) => x.carpeta === E.sel).proyecto)); }); return r; });
+  const ok = q.plantilla?.id === "receta-rapida" && q.plantilla.huecos.length === 5 && q.plantilla.huecos[0].tipo === "foto"
+    && JSON.stringify(q.divisiones) === "[3,6,9,12]" && q.textos.length === 5 && q.textos[0].texto === "Ingredientes"
+    && q.efectos.some((e) => e.efecto === "destello" && e.i === 2.5 && e.f === 3.5) && q.subtitulos.estilo === "caja" && q.fuente.duracion === 15;
+  if (!ok) falla(`el proyecto de la plantilla no quedó bien (${modo}): ` + JSON.stringify({ pl: q.plantilla, d: q.divisiones, t: q.textos, e: q.efectos }).slice(0, 600));
+  const filas = await p.$$eval(".hueco-fila", (els) => els.length);
+  if (filas !== 5) falla(`el panel Clips no muestra los 5 huecos (${modo}): ${filas}`);
+  await p.waitForTimeout(600);
+  await foto("3-clips");
+  // Mover la barra de un hueco de video vuelve a armar ese hueco (aquí, simulado) y queda en el proyecto
+  const barra = await p.$('[data-hueco-desde="1"]');
+  await barra.evaluate((el) => { el.value = 7.5; el.dispatchEvent(new Event("input", { bubbles: true })); el.dispatchEvent(new Event("change", { bubbles: true })); });
+  await p.waitForFunction(() => { let r; window.Corta._probar((E) => { r = !E.armando && E.proyectos.find((x) => x.carpeta === E.sel).proyecto.plantilla.huecos[1].desde === 7.5; }); return r; }, null, { timeout: 3000 })
+    .catch(() => falla(`mover la barra del hueco no cambió desde dónde se usa el clip (${modo})`));
+  // Es un proyecto normal: la línea de tiempo tiene un tramo por hueco y se puede deshacer
+  const tramos = await p.$$eval(".b-tramo", (els) => els.length);
+  if (tramos !== 5) falla(`la línea de tiempo no tiene un tramo por hueco (${modo}): ${tramos}`);
+  if (modo === "celular" && (await p.evaluate(() => document.documentElement.scrollWidth)) > 392) falla("el proyecto de plantilla se sale a 390 px");
+  await p.close();
+}
+if (errores.length === antesPlantillas) console.log("  ✓ Plantillas: categoría, detalle, elegir clips, proyecto con sus huecos, efectos y textos, y mover un hueco (celular y escritorio)");
 
 // 8) Primer uso: lo primero es el idioma, antes que cualquier otra cosa
 for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {

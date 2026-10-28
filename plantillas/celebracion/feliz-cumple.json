@@ -1,0 +1,91 @@
+{
+ "formato": 1,
+ "id": "feliz-cumple",
+ "categoria": "celebracion",
+ "nombre": {
+  "es": "Feliz cumpleaños",
+  "en": "Happy birthday"
+ },
+ "descripcion": {
+  "es": "Seis fotos o clips con destellos y un saludo grande al final.",
+  "en": "Six photos or clips with flashes and a big wish at the end."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "cumple",
+  "saludo",
+  "birthday",
+  "fiesta"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 2,
+   "tipo": "foto",
+   "pista": {
+    "es": "Una foto de la persona",
+    "en": "A photo of them"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "destello"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "destello"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "destello"
+  },
+  {
+   "dur": 2,
+   "tipo": "cualquiera",
+   "transicion": "destello"
+  },
+  {
+   "dur": 3,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "Todos juntos",
+    "en": "Everyone together"
+   },
+   "efectos": [
+    "zoom-golpe"
+   ]
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 0,
+   "texto": {
+    "es": "¡Feliz cumple!",
+    "en": "Happy birthday!"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 5,
+   "texto": {
+    "es": "Que lo pases increíble",
+    "en": "Have an amazing day"
+   },
+   "posicion": 0.72
+  }
+ ],
+ "subtitulos": {
+  "estilo": "neon",
+  "activos": true
+ },
+ "efectos": [
+  "luminoso"
+ ],
+ "musica": {
+  "bpm": 120
+ }
+}

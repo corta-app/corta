@@ -1072,11 +1072,1401 @@
    "archivo": "efectos/transicion/fundido-blanco.json",
    "sha256": "6544ebbefb85c9631468bb70a4ed0aee2403154889b1697d9c688dfcf5a1d4b9",
    "bytes": 463
+  },
+  {
+   "formato": 1,
+   "id": "parpadeo",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Parpadeo",
+    "en": "Blink"
+   },
+   "descripcion": {
+    "es": "Un parpadeo blanco muy corto en cada unión, al ritmo de la música.",
+    "en": "A very short white blink at every join, on the beat."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "ritmo",
+    "beat",
+    "flash"
+   ],
+   "pasos": [
+    {
+     "tipo": "transicion",
+     "duracion": 0.16,
+     "color": "blanco"
+    }
+   ],
+   "archivo": "efectos/transicion/parpadeo.json",
+   "sha256": "34ba1993ec8b0cd352bfed6a69f2f9bfc3afe91dece9e646f8981d205150e707",
+   "bytes": 444
   }
  ],
  "vocabulario": {
   "formato": 1,
   "reemplazos": [],
   "palabras": []
- }
+ },
+ "plantillas": [
+  {
+   "formato": 1,
+   "id": "feliz-cumple",
+   "categoria": "celebracion",
+   "nombre": {
+    "es": "Feliz cumpleaños",
+    "en": "Happy birthday"
+   },
+   "descripcion": {
+    "es": "Seis fotos o clips con destellos y un saludo grande al final.",
+    "en": "Six photos or clips with flashes and a big wish at the end."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cumple",
+    "saludo",
+    "birthday",
+    "fiesta"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 2,
+     "tipo": "foto",
+     "pista": {
+      "es": "Una foto de la persona",
+      "en": "A photo of them"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "destello"
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Todos juntos",
+      "en": "Everyone together"
+     },
+     "efectos": [
+      "zoom-golpe"
+     ]
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "¡Feliz cumple!",
+      "en": "Happy birthday!"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 5,
+     "texto": {
+      "es": "Que lo pases increíble",
+      "en": "Have an amazing day"
+     },
+     "posicion": 0.72
+    }
+   ],
+   "subtitulos": {
+    "estilo": "neon",
+    "activos": true
+   },
+   "efectos": [
+    "luminoso"
+   ],
+   "musica": {
+    "bpm": 120
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "lanzamiento",
+   "categoria": "negocios",
+   "nombre": {
+    "es": "Lanzamiento",
+    "en": "Launch"
+   },
+   "descripcion": {
+    "es": "Cortes rápidos que crecen hasta mostrar lo nuevo. Ideal para anunciar algo.",
+    "en": "Fast cuts building up to the reveal. Great to announce something."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "anuncio",
+    "estreno",
+    "launch",
+    "teaser"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 1,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Un adelanto",
+      "en": "A teaser"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 1,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Otro adelanto",
+      "en": "Another teaser"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 1,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Un detalle",
+      "en": "A detail"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 1.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Casi se ve",
+      "en": "Almost there"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "¡Lo nuevo!",
+      "en": "The new thing!"
+     },
+     "efectos": [
+      "zoom-golpe"
+     ]
+    },
+    {
+     "dur": 3.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Dónde conseguirlo",
+      "en": "Where to get it"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Muy pronto…",
+      "en": "Coming soon…"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 4,
+     "texto": {
+      "es": "Ya está aquí",
+      "en": "It's here"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 5,
+     "texto": {
+      "es": "Link en la descripción",
+      "en": "Link in the description"
+     },
+     "posicion": 0.72
+    }
+   ],
+   "subtitulos": {
+    "estilo": "titular",
+    "activos": true
+   },
+   "efectos": [
+    "contraste"
+   ],
+   "musica": {
+    "bpm": 120
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "pitch-30",
+   "categoria": "negocios",
+   "nombre": {
+    "es": "Pitch en 30 s",
+    "en": "30-second pitch"
+   },
+   "descripcion": {
+    "es": "Problema, solución, cómo funciona, quién lo usa y cómo contactarte. Hablando a cámara.",
+    "en": "Problem, solution, how it works, who uses it and how to reach you. Talking to camera."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "emprender",
+    "startup",
+    "inversión",
+    "pitch"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 4,
+     "tipo": "video",
+     "pista": {
+      "es": "Cuenta el problema",
+      "en": "Tell the problem"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 6,
+     "tipo": "video",
+     "pista": {
+      "es": "Tu solución, a cámara",
+      "en": "Your solution, to camera"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 6,
+     "tipo": "video",
+     "pista": {
+      "es": "Muéstralo funcionando",
+      "en": "Show it working"
+     }
+    },
+    {
+     "dur": 6,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Quién ya lo usa",
+      "en": "Who already uses it"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Un número que impresione",
+      "en": "A number that impresses"
+     },
+     "efectos": [
+      "zoom-golpe"
+     ]
+    },
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "Cómo contactarte",
+      "en": "How to reach you"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "El problema",
+      "en": "The problem"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "La solución",
+      "en": "The solution"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 4,
+     "texto": {
+      "es": "Los números",
+      "en": "The numbers"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 5,
+     "texto": {
+      "es": "Hablemos",
+      "en": "Let's talk"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "caja",
+    "activos": true
+   },
+   "efectos": [
+    "fundido-entrada",
+    "fundido-salida"
+   ],
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "producto-en-15",
+   "categoria": "negocios",
+   "nombre": {
+    "es": "Producto en 15 s",
+    "en": "Product in 15 s"
+   },
+   "descripcion": {
+    "es": "Muestra lo que vendes en seis tomas rápidas, con el precio al final.",
+    "en": "Show what you sell in six quick shots, with the price at the end."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "venta",
+    "tienda",
+    "sale",
+    "shop"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 2.5,
+     "tipo": "video",
+     "pista": {
+      "es": "Tu producto de frente",
+      "en": "Your product, front view"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 2.5,
+     "tipo": "video",
+     "pista": {
+      "es": "Un detalle de cerca",
+      "en": "A close-up detail"
+     },
+     "efectos": [
+      "zoom-lento"
+     ]
+    },
+    {
+     "dur": 2.5,
+     "tipo": "video",
+     "pista": {
+      "es": "Alguien usándolo",
+      "en": "Someone using it"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 2.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Otro ángulo",
+      "en": "Another angle"
+     }
+    },
+    {
+     "dur": 3,
+     "tipo": "foto",
+     "pista": {
+      "es": "El precio o la oferta",
+      "en": "The price or the deal"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Tu logo o tu tienda",
+      "en": "Your logo or your shop"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Nuevo",
+      "en": "New"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 4,
+     "texto": {
+      "es": "Disponible ya",
+      "en": "Available now"
+     },
+     "posicion": 0.7
+    }
+   ],
+   "subtitulos": {
+    "estilo": "pop",
+    "activos": true
+   },
+   "efectos": [
+    "vivido"
+   ],
+   "musica": {
+    "bpm": 120
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "antes-y-despues",
+   "categoria": "presentacion",
+   "nombre": {
+    "es": "Antes y después",
+    "en": "Before and after"
+   },
+   "descripcion": {
+    "es": "El cambio en dos tomas: antes en blanco y negro, después a todo color.",
+    "en": "The change in two shots: before in black and white, after in full color."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cambio",
+    "transformación",
+    "makeover",
+    "resultado"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Cómo estaba antes",
+      "en": "How it was before"
+     },
+     "efectos": [
+      "blanco-y-negro"
+     ],
+     "transicion": "destello"
+    },
+    {
+     "dur": 4,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Cómo quedó",
+      "en": "How it turned out"
+     },
+     "efectos": [
+      "vivido",
+      "zoom-lento"
+     ]
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Un detalle del resultado",
+      "en": "A detail of the result"
+     },
+     "zoom": "alejar"
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Antes",
+      "en": "Before"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "Después",
+      "en": "After"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "titular",
+    "activos": true
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "intro-de-canal",
+   "categoria": "presentacion",
+   "nombre": {
+    "es": "Intro de canal",
+    "en": "Channel intro"
+   },
+   "descripcion": {
+    "es": "Una entrada horizontal de 8 segundos para tus videos largos.",
+    "en": "An 8-second landscape opener for your long videos."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "youtube",
+    "intro",
+    "canal",
+    "channel"
+   ],
+   "proporcion": "16:9",
+   "huecos": [
+    {
+     "dur": 1.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Lo que haces",
+      "en": "What you do"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 1.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Dónde lo haces",
+      "en": "Where you do it"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 1.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Con quién",
+      "en": "Who with"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 3.5,
+     "tipo": "video",
+     "pista": {
+      "es": "Tú saludando",
+      "en": "You saying hi"
+     },
+     "efectos": [
+      "alejar"
+     ]
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 3,
+     "texto": {
+      "es": "Bienvenidos",
+      "en": "Welcome"
+     },
+     "posicion": 0.2
+    }
+   ],
+   "subtitulos": {
+    "estilo": "suave",
+    "activos": true
+   },
+   "efectos": [
+    "fundido-entrada"
+   ],
+   "musica": {
+    "bpm": 100
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "recuerdos-del-mes",
+   "categoria": "recuerdos",
+   "nombre": {
+    "es": "Recuerdos del mes",
+    "en": "Month in memories"
+   },
+   "descripcion": {
+    "es": "Ocho momentos de tu mes, con tonos cálidos y un final que se apaga solo.",
+    "en": "Eight moments of your month, with warm tones and an ending that fades out."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "recap",
+    "resumen",
+    "fotos",
+    "photos"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 2,
+     "tipo": "foto",
+     "pista": {
+      "es": "El primer recuerdo",
+      "en": "The first memory"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 3,
+     "tipo": "foto",
+     "pista": {
+      "es": "El mejor momento",
+      "en": "The best moment"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Este mes",
+      "en": "This month"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 7,
+     "texto": {
+      "es": "Hasta el próximo",
+      "en": "Until next time"
+     },
+     "posicion": 0.7
+    }
+   ],
+   "subtitulos": {
+    "estilo": "suave",
+    "activos": false
+   },
+   "efectos": [
+    "calido",
+    "fundido-salida"
+   ],
+   "musica": {
+    "bpm": 90
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "un-dia-conmigo",
+   "categoria": "recuerdos",
+   "nombre": {
+    "es": "Un día conmigo",
+    "en": "A day with me"
+   },
+   "descripcion": {
+    "es": "Mañana, tarde y noche, cada parte con su luz.",
+    "en": "Morning, afternoon and night, each with its own light."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "vlog",
+    "rutina",
+    "routine",
+    "día"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 4,
+     "tipo": "video",
+     "pista": {
+      "es": "La mañana",
+      "en": "The morning"
+     },
+     "efectos": [
+      "luminoso"
+     ],
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 4,
+     "tipo": "video",
+     "pista": {
+      "es": "La tarde",
+      "en": "The afternoon"
+     },
+     "efectos": [
+      "calido"
+     ],
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 4,
+     "tipo": "video",
+     "pista": {
+      "es": "La noche",
+      "en": "The night"
+     },
+     "efectos": [
+      "frio"
+     ]
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Mañana",
+      "en": "Morning"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "Tarde",
+      "en": "Afternoon"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 2,
+     "texto": {
+      "es": "Noche",
+      "en": "Night"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "pop",
+    "activos": true
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "receta-rapida",
+   "categoria": "tutorial",
+   "nombre": {
+    "es": "Receta rápida",
+    "en": "Quick recipe"
+   },
+   "descripcion": {
+    "es": "Ingredientes, tres pasos y el plato listo, en 15 segundos.",
+    "en": "Ingredients, three steps and the finished dish, in 15 seconds."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cocina",
+    "comida",
+    "cooking",
+    "food"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 3,
+     "tipo": "foto",
+     "pista": {
+      "es": "Los ingredientes",
+      "en": "The ingredients"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "Primer paso",
+      "en": "First step"
+     }
+    },
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "Segundo paso",
+      "en": "Second step"
+     }
+    },
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "Tercer paso",
+      "en": "Third step"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "El plato listo",
+      "en": "The finished dish"
+     },
+     "efectos": [
+      "zoom-lento"
+     ]
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Ingredientes",
+      "en": "Ingredients"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "Paso 1",
+      "en": "Step 1"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 2,
+     "texto": {
+      "es": "Paso 2",
+      "en": "Step 2"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 3,
+     "texto": {
+      "es": "Paso 3",
+      "en": "Step 3"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 4,
+     "texto": {
+      "es": "¡A comer!",
+      "en": "Enjoy!"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "caja",
+    "activos": true
+   },
+   "efectos": [
+    "calido"
+   ],
+   "musica": {
+    "bpm": 110
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "tutorial-3-pasos",
+   "categoria": "tutorial",
+   "nombre": {
+    "es": "Tutorial en 3 pasos",
+    "en": "3-step tutorial"
+   },
+   "descripcion": {
+    "es": "Lo que vas a lograr, tres pasos claros y el resultado. Hablando a cámara.",
+    "en": "What you'll achieve, three clear steps and the result. Talking to camera."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cómo",
+    "how to",
+    "aprender",
+    "guía"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "Lo que vas a lograr",
+      "en": "What you'll achieve"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 5,
+     "tipo": "video",
+     "pista": {
+      "es": "Paso 1",
+      "en": "Step 1"
+     }
+    },
+    {
+     "dur": 5,
+     "tipo": "video",
+     "pista": {
+      "es": "Paso 2",
+      "en": "Step 2"
+     }
+    },
+    {
+     "dur": 5,
+     "tipo": "video",
+     "pista": {
+      "es": "Paso 3",
+      "en": "Step 3"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 4,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "El resultado",
+      "en": "The result"
+     },
+     "efectos": [
+      "zoom-golpe"
+     ]
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "1",
+      "en": "1"
+     },
+     "posicion": 0.12
+    },
+    {
+     "en_hueco": 2,
+     "texto": {
+      "es": "2",
+      "en": "2"
+     },
+     "posicion": 0.12
+    },
+    {
+     "en_hueco": 3,
+     "texto": {
+      "es": "3",
+      "en": "3"
+     },
+     "posicion": 0.12
+    },
+    {
+     "en_hueco": 4,
+     "texto": {
+      "es": "Listo",
+      "en": "Done"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "pop",
+    "activos": true
+   },
+   "origen": "incluida"
+  }
+ ],
+ "catalogo_plantillas": [
+  {
+   "formato": 1,
+   "id": "oferta-del-dia",
+   "categoria": "negocios",
+   "nombre": {
+    "es": "Oferta del día",
+    "en": "Deal of the day"
+   },
+   "descripcion": {
+    "es": "Cuadrado para el feed: el producto, el detalle y el precio con un zoom que llama la atención.",
+    "en": "Square for the feed: the product, the detail and the price with an eye-catching zoom."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "oferta",
+    "descuento",
+    "deal",
+    "sale"
+   ],
+   "proporcion": "1:1",
+   "huecos": [
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "El producto",
+      "en": "The product"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Un detalle",
+      "en": "A detail"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "El precio",
+      "en": "The price"
+     },
+     "efectos": [
+      "zoom-dramatico"
+     ]
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Oferta del día",
+      "en": "Deal of the day"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 2,
+     "texto": {
+      "es": "Solo hoy",
+      "en": "Today only"
+     },
+     "posicion": 0.75
+    }
+   ],
+   "subtitulos": {
+    "estilo": "caja",
+    "activos": true
+   },
+   "efectos": [
+    "vivido"
+   ],
+   "archivo": "plantillas/negocios/oferta-del-dia.json",
+   "sha256": "afdb6fe00804d88d9fc904e7ccc1e95ed8c3d483a7c75874fa3eae190b612fbe",
+   "bytes": 1264
+  },
+  {
+   "formato": 1,
+   "id": "mi-mascota",
+   "categoria": "recuerdos",
+   "nombre": {
+    "es": "Mi mascota",
+    "en": "My pet"
+   },
+   "descripcion": {
+    "es": "Cinco momentos de tu mascota en tonos suaves, para el feed.",
+    "en": "Five moments of your pet in soft tones, for the feed."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "perro",
+    "gato",
+    "dog",
+    "cat"
+   ],
+   "proporcion": "4:5",
+   "huecos": [
+    {
+     "dur": 2.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Su cara",
+      "en": "Their face"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "video",
+     "pista": {
+      "es": "Jugando",
+      "en": "Playing"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Durmiendo",
+      "en": "Sleeping"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 2,
+     "tipo": "video",
+     "pista": {
+      "es": "Comiendo",
+      "en": "Eating"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 3,
+     "tipo": "foto",
+     "pista": {
+      "es": "Su mejor foto",
+      "en": "Their best photo"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 4,
+     "texto": {
+      "es": "Mi mejor amigo",
+      "en": "My best friend"
+     },
+     "posicion": 0.75
+    }
+   ],
+   "subtitulos": {
+    "estilo": "suave",
+    "activos": false
+   },
+   "efectos": [
+    "pastel"
+   ],
+   "musica": {
+    "bpm": 95
+   },
+   "archivo": "plantillas/recuerdos/mi-mascota.json",
+   "sha256": "e1dd9aa77c31c8cad1bc67e43d8a11bbc78bd1d41eacf960011dd99084f6f720",
+   "bytes": 1341
+  },
+  {
+   "formato": 1,
+   "id": "pelicula-de-viaje",
+   "categoria": "recuerdos",
+   "nombre": {
+    "es": "Película de viaje",
+    "en": "Travel film"
+   },
+   "descripcion": {
+    "es": "Horizontal y con aire de cine: llegada, paseo y despedida.",
+    "en": "Landscape with a film look: arrival, wandering and goodbye."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "viaje",
+    "cine",
+    "travel",
+    "film"
+   ],
+   "proporcion": "16:9",
+   "huecos": [
+    {
+     "dur": 4,
+     "tipo": "video",
+     "pista": {
+      "es": "La llegada",
+      "en": "Arriving"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Un lugar",
+      "en": "A place"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "Otro lugar",
+      "en": "Another place"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "La comida",
+      "en": "The food"
+     },
+     "transicion": "transicion-negro"
+    },
+    {
+     "dur": 4,
+     "tipo": "video",
+     "pista": {
+      "es": "La despedida",
+      "en": "Saying goodbye"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "El viaje",
+      "en": "The trip"
+     },
+     "posicion": 0.82
+    }
+   ],
+   "subtitulos": {
+    "estilo": "suave",
+    "activos": true
+   },
+   "efectos": [
+    "pelicula",
+    "fundido-entrada",
+    "fundido-salida"
+   ],
+   "musica": {
+    "bpm": 80
+   },
+   "archivo": "plantillas/recuerdos/pelicula-de-viaje.json",
+   "sha256": "96ad3e76eb549a16f2927e2937d8ee53db3d2b9475a4c9a3d4182359575c8562",
+   "bytes": 1413
+  },
+  {
+   "formato": 1,
+   "id": "verano-en-fotos",
+   "categoria": "recuerdos",
+   "nombre": {
+    "es": "Verano en fotos",
+    "en": "Summer in photos"
+   },
+   "descripcion": {
+    "es": "Seis fotos al ritmo, con colores de verano y un parpadeo en cada cambio.",
+    "en": "Six photos on the beat, with summer colors and a blink at every change."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "vacaciones",
+    "playa",
+    "summer",
+    "holiday"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 1.5,
+     "tipo": "foto",
+     "pista": {
+      "es": "La primera foto",
+      "en": "The first photo"
+     },
+     "transicion": "parpadeo"
+    },
+    {
+     "dur": 1.5,
+     "tipo": "foto",
+     "transicion": "parpadeo"
+    },
+    {
+     "dur": 1.5,
+     "tipo": "foto",
+     "transicion": "parpadeo"
+    },
+    {
+     "dur": 1.5,
+     "tipo": "foto",
+     "transicion": "parpadeo"
+    },
+    {
+     "dur": 1.5,
+     "tipo": "foto",
+     "transicion": "parpadeo"
+    },
+    {
+     "dur": 2.5,
+     "tipo": "foto",
+     "pista": {
+      "es": "La mejor",
+      "en": "The best one"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 0,
+     "texto": {
+      "es": "Verano",
+      "en": "Summer"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "titular",
+    "activos": false
+   },
+   "efectos": [
+    "verano",
+    "fundido-salida"
+   ],
+   "musica": {
+    "bpm": 120
+   },
+   "archivo": "plantillas/recuerdos/verano-en-fotos.json",
+   "sha256": "18ed62fc9e78f7b26c43861747e78bf1e904be8cc3f404cf48c68a9c18e51568",
+   "bytes": 1264
+  }
+ ]
 }
