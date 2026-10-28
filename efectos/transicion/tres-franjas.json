@@ -1,0 +1,27 @@
+{
+ "formato": 1,
+ "id": "tres-franjas",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Tres franjas",
+  "en": "Three strips"
+ },
+ "descripcion": {
+  "es": "La imagen se parte en tres columnas que salen y entran con el clip siguiente.",
+  "en": "The picture splits into three columns that slide out and back in with the next clip."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "split",
+  "columnas",
+  "columns"
+ ],
+ "pasos": [
+  {
+   "tipo": "franjas",
+   "duracion": 0.6,
+   "franjas": 3,
+   "direccion": "vertical"
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "persiana",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Persiana",
+  "en": "Blinds"
+ },
+ "descripcion": {
+  "es": "Dos franjas horizontales que se cruzan en el corte.",
+  "en": "Two horizontal strips that cross at the cut."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "split",
+  "horizontal"
+ ],
+ "pasos": [
+  {
+   "tipo": "franjas",
+   "duracion": 0.5,
+   "franjas": 2,
+   "direccion": "horizontal"
+  }
+ ]
+}

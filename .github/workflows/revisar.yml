@@ -39,6 +39,8 @@ jobs:
           "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
           mkdir -p capturas
           PLAYWRIGHT="$RUNNER_TEMP/pw/node_modules/playwright" CAPTURAS=capturas node pruebas/interfaz.mjs
+          # Transiciones: vista previa ↔ exportado (sin H.264 en este Chromium solo revisa que exporten y cuánto tardan).
+          PLAYWRIGHT="$RUNNER_TEMP/pw/node_modules/playwright" node pruebas/transiciones.mjs
       - name: Capturas para revisar a ojo
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

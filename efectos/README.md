@@ -41,6 +41,24 @@ Aquí están los incluidos en la app, uno por archivo en la carpeta de su catego
 | `fundido` | `entrada`, `salida` 0–3 s · `color` `negro` o `blanco` | capa de color | capa `color` + `geq` + `overlay` |
 | `transicion` | `duracion` 0,1–1,5 s · `color` `negro` o `blanco` | un pestañeo en cada corte del tramo | igual, en cada unión |
 
+### Transiciones
+Van en cada **unión** del tramo (un corte o una división; en una plantilla, donde pasa de un clip al siguiente), centradas en ella y
+de `duracion` 0,1–1 s. Funcionan con un solo video: lo que sale antes de la unión es el clip que termina y lo que entra después, el
+siguiente. La vista previa las dibuja igual que ffmpeg (`pintarPasos` en `ui/app.js`, con la misma lógica de tiempos que
+`bin/efectos.py`) y `pruebas/transiciones.mjs` compara cuadros de la vista previa con cuadros exportados de verdad.
+
+| `tipo` | Campos | Qué hace | Exportación (ffmpeg) |
+|---|---|---|---|
+| `interferencia` | `intensidad` 0,1–1 | glitch: dos franjas de la imagen saltan de lado y el rojo y el azul se corren (al azar, pero siempre igual) | solo en los cuadros de la ventana: `split`, `trim`, `crop`, `overlay`, `rgbashift`, `tpad` |
+| `destello` | `color` `#RRGGBB` · `intensidad` 0,1–1 (opacidad) · `exposicion` 0–1 | un destello de color que sube la exposición | capa de color + `eq` (brillo multiplicado, sin pasar a RGB) |
+| `franjas` | `franjas` 2 o 3 · `direccion` `vertical` u `horizontal` | la imagen se parte; cada franja sale en sentido contrario a su vecina y entra ya con el clip siguiente | `split`, `crop` y `overlay` sobre negro |
+| `rebote` | `intensidad` 0,1–1 | la escala crece hasta el corte y rebota | `perspective` |
+| `barrido` | `direccion` `izquierda`, `derecha`, `arriba` o `abajo` · `desenfoque` 0–1 | la imagen se desliza (con estela) y entra la siguiente | `split` + dos `overlay` + `gblur` en un solo sentido |
+| `zoom_paso` | `intensidad` 0,1–1 · `desenfoque` 0–1 | un acercamiento rápido que cruza el corte y se abre en el clip siguiente | `perspective` + `gblur` |
+
+Fuera de su ventana, una transición no hace trabajo: los filtros llevan `enable` y lo caro (pasar a RGB para `rgbashift`) corre solo
+en los cuadros de la ventana. Exportar 8 s a 1080×1920 con una transición en dos uniones cuesta casi lo mismo que sin ella.
+
 Un efecto se aplica a todo el video o a un tramo (palabras elegidas o un tramo de la línea de tiempo). Pasa después de unir las
 piezas y antes de los subtítulos: los subtítulos nunca se desenfocan ni se mueven.
 

@@ -26,7 +26,7 @@
     "es": "Un adelanto",
     "en": "A teaser"
    },
-   "transicion": "destello"
+   "transicion": "zoom-de-paso"
   },
   {
    "dur": 1,
@@ -35,7 +35,7 @@
     "es": "Otro adelanto",
     "en": "Another teaser"
    },
-   "transicion": "destello"
+   "transicion": "latigazo"
   },
   {
    "dur": 1,
@@ -44,7 +44,7 @@
     "es": "Un detalle",
     "en": "A detail"
    },
-   "transicion": "destello"
+   "transicion": "zoom-de-paso"
   },
   {
    "dur": 1.5,
@@ -53,7 +53,7 @@
     "es": "Casi se ve",
     "en": "Almost there"
    },
-   "transicion": "destello"
+   "transicion": "fogonazo"
   },
   {
    "dur": 3,

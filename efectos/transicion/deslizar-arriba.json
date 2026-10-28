@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "deslizar-arriba",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Deslizar arriba",
+  "en": "Slide up"
+ },
+ "descripcion": {
+  "es": "La imagen sube y entra la siguiente desde abajo.",
+  "en": "The picture slides up and the next one comes in from below."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "slide",
+  "vertical"
+ ],
+ "pasos": [
+  {
+   "tipo": "barrido",
+   "duracion": 0.45,
+   "direccion": "arriba",
+   "desenfoque": 0.35
+  }
+ ]
+}

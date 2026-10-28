@@ -30,7 +30,7 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`, solo datos) y `README.md` con el formato. Las de la comunidad, en `corta-catalogo/plantillas/`. |
 | `ui/` | Interfaz única (`app.js`, `app.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros) + `demo/foto-1.jpg`, `demo/foto-2.jpg` (dibujos para llenar plantillas; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
 | `docs/` | Página pública (GitHub Pages); `pagina.yml` publica también `ui/` en `/demo/`. |
-| `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `contrato.py` (interfaz ↔ `Ventana.swift`), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
+| `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `transiciones.mjs` (vista previa ↔ exportado, con `cuadros_transiciones.py`), `contrato.py` (interfaz ↔ `Ventana.swift`), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
 | `herramientas/` | `generar_demo.py` (Pillow, solo para desarrollo), `imagenes.mjs` (capturas de la página), `generar_icono.mjs` (ícono de la app de Mac), `empaquetar.sh` (arma la app de Mac), `revisar_privacidad.sh`. |
 
 ## Reglas de la lógica compartida
@@ -56,7 +56,14 @@ las palabras que quedan (`tramosVoz`, `cuantoBaja`), imitando el sidechain que f
 `intervalos_salida`, `uniones`, `segmentos_zoom`, `segmentos_capa` y `valor_en` existen igual en `ui/app.js` (casos «efectos»). La vista
 previa usa filtros de CSS (`cssColor`) y ffmpeg las mismas matrices (`matriz_color`); `pruebas/casos.json` («efectos.color») compara
 lo que dibuja Chromium con lo que sale de ffmpeg. Lista blanca de filtros: `colorchannelmixer`, `lutrgb`, `gblur`, `perspective`,
-`color`, `format`, `geq`, `scale`, `setsar`, `overlay` (la prueba `Efectos.test_cadena_solo_lista_blanca` lo revisa). Nada del JSON
+`color`, `format`, `geq`, `scale`, `setsar`, `overlay`, `split`, `crop`, `rgbashift`, `eq`, `trim`, `setpts`, `tpad` (la prueba
+`Efectos.test_cadena_solo_lista_blanca` lo revisa).
+**Transiciones** (pasos de `efecto_formato.TRANSICIONES`: `transicion`, `interferencia`, `destello`, `franjas`, `rebote`, `barrido`,
+`zoom_paso`): van en cada unión, en su ventana (`ventanas`); `segmentos_paso`, `segmentos_exposicion`, `cortes_interferencia` (al azar
+repetible, Park–Miller) existen igual en `ui/app.js` (casos «efectos.transiciones»). Lo que mueve la imagen lo dibuja la vista previa en
+el lienzo `#paso-fx` dentro de la capa del zoom (`pintarPasos`); `pruebas/transiciones.mjs` compara la vista previa con cuadros
+exportados de verdad (`pruebas/cuadros_transiciones.py`) y mide cuánto cuesta exportar. Una transición no trabaja fuera de su ventana
+(`enable`; la interferencia corre en una rama con solo esos cuadros: `trim` por número de cuadro + `tpad`). Nada del JSON
 llega como texto a ffmpeg: solo números formateados por el código. En el proyecto, `efectos` guarda los pasos copiados.
 **Cortes en la línea de tiempo:** `divisiones` (para elegir tramos, `tramosEdicion`; al exportar no cortan, pero `uniones` las cuenta:
 una transición pestañea ahí como en un corte), «Dividir» (⌘B) en el cabezal, y un tramo

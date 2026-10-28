@@ -137,6 +137,16 @@ navegador.newPage = async (opciones) => {
       if (!igual(P.segmentosCapa(x.paso, x.a, x.b, x.juntas, x.pedazos), x.esperado)) m.push("segmentosCapa " + JSON.stringify(P.segmentosCapa(x.paso, x.a, x.b, x.juntas, x.pedazos)));
       for (const [t, v] of x.valores) if (P.valorEn(x.esperado, t, 0) !== v) m.push(`valorEn capa ${t}: ${P.valorEn(x.esperado, t, 0)}`);
     }
+    for (const x of fx.transiciones) {
+      const t = x.paso.tipo, neutro = t === "rebote" || t === "zoom_paso" ? 1 : 0;
+      if (!igual(P.ventanasPaso(x.paso, x.juntas), x.ventanas)) m.push(`ventanasPaso ${t} ` + JSON.stringify(P.ventanasPaso(x.paso, x.juntas)));
+      if (!igual(P.ventanasPaso(x.paso, x.juntas, 0.5), x.centro)) m.push(`ventanasPaso (centro) ${t}`);
+      if (!igual(P.segmentosPaso(x.paso, x.juntas), x.segmentos)) m.push(`segmentosPaso ${t} ` + JSON.stringify(P.segmentosPaso(x.paso, x.juntas)));
+      if (x.exposicion && !igual(P.segmentosExposicion(x.paso, x.juntas), x.exposicion)) m.push("segmentosExposicion " + JSON.stringify(P.segmentosExposicion(x.paso, x.juntas)));
+      if (x.interferencia && !igual(P.cortesInterferencia(x.paso, x.juntas), x.interferencia)) m.push("cortesInterferencia " + JSON.stringify(P.cortesInterferencia(x.paso, x.juntas)));
+      if (x.franjas && !igual(P.franjasInterferencia(x.paso), x.franjas)) m.push("franjasInterferencia " + JSON.stringify(P.franjasInterferencia(x.paso)));
+      for (const [tt, v] of x.valores || []) if (P.valorEn(x.segmentos, tt, neutro) !== v) m.push(`valorEn ${t} ${tt}: ${P.valorEn(x.segmentos, tt, neutro)}`);
+    }
     const pc = c.plantillas;
     for (const x of pc.llenar) { const r = P.llenar(x.huecos, x.clips); if (!igual(r, x.esperado)) m.push("llenar " + JSON.stringify(r)); }
     for (const x of pc.aplicar) { const r = P.aplicarPlantilla(x.plantilla, x.tipos, x.idioma, pc.efectos, x.estilos); if (!igual(r, x.esperado)) m.push("aplicarPlantilla " + JSON.stringify(r)); }

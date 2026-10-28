@@ -352,10 +352,19 @@ class Efectos(unittest.TestCase):
             {**bueno, "id": "../calido"},
             {**bueno, "categoria": "sonido"},
             {**bueno, "autor": "a\u2028b"},
+            {**bueno, "pasos": [{"tipo": "franjas", "duracion": 0.5, "franjas": 2.5}]},
+            {**bueno, "pasos": [{"tipo": "franjas", "duracion": 0.5, "franjas": 4}]},
+            {**bueno, "pasos": [{"tipo": "barrido", "duracion": 0.5, "direccion": "diagonal"}]},
+            {**bueno, "pasos": [{"tipo": "interferencia", "duracion": 1.2}]},
+            {**bueno, "pasos": [{"tipo": "interferencia", "intensidad": 0.5}]},
+            {**bueno, "pasos": [{"tipo": "destello", "duracion": 0.3, "color": "white"}]},
+            {**bueno, "pasos": [{"tipo": "zoom_paso", "duracion": 0.3, "desenfoque": 2}]},
+            {**bueno, "pasos": [{"tipo": "rebote", "duracion": 0.3, "filtro": "rgbashift=rh=9"}]},
         ]
         for m in malos:
             self.assertTrue(efecto_formato.validar_efecto(m), m)
         self.assertTrue(efecto_formato.validar_efecto(bueno, "efectos/color/otro.json"), "el archivo se llama <id>.json")
+        self.assertEqual(efecto_formato.validar_pasos([{"tipo": "franjas", "duracion": 0.5, "franjas": 2.0}]), [], "un entero escrito 2.0 vale")
 
     def test_casos(self):
         c = CASOS["efectos"]
@@ -369,6 +378,20 @@ class Efectos(unittest.TestCase):
         for x in c["capa"]:
             self.assertEqual(efectos.segmentos_capa(x["paso"], x["a"], x["b"], x["juntas"], x["pedazos"]), x["esperado"])
             self.assertEqual([[t, efectos.valor_en(x["esperado"], t, 0)] for t, _ in x["valores"]], x["valores"])
+        for x in c["transiciones"]:
+            paso, juntas = x["paso"], x["juntas"]
+            self.assertEqual(efecto_formato.validar_pasos([paso]), [], paso)
+            self.assertEqual(efectos.ventanas(paso, juntas), x["ventanas"], paso)
+            self.assertEqual(efectos.ventanas(paso, juntas, 0.5), x["centro"], paso)
+            self.assertEqual(efectos.segmentos_paso(paso, juntas), x["segmentos"], paso)
+            if "exposicion" in x:
+                self.assertEqual(efectos.segmentos_exposicion(paso, juntas), x["exposicion"])
+            if "interferencia" in x:
+                self.assertEqual(efectos.cortes_interferencia(paso, juntas), x["interferencia"])
+                self.assertEqual(list(efectos.franjas_interferencia(paso)), x["franjas"])
+            neutro = 1 if paso["tipo"] in ("rebote", "zoom_paso") else 0
+            for t, v in x.get("valores", []):
+                self.assertEqual(efectos.valor_en(x["segmentos"], t, neutro), v, (paso["tipo"], t))
 
     def test_color_igual_que_css(self):
         # Los filtros de color en ffmpeg dan los mismos colores que los filtros de CSS de la vista previa (casos «efectos.color»,
@@ -391,7 +414,8 @@ class Efectos(unittest.TestCase):
         self.assertEqual(proyecto.validar(p), [])
         partes, salida = efectos.cadena(p, 1080, 1920)
         import re
-        permitidos = {"colorchannelmixer", "lutrgb", "gblur", "perspective", "color", "format", "geq", "scale", "setsar", "overlay"}
+        permitidos = {"colorchannelmixer", "lutrgb", "gblur", "perspective", "color", "format", "geq", "scale", "setsar", "overlay",
+                      "split", "crop", "rgbashift", "eq", "trim", "setpts", "tpad"}
         for parte in partes:
             sin_comillas = re.sub(r"'[^']*'", "''", parte)
             for filtro in re.split(r"[,;]", re.sub(r"\[[^\]]*\]", "", sin_comillas)):
@@ -402,6 +426,47 @@ class Efectos(unittest.TestCase):
         p["efectos"] = [{"efecto": "x", "pasos": [{"tipo": "color", "brillo": "1:enable=0"}]}]
         self.assertTrue(proyecto.validar(p), "un proyecto con pasos inválidos no se guarda")
         self.assertEqual(efectos.cadena(p, 1080, 1920)[0], [], "y si llega igual, no se exporta")
+
+    def test_transiciones_exportan(self):
+        # Cada transición nueva exporta de verdad (ffmpeg) en un corte y en una división: dura lo mismo, cambia la imagen solo cerca
+        # de la unión y lo de afuera queda igual que sin transición.
+        carpeta = proyecto_de_prueba()
+        p = proyecto.cargar(carpeta)
+        p["lienzo"], p["subtitulos"]["activos"] = "9:16", False
+        p["cortes"] = [{"i": 1.5, "f": 2.5, "motivo": "manual"}, {"i": 5, "f": 9, "motivo": "manual"}]
+        p["divisiones"] = [4]   # uniones en 1,5 (corte) y 3 (división) del video exportado, que dura 4 s
+
+        def exportar(pasos):
+            p["efectos"] = [{"efecto": "prueba", "pasos": pasos}] if pasos else []
+            proyecto.guardar(carpeta, p)
+            r = correr("render.py", carpeta)
+            self.assertTrue(r["ok"], r)
+            dur = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", r["archivo"]],
+                                       capture_output=True, text=True).stdout)
+            self.assertAlmostEqual(dur, 4, delta=0.1, msg=pasos)
+            cuadros = subprocess.run(["ffmpeg", "-v", "error", "-i", r["archivo"], "-vf", "scale=27:48,format=rgb24", "-f", "rawvideo", "-"],
+                                     capture_output=True).stdout
+            return [cuadros[k:k + 27 * 48 * 3] for k in range(0, len(cuadros), 27 * 48 * 3)]
+
+        def dif(a, b):
+            return sum(abs(x - y) for x, y in zip(a, b)) / len(a)
+
+        base = exportar(None)
+        for paso in ({"tipo": "interferencia", "duracion": 0.4, "intensidad": 0.8},
+                     {"tipo": "destello", "duracion": 0.4, "color": "#FFC46B", "intensidad": 0.8, "exposicion": 0.6},
+                     {"tipo": "franjas", "duracion": 0.6, "franjas": 3, "direccion": "vertical"},
+                     {"tipo": "franjas", "duracion": 0.6, "franjas": 2, "direccion": "horizontal"},
+                     {"tipo": "rebote", "duracion": 0.6, "intensidad": 1},
+                     {"tipo": "barrido", "duracion": 0.6, "direccion": "izquierda", "desenfoque": 0.6},
+                     {"tipo": "barrido", "duracion": 0.6, "direccion": "arriba"},
+                     {"tipo": "zoom_paso", "duracion": 0.6, "intensidad": 0.8, "desenfoque": 0.5}):
+            cuadros = exportar([paso])
+            self.assertEqual(len(cuadros), len(base), paso)
+            for union in (1.5, 3):
+                cerca = max(dif(cuadros[k], base[k]) for k in range(round((union - 0.15) * 30), round((union + 0.15) * 30)))
+                self.assertGreater(cerca, 4, f"{paso['tipo']}: no se nota en la unión de {union} s")
+            for k in [*range(0, 30), *range(70, 75), *range(105, 120)]:
+                self.assertLess(dif(cuadros[k], base[k]), 1.5, f"{paso['tipo']}: cambió el cuadro {k}, lejos de las uniones")
 
     def test_exportar_con_efectos(self):
         carpeta = proyecto_de_prueba()
@@ -532,6 +597,11 @@ class Plantillas(unittest.TestCase):
         self.assertTrue(errores([{"dur": 2, "tipo": "video", "transicion": "calido"}, {"dur": 2, "tipo": "video"}]))
         self.assertTrue(errores([{"dur": 2, "tipo": "video", "efectos": ["destello"]}]), "una transición no va en efectos del hueco")
         self.assertTrue(errores([{"dur": 2, "tipo": "video"}], subtitulos={"estilo": "no-existe"}))
+        for t in ("interferencia", "fogonazo", "tres-franjas", "rebote", "latido", "barrido", "zoom-de-paso"):
+            self.assertEqual(errores([{"dur": 2, "tipo": "video", "transicion": t}, {"dur": 2, "tipo": "foto"}]), [], f"«{t}» es transición entre clips")
+        mezcla = {**tipos, "raro": ("transicion", ("barrido", "fundido"))}
+        d = {**base, "huecos": [{"dur": 2, "tipo": "video", "transicion": "raro"}, {"dur": 2, "tipo": "foto"}]}
+        self.assertTrue(plantilla_formato.referencias(d, mezcla, plantilla_formato.ESTILOS_INCLUIDOS), "con un fundido ya no es solo transición")
 
     def test_casos(self):
         c = CASOS["plantillas"]

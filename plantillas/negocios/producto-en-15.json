@@ -26,7 +26,7 @@
     "es": "Tu producto de frente",
     "en": "Your product, front view"
    },
-   "transicion": "destello"
+   "transicion": "barrido"
   },
   {
    "dur": 2.5,
@@ -46,7 +46,7 @@
     "es": "Alguien usándolo",
     "en": "Someone using it"
    },
-   "transicion": "destello"
+   "transicion": "barrido"
   },
   {
    "dur": 2.5,

@@ -26,7 +26,7 @@
     "es": "Lo que haces",
     "en": "What you do"
    },
-   "transicion": "transicion-negro"
+   "transicion": "interferencia"
   },
   {
    "dur": 1.5,
@@ -35,7 +35,7 @@
     "es": "Dónde lo haces",
     "en": "Where you do it"
    },
-   "transicion": "transicion-negro"
+   "transicion": "interferencia"
   },
   {
    "dur": 1.5,
@@ -44,7 +44,7 @@
     "es": "Con quién",
     "en": "Who with"
    },
-   "transicion": "transicion-negro"
+   "transicion": "interferencia"
   },
   {
    "dur": 3.5,

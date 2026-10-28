@@ -1,0 +1,27 @@
+{
+ "formato": 1,
+ "id": "latigazo",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Latigazo",
+  "en": "Whip pan"
+ },
+ "descripcion": {
+  "es": "Un barrido muy rápido a la derecha, con mucha estela.",
+  "en": "A very fast swipe to the right with a strong motion trail."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "whip",
+  "rápido",
+  "fast"
+ ],
+ "pasos": [
+  {
+   "tipo": "barrido",
+   "duracion": 0.3,
+   "direccion": "derecha",
+   "desenfoque": 1
+  }
+ ]
+}

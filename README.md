@@ -25,7 +25,8 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 - **Dile a tu IA lo que quieres:** «pon zoom cuando digo el precio», «saca la parte donde me equivoco», «pon un título al inicio».
 - **Shorts desde un video largo:** tu IA elige los mejores momentos de una clase, un podcast o un live, y cada uno queda como un video nuevo.
 - **Cortes, efectos y filtros:** divide en el cabezal, borra o recorta un tramo, y ponle a todo el video o a un momento un filtro
-  (blanco y negro, cálido, vintage…), un zoom o una transición. Los efectos son archivos simples: la comunidad crea más en el
+  (blanco y negro, cálido, vintage…), un zoom o una transición en cada corte: interferencia, destello, franjas, rebote, barrido o
+  zoom de paso, con la misma imagen en la vista previa y al exportar. Los efectos son archivos simples: la comunidad crea más en el
   [catálogo](https://github.com/corta-app/corta-catalogo) y los descargas gratis desde la app, ordenados por categoría.
 - **Plantillas:** elige una (presentación de producto, pitch en 30 s, antes y después, recuerdos del mes, receta rápida…), pon tus
   clips o fotos y se arma sola, con sus cortes, transiciones, efectos y textos. Después la retocas como cualquier video. La comunidad
@@ -133,8 +134,9 @@ landscape footage to vertical, and lets your own AI (Claude Code, Codex or Gemin
 or pick the best moments of a long video as new Shorts. Add background music that ducks itself under your voice and fine-tune cuts,
 zooms and text on a multi-track timeline. Videos never leave your computer, there's no watermark, and the project is a
 plain open JSON file. Caption styles are data-only files anyone can create. Fix any caption word in place (Corta remembers your
-brand names for future videos), split and trim segments, and add filters, zooms and transitions to the whole video or one moment;
-the community shares more effects in the [catalog](https://github.com/corta-app/corta-catalogo), downloadable for free from the app.
+brand names for future videos), split and trim segments, and add filters, zooms and transitions (glitch, flash, split, bounce,
+swipe, zoom through) to the whole video or one moment; the community shares more effects in the
+[catalog](https://github.com/corta-app/corta-catalogo), downloadable for free from the app.
 **Templates:** pick one (product showcase, 30-second pitch, before and after, month in memories, quick recipe…), add your clips or
 photos and it builds itself with its cuts, transitions, effects and texts; then edit it like any other video. Templates are data-only
 JSON too, and the community shares more by category in the catalog.

@@ -1,0 +1,33 @@
+{
+ "formato": 1,
+ "id": "latido",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Latido",
+  "en": "Heartbeat"
+ },
+ "descripcion": {
+  "es": "Un rebote corto con un brillo suave, al ritmo de la música.",
+  "en": "A short bounce with a soft glow, on the beat."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "beat",
+  "ritmo",
+  "pulso"
+ ],
+ "pasos": [
+  {
+   "tipo": "rebote",
+   "duracion": 0.35,
+   "intensidad": 0.35
+  },
+  {
+   "tipo": "destello",
+   "duracion": 0.2,
+   "color": "#FFFFFF",
+   "intensidad": 0.25,
+   "exposicion": 0.3
+  }
+ ]
+}

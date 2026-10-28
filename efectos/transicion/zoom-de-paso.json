@@ -1,0 +1,27 @@
+{
+ "formato": 1,
+ "id": "zoom-de-paso",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Zoom de paso",
+  "en": "Zoom through"
+ },
+ "descripcion": {
+  "es": "Un acercamiento rápido que cruza el corte y se abre en el clip siguiente.",
+  "en": "A quick zoom that crosses the cut and opens on the next clip."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "zoom",
+  "empuje",
+  "push"
+ ],
+ "pasos": [
+  {
+   "tipo": "zoom_paso",
+   "duracion": 0.5,
+   "intensidad": 0.6,
+   "desenfoque": 0.4
+  }
+ ]
+}

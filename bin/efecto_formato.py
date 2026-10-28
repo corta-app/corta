@@ -40,6 +40,13 @@ MAX_PASOS = 4
 #   zoom        de «desde» a «hasta» durante el tramo: lineal, suave (acelera y frena) o golpe (llega en 0,15 s y se queda)
 #   fundido     desde/hacia un color al empezar (entrada) y al terminar (salida) el tramo, en segundos
 #   transicion  un pestañeo a un color en cada corte dentro del tramo, de esa duración en segundos
+# Transiciones en cada corte o división del tramo (centradas en la unión, de `duracion` segundos):
+#   interferencia  la imagen se descompone: canales de color corridos y franjas que saltan de lado (glitch)
+#   destello       un destello de color (`intensidad` = opacidad máxima) que además sube la exposición
+#   franjas        la imagen se parte en 2 o 3 franjas que salen en sentidos opuestos y entran ya con el clip siguiente
+#   rebote         la escala crece hasta el corte y rebota al volver
+#   barrido        la imagen se desliza (con su estela de movimiento si `desenfoque` > 0) y entra el clip siguiente
+#   zoom_paso      un acercamiento rápido que cruza el corte y se abre ya en el clip siguiente
 TIPOS = {
     "color": {"brillo": (0.5, 1.5), "contraste": (0.5, 2), "saturacion": (0, 2), "tono": (-180, 180), "sepia": (0, 1), "grises": (0, 1)},
     "tinte": {"color": "hex", "fuerza": (0.02, 0.5)},
@@ -48,10 +55,20 @@ TIPOS = {
     "zoom": {"desde": (1, 1.6), "hasta": (1, 1.6), "curva": ("lineal", "suave", "golpe")},
     "fundido": {"entrada": (0, 3), "salida": (0, 3), "color": ("negro", "blanco")},
     "transicion": {"duracion": (0.1, 1.5), "color": ("negro", "blanco")},
+    "interferencia": {"duracion": (0.1, 1), "intensidad": (0.1, 1)},
+    "destello": {"duracion": (0.1, 1), "color": "hex", "intensidad": (0.1, 1), "exposicion": (0, 1)},
+    "franjas": {"duracion": (0.1, 1), "franjas": (2, 3), "direccion": ("vertical", "horizontal")},
+    "rebote": {"duracion": (0.1, 1), "intensidad": (0.1, 1)},
+    "barrido": {"duracion": (0.1, 1), "direccion": ("izquierda", "derecha", "arriba", "abajo"), "desenfoque": (0, 1)},
+    "zoom_paso": {"duracion": (0.1, 1), "intensidad": (0.1, 1), "desenfoque": (0, 1)},
 }
+#: Los pasos que van en las uniones (cortes y divisiones): una plantilla solo acepta estos como «transicion» entre huecos.
+TRANSICIONES = ("transicion", "interferencia", "destello", "franjas", "rebote", "barrido", "zoom_paso")
+#: Campos que son números enteros.
+ENTEROS = {"franjas"}
 #: Campos que cada tipo necesita (los demás son opcionales).
 OBLIGATORIOS = {"tinte": {"color", "fuerza"}, "desenfoque": {"radio"}, "vineta": {"fuerza"}, "zoom": {"desde", "hasta"},
-                "transicion": {"duracion"}}
+                "transicion": {"duracion"}, **{t: {"duracion"} for t in TRANSICIONES[1:]}}
 
 
 def _numero(v):
@@ -88,10 +105,10 @@ def validar_pasos(pasos):
             elif isinstance(regla[0], str):
                 ok = v in regla
             else:
-                ok = _numero(v) and regla[0] <= v <= regla[1]
+                ok = _numero(v) and regla[0] <= v <= regla[1] and (campo not in ENTEROS or v == int(v))
             if not ok:
                 e.append(f"{donde}.{campo}: " + ("color #RRGGBB" if regla == "hex" else " o ".join(regla) if isinstance(regla[0], str)
-                                                 else f"número de {regla[0]} a {regla[1]}") + ".")
+                                                 else f"{'entero' if campo in ENTEROS else 'número'} de {regla[0]} a {regla[1]}") + ".")
         if paso["tipo"] == "fundido" and not (paso.get("entrada", 0) or paso.get("salida", 0)):
             e.append(f"{donde}: entrada o salida mayor que 0.")
     return e

@@ -7,8 +7,8 @@
   "en": "Happy birthday"
  },
  "descripcion": {
-  "es": "Seis fotos o clips con destellos y un saludo grande al final.",
-  "en": "Six photos or clips with flashes and a big wish at the end."
+  "es": "Seis fotos o clips al ritmo, con latidos y un saludo grande al final.",
+  "en": "Six photos or clips on the beat, with bounces and a big wish at the end."
  },
  "autor": "Corta",
  "etiquetas": [
@@ -26,27 +26,27 @@
     "es": "Una foto de la persona",
     "en": "A photo of them"
    },
-   "transicion": "destello"
+   "transicion": "latido"
   },
   {
    "dur": 2,
    "tipo": "cualquiera",
-   "transicion": "destello"
+   "transicion": "latido"
   },
   {
    "dur": 2,
    "tipo": "cualquiera",
-   "transicion": "destello"
+   "transicion": "latido"
   },
   {
    "dur": 2,
    "tipo": "cualquiera",
-   "transicion": "destello"
+   "transicion": "latido"
   },
   {
    "dur": 2,
    "tipo": "cualquiera",
-   "transicion": "destello"
+   "transicion": "destello-dorado"
   },
   {
    "dur": 3,

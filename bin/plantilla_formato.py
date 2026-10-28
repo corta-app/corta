@@ -23,7 +23,7 @@ que ya pasaron su propia validación.
     "tipo": "video",                              video | foto | cualquiera (qué conviene poner; si no hay, se usa lo que haya)
     "pista": {"es": "Tu producto de frente"},     opcional: qué poner en el hueco (hasta 40)
     "efectos": ["calido"],                        opcional: hasta 3 efectos que no sean transiciones, solo en este hueco
-    "transicion": "destello",                     opcional: cómo pasa al hueco siguiente (un efecto de pasos «transicion»)
+    "transicion": "destello",                     opcional: cómo pasa al hueco siguiente (un efecto con solo pasos de transición)
     "zoom": "acercar"}                            opcional, solo si cae una foto: acercar (por defecto) | alejar | no
  ],
  "textos": [{"en_hueco": 0, "texto": {"es": "…"}, "posicion": 0.18}],   opcional, hasta 10: texto encima de un hueco
@@ -53,12 +53,18 @@ ESTILO = re.compile(r"[a-z0-9-]{2,40}")
 #: Lo que trae la app (corta/efectos y corta/estilos): una plantilla puede usarlo sin descargar nada. Cada efecto con su categoría
 #: y los tipos de sus pasos. La prueba de la app revisa que esto sea igual a lo que de verdad incluye.
 EFECTOS_INCLUIDOS = {
-    "alejar": ("movimiento", ("zoom",)), "blanco-y-negro": ("filtro", ("color",)), "calido": ("color", ("color", "tinte")),
-    "contraste": ("color", ("color",)), "desenfoque": ("filtro", ("desenfoque",)), "destello": ("transicion", ("transicion",)),
-    "frio": ("color", ("color", "tinte")), "fundido-entrada": ("transicion", ("fundido",)),
-    "fundido-salida": ("transicion", ("fundido",)), "luminoso": ("color", ("color",)), "noir": ("filtro", ("color", "vineta")),
-    "transicion-negro": ("transicion", ("transicion",)), "vineta": ("filtro", ("vineta",)),
-    "vintage": ("filtro", ("color", "vineta")), "vivido": ("filtro", ("color",)), "zoom-golpe": ("movimiento", ("zoom",)),
+    "alejar": ("movimiento", ("zoom",)), "barrido": ("transicion", ("barrido",)), "blanco-y-negro": ("filtro", ("color",)),
+    "calido": ("color", ("color", "tinte")), "contraste": ("color", ("color",)), "desenfoque": ("filtro", ("desenfoque",)),
+    "deslizar-arriba": ("transicion", ("barrido",)), "destello": ("transicion", ("transicion",)),
+    "destello-dorado": ("transicion", ("destello",)), "falla-leve": ("transicion", ("interferencia",)),
+    "fogonazo": ("transicion", ("destello",)), "frio": ("color", ("color", "tinte")),
+    "fundido-entrada": ("transicion", ("fundido",)), "fundido-salida": ("transicion", ("fundido",)),
+    "interferencia": ("transicion", ("interferencia",)), "latido": ("transicion", ("rebote", "destello")),
+    "latigazo": ("transicion", ("barrido",)), "luminoso": ("color", ("color",)), "noir": ("filtro", ("color", "vineta")),
+    "persiana": ("transicion", ("franjas",)), "rebote": ("transicion", ("rebote",)),
+    "transicion-negro": ("transicion", ("transicion",)), "tres-franjas": ("transicion", ("franjas",)),
+    "vineta": ("filtro", ("vineta",)), "vintage": ("filtro", ("color", "vineta")), "vivido": ("filtro", ("color",)),
+    "zoom-de-paso": ("transicion", ("zoom_paso",)), "zoom-golpe": ("movimiento", ("zoom",)),
     "zoom-lento": ("movimiento", ("zoom",)),
 }
 ESTILOS_INCLUIDOS = ("caja", "neon", "palabra", "pop", "suave", "titular")
@@ -171,8 +177,9 @@ def validar_plantilla(d, archivo=None):
 
 def referencias(d, efectos, estilos):
     """Problemas de las referencias de una plantilla ya válida: `efectos` = {id: (categoria, (tipos de sus pasos…))} y `estilos` =
-    ids. Una transición tiene que ser un efecto de categoría «transicion» con solo pasos «transicion» (un pestañeo en la unión);
-    los efectos de un hueco no pueden ser transiciones."""
+    ids. Una transición tiene que ser un efecto de categoría «transicion» con solo pasos que van en las uniones
+    (efecto_formato.TRANSICIONES: pestañeo, interferencia, destello, franjas, rebote, barrido o zoom de paso); los efectos de un hueco
+    no pueden ser transiciones."""
     e = []
 
     def efecto(i, donde, transicion=None):
@@ -180,7 +187,7 @@ def referencias(d, efectos, estilos):
             e.append(f"{donde}: no existe el efecto «{i}».")
             return
         categoria, tipos = efectos[i]
-        if transicion is True and not (categoria == "transicion" and tipos and all(t == "transicion" for t in tipos)):
+        if transicion is True and not (categoria == "transicion" and tipos and all(t in ef.TRANSICIONES for t in tipos)):
             e.append(f"{donde}: «{i}» no es una transición entre clips.")
         if transicion is False and categoria == "transicion":
             e.append(f"{donde}: «{i}» es una transición: va en «transicion».")

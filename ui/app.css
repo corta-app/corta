@@ -305,6 +305,8 @@ html[data-host="mac"] .barra { padding-left: 84px; }
 
 /* Efectos: capas de la vista previa, panel, catálogo y línea de tiempo */
 .pantalla .capas-fx { position: absolute; inset: 0; pointer-events: none; }
+.pantalla .paso-fx { pointer-events: none; }
+.pantalla .paso-fx[hidden] { display: none; }
 .pantalla .capas-fx i, .muestra-fx i { position: absolute; inset: 0; display: block; }
 .fx-destino { display: flex; align-items: center; gap: 10px; border-color: var(--acento); }
 .fx-destino .txt { flex: 1; min-width: 0; line-height: 1.4; }
@@ -326,7 +328,48 @@ input.buscar-fx { margin-bottom: 12px; }
 @keyframes fx-acercar { from { transform: scale(1); } to { transform: scale(1.18); } }
 @keyframes fx-golpe { 0%, 30% { transform: scale(1); } 38%, 100% { transform: scale(1.25); } }
 @keyframes fx-capa { 0%, 35%, 100% { opacity: 0; } 50% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .muestra-fx canvas, .muestra-fx .anim-capa { animation: none !important; } }
+/* Muestras de las transiciones (lo de verdad lo dibuja pintarPasos en la pantalla): un ciclo de ~2 s con la unión al medio. */
+.muestra-fx .cuerpo-fx { position: absolute; inset: 0; overflow: hidden; }
+.muestra-fx .cuerpo-fx canvas { position: absolute; inset: 0; }
+.muestra-fx .cuerpo-fx canvas:not(.con-video) { opacity: 1; background: radial-gradient(120% 90% at 30% 20%, #c9a27a, #4a3a5c); }
+.anim-rebote canvas { animation: fx-rebote 2s infinite; }
+.anim-zoom-paso canvas { animation: fx-zoom-paso 2s infinite; }
+.anim-expo canvas { animation: fx-expo 2s ease-in-out infinite; }
+.anim-rebote.anim-expo canvas { animation: fx-rebote 2s infinite, fx-expo 2s ease-in-out infinite; }
+.anim-zoom-paso.anim-expo canvas { animation: fx-zoom-paso 2s infinite, fx-expo 2s ease-in-out infinite; }
+.anim-franjas .cuerpo-fx { background: #000; }
+.anim-franjas .franja { position: absolute; inset: 0; animation: fx-franja-a 2s infinite; }
+.anim-franjas .franja.impar { animation-name: fx-franja-b; }
+.anim-franjas.en-filas .franja { animation-name: fx-fila-a; }
+.anim-franjas.en-filas .franja.impar { animation-name: fx-fila-b; }
+.anim-barrido .rollo { position: absolute; inset: 0; animation: fx-barrido-x 2s infinite; }
+.anim-barrido .rollo canvas:last-child { left: 100%; }
+.anim-barrido.hacia-derecha .rollo { animation-name: fx-barrido-der; }
+.anim-barrido.hacia-derecha .rollo canvas:last-child { left: -100%; }
+.anim-barrido.hacia-arriba .rollo { animation-name: fx-barrido-y; }
+.anim-barrido.hacia-arriba .rollo canvas:last-child { left: 0; top: 100%; }
+.anim-barrido.hacia-abajo .rollo { animation-name: fx-barrido-abajo; }
+.anim-barrido.hacia-abajo .rollo canvas:last-child { left: 0; top: -100%; }
+.anim-interferencia .canal { position: absolute; inset: 0; isolation: isolate; }
+.anim-interferencia .canal i { position: absolute; inset: 0; mix-blend-mode: multiply; }
+.anim-interferencia .canal.c i { background: #0ff; }
+.anim-interferencia .canal.r { mix-blend-mode: screen; animation: fx-canal 2s steps(1) infinite; }
+.anim-interferencia .canal.r i { background: #f00; }
+.anim-interferencia .canal.c { animation: fx-salto 2s steps(1) infinite; }
+@keyframes fx-rebote { 0%, 30% { transform: scale(1); } 50% { transform: scale(1.12); } 62% { transform: scale(1); } 68% { transform: scale(1.035); } 75%, 100% { transform: scale(1); } }
+@keyframes fx-zoom-paso { 0%, 28% { transform: scale(1); filter: blur(0); animation-timing-function: ease-in; } 50% { transform: scale(1.5); filter: blur(1.5px); animation-timing-function: ease-out; } 72%, 100% { transform: scale(1); filter: blur(0); } }
+@keyframes fx-expo { 0%, 35%, 75%, 100% { filter: brightness(1); } 50% { filter: brightness(1.6); } }
+@keyframes fx-franja-a { 0%, 30% { transform: translateY(0); animation-timing-function: ease-in; } 50% { transform: translateY(100%); } 50.01% { transform: translateY(-100%); animation-timing-function: ease-out; } 70%, 100% { transform: translateY(0); } }
+@keyframes fx-franja-b { 0%, 30% { transform: translateY(0); animation-timing-function: ease-in; } 50% { transform: translateY(-100%); } 50.01% { transform: translateY(100%); animation-timing-function: ease-out; } 70%, 100% { transform: translateY(0); } }
+@keyframes fx-fila-a { 0%, 30% { transform: translateX(0); animation-timing-function: ease-in; } 50% { transform: translateX(100%); } 50.01% { transform: translateX(-100%); animation-timing-function: ease-out; } 70%, 100% { transform: translateX(0); } }
+@keyframes fx-fila-b { 0%, 30% { transform: translateX(0); animation-timing-function: ease-in; } 50% { transform: translateX(-100%); } 50.01% { transform: translateX(100%); animation-timing-function: ease-out; } 70%, 100% { transform: translateX(0); } }
+@keyframes fx-barrido-x { 0%, 30% { transform: translateX(0); animation-timing-function: ease-in-out; } 70%, 100% { transform: translateX(-100%); } }
+@keyframes fx-barrido-der { 0%, 30% { transform: translateX(0); animation-timing-function: ease-in-out; } 70%, 100% { transform: translateX(100%); } }
+@keyframes fx-barrido-abajo { 0%, 30% { transform: translateY(0); animation-timing-function: ease-in-out; } 70%, 100% { transform: translateY(100%); } }
+@keyframes fx-barrido-y { 0%, 30% { transform: translateY(0); animation-timing-function: ease-in-out; } 70%, 100% { transform: translateY(-100%); } }
+@keyframes fx-canal { 0%, 38% { transform: none; } 40% { transform: translateX(4px); } 45% { transform: translateX(-3px); } 50% { transform: translateX(6px); } 55% { transform: translateX(-5px); } 60%, 100% { transform: none; } }
+@keyframes fx-salto { 0%, 42% { transform: none; } 44% { transform: translateX(-3px); } 48% { transform: translateX(2px); } 52% { transform: translate(-2px, 1px); } 56%, 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .muestra-fx canvas, .muestra-fx .anim-capa, .muestra-fx .franja, .muestra-fx .rollo, .muestra-fx .canal { animation: none !important; } }
 .comunidad { display: flex; align-items: center; gap: 12px; }
 .comunidad .txt { flex: 1; min-width: 0; line-height: 1.4; } .comunidad .txt b { display: block; } .comunidad .txt small { color: var(--suave); }
 .lista-cat { display: grid; gap: 8px; max-height: 52vh; overflow-y: auto; margin-top: 2px; }
@@ -362,8 +405,14 @@ input.buscar-fx { margin-bottom: 12px; }
 .pv-h em { font-style: normal; color: rgba(255, 255, 255, .75); font-size: 15px; }
 .pv-h small { position: absolute; left: 6px; right: 6px; bottom: 14px; color: rgba(255, 255, 255, .9); font-size: 10.5px; text-align: center; line-height: 1.25; }
 .pv-h.foto.on { animation: pv-zoom var(--d, 2s) linear; }
-.pv-h.on[data-tr]::after { content: ""; position: absolute; inset: 0; background: #fff; opacity: 0; animation: pv-destello .32s ease-out; }
+.pv-h.on:is([data-tr="blanco"], [data-tr="negro"])::after { content: ""; position: absolute; inset: 0; background: #fff; opacity: 0; animation: pv-destello .32s ease-out; }
 .pv-h.on[data-tr="negro"]::after { background: #000; }
+.pv-h.on[data-tr="barrido"] { animation: pv-barrido .35s ease-out; }
+.pv-h.on[data-tr="barrido-v"] { animation: pv-barrido-v .35s ease-out; }
+.pv-h.on[data-tr="rebote"] { animation: pv-rebote .4s ease-out; }
+.pv-h.on[data-tr="zoom"] { animation: pv-zoom-paso .35s ease-out; }
+.pv-h.on[data-tr="franjas"] { animation: pv-franjas .4s ease-out; }
+.pv-h.on[data-tr="interferencia"] { animation: pv-interferencia .3s steps(1); }
 .pv-t { position: absolute; left: 4%; right: 4%; text-align: center; transform: translateY(-50%); opacity: 0; line-height: 1.1; pointer-events: none; transition: opacity .12s; }
 .pv-t.on { opacity: 1; }
 .pv-barra { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: rgba(0, 0, 0, .35); }
@@ -371,7 +420,13 @@ input.buscar-fx { margin-bottom: 12px; }
 .pv-cabezal { position: absolute; top: 0; bottom: 0; left: 0; width: 3px; background: #fff; }
 @keyframes pv-zoom { from { transform: scale(1); } to { transform: scale(1.12); } }
 @keyframes pv-destello { 0% { opacity: .9; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .pv-h.foto.on, .pv-h.on[data-tr]::after { animation: none; } }
+@keyframes pv-barrido { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes pv-barrido-v { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes pv-rebote { 0% { transform: scale(1.12); } 55% { transform: scale(1); } 78% { transform: scale(1.035); } 100% { transform: scale(1); } }
+@keyframes pv-zoom-paso { from { transform: scale(1.5); filter: blur(2px); } to { transform: none; filter: none; } }
+@keyframes pv-franjas { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+@keyframes pv-interferencia { 0% { transform: translateX(-4px); filter: hue-rotate(90deg); } 33% { transform: translateX(3px); filter: hue-rotate(-60deg); } 66% { transform: translateX(-2px); filter: none; } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pv-h.foto.on, .pv-h.on[data-tr], .pv-h.on[data-tr]::after { animation: none; } }
 .volver-pl { margin: -6px 0 8px -6px; }
 .detalle-pl { display: flex; gap: 18px; align-items: flex-start; margin-bottom: 14px; }
 .detalle-pl .txt { flex: 1; min-width: 0; }

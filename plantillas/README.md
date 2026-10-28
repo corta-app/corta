@@ -40,7 +40,7 @@ Aquí están las incluidas en la app, una por archivo en la carpeta de su catego
 | `nombre`, `descripcion` | Por idioma: `"es"` obligatorio, los demás opcionales. Hasta 30 y 140 caracteres, sin HTML. |
 | `autor`, `etiquetas` | Opcionales. Las etiquetas (hasta 8) ayudan a encontrarla. |
 | `proporcion` | `9:16`, `1:1`, `4:5` o `16:9`: el lienzo del video armado. |
-| `huecos` | De 1 a 20, en orden; entre todos, hasta 90 s. Cada uno: `dur` (0,5 a 15 s) y `tipo` (`video`, `foto` o `cualquiera`: lo que conviene poner). Opcionales: `pista` (qué poner, hasta 40 caracteres), `efectos` (hasta 3, solo en ese hueco; no transiciones), `transicion` (cómo pasa al siguiente: un efecto de categoría `transicion` con solo pasos `transicion`, como `destello` o `transicion-negro`) y `zoom` (si cae una foto: `acercar`, lo normal, `alejar` o `no`). |
+| `huecos` | De 1 a 20, en orden; entre todos, hasta 90 s. Cada uno: `dur` (0,5 a 15 s) y `tipo` (`video`, `foto` o `cualquiera`: lo que conviene poner). Opcionales: `pista` (qué poner, hasta 40 caracteres), `efectos` (hasta 3, solo en ese hueco; no transiciones), `transicion` (cómo pasa al siguiente: un efecto de categoría `transicion` con solo pasos de transición, como `destello`, `transicion-negro`, `barrido`, `zoom-de-paso` o `interferencia`) y `zoom` (si cae una foto: `acercar`, lo normal, `alejar` o `no`). |
 | `textos` | Opcional, hasta 10: `en_hueco` (número del hueco, desde 0), `texto` por idioma (hasta 60 caracteres) y `posicion` (altura, de 0,08 a 0,9; 0,18 si no se dice). El texto dura todo el hueco. |
 | `subtitulos` | Opcional: `estilo` (id de un estilo de `estilos/`; con él se dibujan los subtítulos y los textos) y `activos`. |
 | `efectos` | Opcional: hasta 3 efectos para todo el video. |
@@ -55,7 +55,7 @@ Aquí están las incluidas en la app, una por archivo en la carpeta de su catego
   proyecto), cada uno cubriendo el cuadro. Lo arma ffmpeg con una lista blanca de filtros (`trim`, `setpts`, `tpad`, `fps`,
   `scale`, `crop`, `setsar`, `format`, `atrim`, `asetpts`, `aresample`, `aformat`, `apad`, `anullsrc`, `concat`) y solo números.
 - **Lo demás es un proyecto normal**: una división (`divisiones`) en cada unión, los textos, los efectos de cada hueco (con sus
-  pasos copiados), la transición alrededor de cada unión (los pasos `transicion` pestañean en las divisiones), el estilo y los
+  pasos copiados), la transición alrededor de cada unión (sus pasos trabajan en las divisiones), el estilo y los
   efectos de todo el video. Una foto se mueve sola (zoom lento) salvo `zoom: "no"` o si su hueco ya trae un zoom. Exportar usa el
   render de siempre.
 - Si un efecto no está (es del catálogo y no lo descargaste), se omite y la app ofrece descargarlo.

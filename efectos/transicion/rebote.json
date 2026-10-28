@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "rebote",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Rebote",
+  "en": "Bounce"
+ },
+ "descripcion": {
+  "es": "Un pequeño salto de escala en cada corte.",
+  "en": "A small bounce in scale at every cut."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "bounce",
+  "ritmo",
+  "beat"
+ ],
+ "pasos": [
+  {
+   "tipo": "rebote",
+   "duracion": 0.5,
+   "intensidad": 0.5
+  }
+ ]
+}

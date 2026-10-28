@@ -1,0 +1,28 @@
+{
+ "formato": 1,
+ "id": "fogonazo",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Fogonazo",
+  "en": "Blowout"
+ },
+ "descripcion": {
+  "es": "Un destello blanco que quema la imagen en el corte.",
+  "en": "A white flash that blows out the picture at the cut."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "flash",
+  "blanco",
+  "white"
+ ],
+ "pasos": [
+  {
+   "tipo": "destello",
+   "duracion": 0.35,
+   "color": "#FFFFFF",
+   "intensidad": 0.9,
+   "exposicion": 0.8
+  }
+ ]
+}

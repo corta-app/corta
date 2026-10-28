@@ -772,6 +772,90 @@
   },
   {
    "formato": 1,
+   "id": "barrido",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Barrido",
+    "en": "Swipe"
+   },
+   "descripcion": {
+    "es": "La imagen se desliza a la izquierda con estela y entra la siguiente.",
+    "en": "The picture swipes left with a motion trail and the next one comes in."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "slide",
+    "deslizar",
+    "whip"
+   ],
+   "pasos": [
+    {
+     "tipo": "barrido",
+     "duracion": 0.5,
+     "direccion": "izquierda",
+     "desenfoque": 0.6
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "deslizar-arriba",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Deslizar arriba",
+    "en": "Slide up"
+   },
+   "descripcion": {
+    "es": "La imagen sube y entra la siguiente desde abajo.",
+    "en": "The picture slides up and the next one comes in from below."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "slide",
+    "vertical"
+   ],
+   "pasos": [
+    {
+     "tipo": "barrido",
+     "duracion": 0.45,
+     "direccion": "arriba",
+     "desenfoque": 0.35
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "destello-dorado",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Destello dorado",
+    "en": "Golden flash"
+   },
+   "descripcion": {
+    "es": "Un destello cálido, como sol en la cámara.",
+    "en": "A warm flash, like sun hitting the lens."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "flash",
+    "cálido",
+    "warm"
+   ],
+   "pasos": [
+    {
+     "tipo": "destello",
+     "duracion": 0.5,
+     "color": "#FFC46B",
+     "intensidad": 0.7,
+     "exposicion": 0.5
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
    "id": "destello",
    "categoria": "transicion",
    "nombre": {
@@ -793,6 +877,62 @@
      "tipo": "transicion",
      "duracion": 0.3,
      "color": "blanco"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "falla-leve",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Falla leve",
+    "en": "Soft glitch"
+   },
+   "descripcion": {
+    "es": "Una interferencia corta y suave, para cortes rápidos.",
+    "en": "A short, gentle glitch for quick cuts."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "glitch",
+    "sutil",
+    "subtle"
+   ],
+   "pasos": [
+    {
+     "tipo": "interferencia",
+     "duracion": 0.2,
+     "intensidad": 0.35
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "fogonazo",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Fogonazo",
+    "en": "Blowout"
+   },
+   "descripcion": {
+    "es": "Un destello blanco que quema la imagen en el corte.",
+    "en": "A white flash that blows out the picture at the cut."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "flash",
+    "blanco",
+    "white"
+   ],
+   "pasos": [
+    {
+     "tipo": "destello",
+     "duracion": 0.35,
+     "color": "#FFFFFF",
+     "intensidad": 0.9,
+     "exposicion": 0.8
     }
    ],
    "origen": "incluido"
@@ -851,6 +991,149 @@
   },
   {
    "formato": 1,
+   "id": "interferencia",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Interferencia",
+    "en": "Interference"
+   },
+   "descripcion": {
+    "es": "La imagen se descompone un instante en cada corte: canales corridos y franjas que saltan.",
+    "en": "The picture breaks up for a moment at every cut: shifted channels and jumping strips."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "glitch",
+    "digital",
+    "falla"
+   ],
+   "pasos": [
+    {
+     "tipo": "interferencia",
+     "duracion": 0.4,
+     "intensidad": 0.7
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "latido",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Latido",
+    "en": "Heartbeat"
+   },
+   "descripcion": {
+    "es": "Un rebote corto con un brillo suave, al ritmo de la música.",
+    "en": "A short bounce with a soft glow, on the beat."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "beat",
+    "ritmo",
+    "pulso"
+   ],
+   "pasos": [
+    {
+     "tipo": "rebote",
+     "duracion": 0.35,
+     "intensidad": 0.35
+    },
+    {
+     "tipo": "destello",
+     "duracion": 0.2,
+     "color": "#FFFFFF",
+     "intensidad": 0.25,
+     "exposicion": 0.3
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "latigazo",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Latigazo",
+    "en": "Whip pan"
+   },
+   "descripcion": {
+    "es": "Un barrido muy rápido a la derecha, con mucha estela.",
+    "en": "A very fast swipe to the right with a strong motion trail."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "whip",
+    "rápido",
+    "fast"
+   ],
+   "pasos": [
+    {
+     "tipo": "barrido",
+     "duracion": 0.3,
+     "direccion": "derecha",
+     "desenfoque": 1
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "persiana",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Persiana",
+    "en": "Blinds"
+   },
+   "descripcion": {
+    "es": "Dos franjas horizontales que se cruzan en el corte.",
+    "en": "Two horizontal strips that cross at the cut."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "split",
+    "horizontal"
+   ],
+   "pasos": [
+    {
+     "tipo": "franjas",
+     "duracion": 0.5,
+     "franjas": 2,
+     "direccion": "horizontal"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "rebote",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Rebote",
+    "en": "Bounce"
+   },
+   "descripcion": {
+    "es": "Un pequeño salto de escala en cada corte.",
+    "en": "A small bounce in scale at every cut."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "bounce",
+    "ritmo",
+    "beat"
+   ],
+   "pasos": [
+    {
+     "tipo": "rebote",
+     "duracion": 0.5,
+     "intensidad": 0.5
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
    "id": "transicion-negro",
    "categoria": "transicion",
    "nombre": {
@@ -872,6 +1155,62 @@
      "tipo": "transicion",
      "duracion": 0.4,
      "color": "negro"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "tres-franjas",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Tres franjas",
+    "en": "Three strips"
+   },
+   "descripcion": {
+    "es": "La imagen se parte en tres columnas que salen y entran con el clip siguiente.",
+    "en": "The picture splits into three columns that slide out and back in with the next clip."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "split",
+    "columnas",
+    "columns"
+   ],
+   "pasos": [
+    {
+     "tipo": "franjas",
+     "duracion": 0.6,
+     "franjas": 3,
+     "direccion": "vertical"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "zoom-de-paso",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Zoom de paso",
+    "en": "Zoom through"
+   },
+   "descripcion": {
+    "es": "Un acercamiento rápido que cruza el corte y se abre en el clip siguiente.",
+    "en": "A quick zoom that crosses the cut and opens on the next clip."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "zoom",
+    "empuje",
+    "push"
+   ],
+   "pasos": [
+    {
+     "tipo": "zoom_paso",
+     "duracion": 0.5,
+     "intensidad": 0.6,
+     "desenfoque": 0.4
     }
    ],
    "origen": "incluido"
@@ -1044,6 +1383,65 @@
   },
   {
    "formato": 1,
+   "id": "caida",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Caída",
+    "en": "Drop"
+   },
+   "descripcion": {
+    "es": "La imagen cae y el clip siguiente baja desde arriba.",
+    "en": "The picture drops and the next clip comes down from above."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "slide",
+    "abajo",
+    "down"
+   ],
+   "pasos": [
+    {
+     "tipo": "barrido",
+     "duracion": 0.6,
+     "direccion": "abajo",
+     "desenfoque": 0.25
+    }
+   ],
+   "archivo": "efectos/transicion/caida.json",
+   "sha256": "dbab5111034747448618339a1caf262a7a27788e6be1ec30a2ee7bf4f66ad4a3",
+   "bytes": 450
+  },
+  {
+   "formato": 1,
+   "id": "cortina",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Cortina",
+    "en": "Curtain"
+   },
+   "descripcion": {
+    "es": "Tres franjas horizontales se cruzan y abren el clip siguiente.",
+    "en": "Three horizontal strips cross and open the next clip."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "split",
+    "horizontal"
+   ],
+   "pasos": [
+    {
+     "tipo": "franjas",
+     "duracion": 0.8,
+     "franjas": 3,
+     "direccion": "horizontal"
+    }
+   ],
+   "archivo": "efectos/transicion/cortina.json",
+   "sha256": "ca95f271a4398ddf953f58a9e33aca653441db41be0a999e4bb61cef36afe832",
+   "bytes": 455
+  },
+  {
+   "formato": 1,
    "id": "fundido-blanco",
    "categoria": "transicion",
    "nombre": {
@@ -1101,6 +1499,76 @@
    "archivo": "efectos/transicion/parpadeo.json",
    "sha256": "34ba1993ec8b0cd352bfed6a69f2f9bfc3afe91dece9e646f8981d205150e707",
    "bytes": 444
+  },
+  {
+   "formato": 1,
+   "id": "pop-rosa",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Pop rosa",
+    "en": "Pink pop"
+   },
+   "descripcion": {
+    "es": "Un rebote con un destello rosado, para videos alegres.",
+    "en": "A bounce with a pink flash, for cheerful videos."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "beat",
+    "rosa",
+    "pink"
+   ],
+   "pasos": [
+    {
+     "tipo": "rebote",
+     "duracion": 0.4,
+     "intensidad": 0.7
+    },
+    {
+     "tipo": "destello",
+     "duracion": 0.3,
+     "color": "#FF5FA2",
+     "intensidad": 0.5,
+     "exposicion": 0.2
+    }
+   ],
+   "archivo": "efectos/transicion/pop-rosa.json",
+   "sha256": "259f7a0d667befd2b7562f3d85600d824b3e0b6e4734147fd25ec6c72e1a784b",
+   "bytes": 540
+  },
+  {
+   "formato": 1,
+   "id": "senal-perdida",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Señal perdida",
+    "en": "Lost signal"
+   },
+   "descripcion": {
+    "es": "La imagen se cae como una señal mala y vuelve ya con el clip siguiente.",
+    "en": "The picture breaks up like a bad signal and comes back on the next clip."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "glitch",
+    "tv",
+    "señal"
+   ],
+   "pasos": [
+    {
+     "tipo": "interferencia",
+     "duracion": 0.8,
+     "intensidad": 1
+    },
+    {
+     "tipo": "transicion",
+     "duracion": 0.2,
+     "color": "negro"
+    }
+   ],
+   "archivo": "efectos/transicion/senal-perdida.json",
+   "sha256": "6f645967207547f92e8c982a68ea50f4e3613e2de4e8471eaad856e919af0a89",
+   "bytes": 559
   }
  ],
  "vocabulario": {
@@ -1118,8 +1586,8 @@
     "en": "Happy birthday"
    },
    "descripcion": {
-    "es": "Seis fotos o clips con destellos y un saludo grande al final.",
-    "en": "Six photos or clips with flashes and a big wish at the end."
+    "es": "Seis fotos o clips al ritmo, con latidos y un saludo grande al final.",
+    "en": "Six photos or clips on the beat, with bounces and a big wish at the end."
    },
    "autor": "Corta",
    "etiquetas": [
@@ -1137,27 +1605,27 @@
       "es": "Una foto de la persona",
       "en": "A photo of them"
      },
-     "transicion": "destello"
+     "transicion": "latido"
     },
     {
      "dur": 2,
      "tipo": "cualquiera",
-     "transicion": "destello"
+     "transicion": "latido"
     },
     {
      "dur": 2,
      "tipo": "cualquiera",
-     "transicion": "destello"
+     "transicion": "latido"
     },
     {
      "dur": 2,
      "tipo": "cualquiera",
-     "transicion": "destello"
+     "transicion": "latido"
     },
     {
      "dur": 2,
      "tipo": "cualquiera",
-     "transicion": "destello"
+     "transicion": "destello-dorado"
     },
     {
      "dur": 3,
@@ -1229,7 +1697,7 @@
       "es": "Un adelanto",
       "en": "A teaser"
      },
-     "transicion": "destello"
+     "transicion": "zoom-de-paso"
     },
     {
      "dur": 1,
@@ -1238,7 +1706,7 @@
       "es": "Otro adelanto",
       "en": "Another teaser"
      },
-     "transicion": "destello"
+     "transicion": "latigazo"
     },
     {
      "dur": 1,
@@ -1247,7 +1715,7 @@
       "es": "Un detalle",
       "en": "A detail"
      },
-     "transicion": "destello"
+     "transicion": "zoom-de-paso"
     },
     {
      "dur": 1.5,
@@ -1256,7 +1724,7 @@
       "es": "Casi se ve",
       "en": "Almost there"
      },
-     "transicion": "destello"
+     "transicion": "fogonazo"
     },
     {
      "dur": 3,
@@ -1464,7 +1932,7 @@
       "es": "Tu producto de frente",
       "en": "Your product, front view"
      },
-     "transicion": "destello"
+     "transicion": "barrido"
     },
     {
      "dur": 2.5,
@@ -1484,7 +1952,7 @@
       "es": "Alguien usándolo",
       "en": "Someone using it"
      },
-     "transicion": "destello"
+     "transicion": "barrido"
     },
     {
      "dur": 2.5,
@@ -1649,7 +2117,7 @@
       "es": "Lo que haces",
       "en": "What you do"
      },
-     "transicion": "transicion-negro"
+     "transicion": "interferencia"
     },
     {
      "dur": 1.5,
@@ -1658,7 +2126,7 @@
       "es": "Dónde lo haces",
       "en": "Where you do it"
      },
-     "transicion": "transicion-negro"
+     "transicion": "interferencia"
     },
     {
      "dur": 1.5,
@@ -1667,7 +2135,7 @@
       "es": "Con quién",
       "en": "Who with"
      },
-     "transicion": "transicion-negro"
+     "transicion": "interferencia"
     },
     {
      "dur": 3.5,

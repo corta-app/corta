@@ -1,0 +1,28 @@
+{
+ "formato": 1,
+ "id": "destello-dorado",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Destello dorado",
+  "en": "Golden flash"
+ },
+ "descripcion": {
+  "es": "Un destello cálido, como sol en la cámara.",
+  "en": "A warm flash, like sun hitting the lens."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "flash",
+  "cálido",
+  "warm"
+ ],
+ "pasos": [
+  {
+   "tipo": "destello",
+   "duracion": 0.5,
+   "color": "#FFC46B",
+   "intensidad": 0.7,
+   "exposicion": 0.5
+  }
+ ]
+}

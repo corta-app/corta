@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "interferencia",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Interferencia",
+  "en": "Interference"
+ },
+ "descripcion": {
+  "es": "La imagen se descompone un instante en cada corte: canales corridos y franjas que saltan.",
+  "en": "The picture breaks up for a moment at every cut: shifted channels and jumping strips."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "glitch",
+  "digital",
+  "falla"
+ ],
+ "pasos": [
+  {
+   "tipo": "interferencia",
+   "duracion": 0.4,
+   "intensidad": 0.7
+  }
+ ]
+}

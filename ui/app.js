@@ -290,9 +290,66 @@
     for (const [t0, v0, t1, v1] of segmentos) if (t0 <= t && t < t1) return t1 > t0 ? r4a(v0 + (v1 - v0) * (t - t0) / (t1 - t0)) : v0;
     return neutro;
   }
+  // ───────────── Transiciones en las uniones (la misma lógica que bin/efectos.py; casos «transiciones» en pruebas/casos.json) ─────────────
+  /** Pasos que van en las uniones (efecto_formato.TRANSICIONES); `transicion` es el pestañeo de siempre (una capa de color). */
+  const TRANSICIONES = ["transicion", "interferencia", "destello", "franjas", "rebote", "barrido", "zoom_paso"];
+  /** [[t0, t1], …]: lo que dura la transición alrededor de cada unión (`parte` < 1: solo el centro, donde va más rápido). */
+  const ventanasPaso = (paso, juntas, parte = 1) => { const m = numFx(paso, "duracion", 0.5) / 2 * parte; return juntas.map((j) => [r3a(j - m), r3a(j + m)]); };
+  const curvaFx = (t0, t1, v0, v1, forma, n) => Array.from({ length: n }, (_, k) => [r3a(t0 + (t1 - t0) * k / n), r4a(v0 + (v1 - v0) * forma(k / n)),
+    r3a(t0 + (t1 - t0) * (k + 1) / n), r4a(v0 + (v1 - v0) * forma((k + 1) / n))]);
+  const acelera = (x) => x * x, frena = (x) => 1 - (1 - x) * (1 - x), suave = (x) => x * x * (3 - 2 * x);
+  /** Lo que mueve una transición en cada unión: escala (rebote, zoom_paso), cuánto se corrió la imagen (barrido 0 → 1; franjas
+   *  0 → 1 al salir y −1 → 0 al entrar) u opacidad (destello). */
+  function segmentosPaso(paso, juntas) {
+    const tipo = paso.tipo, m = numFx(paso, "duracion", 0.5) / 2, fuerza = numFx(paso, "intensidad", 0.5), r = [];
+    for (const j of juntas) {
+      const a = r3a(j - m), b = r3a(j + m);
+      if (tipo === "rebote") {
+        const alto = r4a(1 + 0.04 + 0.16 * fuerza), medio = r3a(j + m / 2), tres = r3a(j + m * 3 / 4);
+        r.push(...curvaFx(a, j, 1, alto, frena, 3), ...curvaFx(j, medio, alto, 1, suave, 2),
+          [medio, 1, tres, r4a(1 + (alto - 1) * 0.3)], [tres, r4a(1 + (alto - 1) * 0.3), b, 1]);
+      } else if (tipo === "zoom_paso") {
+        const alto = r4a(1 + 0.1 + 0.5 * fuerza);
+        r.push(...curvaFx(a, j, 1, alto, acelera, 4), ...curvaFx(j, b, alto, 1, frena, 4));
+      } else if (tipo === "barrido") r.push(...curvaFx(a, b, 0, 1, suave, 8));
+      else if (tipo === "franjas") r.push(...curvaFx(a, j, 0, 1, acelera, 4), ...curvaFx(j, b, -1, 0, frena, 4));
+      else if (tipo === "destello") {
+        const pico = numFx(paso, "intensidad", 0.8), subida = r3a(j - m * 0.4), bajada = r3a(j + m * 0.3);
+        r.push([a, 0, subida, r4a(pico * 0.2)], [subida, r4a(pico * 0.2), j, pico], [j, pico, bajada, r4a(pico * 0.45)], [bajada, r4a(pico * 0.45), b, 0]);
+      }
+    }
+    return r;
+  }
+  /** La exposición de un destello (brillo multiplicado; 1 = igual), que sube y baja con su color. */
+  function segmentosExposicion(paso, juntas) {
+    const e = numFx(paso, "exposicion", 0), pico = numFx(paso, "intensidad", 0.8);
+    return e ? segmentosPaso(paso, juntas).map(([t0, v0, t1, v1]) => [t0, r4a(1 + e * v0 / pico), t1, r4a(1 + e * v1 / pico)]) : [];
+  }
+  /** Números «al azar» que se repiten igual en Python y en JS (Park–Miller: enteros exactos en los dos). */
+  function azarFx(semilla) { let x = semilla % 2147483646 + 1; return () => { x = x * 16807 % 2147483647; return x / 2147483647; }; }
+  const franjasInterferencia = (paso) => [r4a(0.05 + 0.18 * numFx(paso, "intensidad", 0.6)), 0.02];
+  /** [[t0, t1, canales, y1, dx1, y2, dx2], …]: cada instante de una interferencia (canales en px a 1080 de ancho; lo demás en
+   *  fracciones del cuadro). */
+  function cortesInterferencia(paso, juntas) {
+    const m = numFx(paso, "duracion", 0.5) / 2, fuerza = numFx(paso, "intensidad", 0.6), [alto1, alto2] = franjasInterferencia(paso);
+    const n = Math.max(2, Math.min(8, Math.floor(numFx(paso, "duracion", 0.5) * 10 + 0.5))), r = [];
+    juntas.forEach((j, q) => {
+      const azar = azarFx(Math.floor(j * 1000 + 0.5) * 31 + q * 7919 + 17), a = r3a(j - m);
+      for (let k = 0; k < n; k++) {
+        const t0 = r3a(a + 2 * m * k / n), t1 = r3a(a + 2 * m * (k + 1) / n);
+        const f = fuerza * (1 - Math.abs((t0 + t1) / 2 - j) / m * 0.5);
+        const canales = (azar() < 0.5 ? 1 : -1) * Math.floor(f * (12 + 36 * azar()) + 0.5);
+        const y1 = r4a((1 - alto1) * azar()), dx1 = r4a((azar() < 0.5 ? 1 : -1) * f * (0.06 + 0.2 * azar()));
+        const y2 = r4a((1 - alto2) * azar()), dx2 = r4a((azar() < 0.5 ? 1 : -1) * f * (0.1 + 0.25 * azar()));
+        r.push([t0, t1, canales + 0, y1, dx1, y2, dx2]);
+      }
+    });
+    return r;
+  }
   // Rangos de cada campo (los mismos de bin/efecto_formato.py): la vista previa nunca usa un número fuera de ellos.
   const RANGOS_FX = { brillo: [0.5, 1.5], contraste: [0.5, 2], saturacion: [0, 2], tono: [-180, 180], sepia: [0, 1], grises: [0, 1], fuerza: [0, 1],
-    radio: [0.5, 20], desde: [1, 1.6], hasta: [1, 1.6], entrada: [0, 3], salida: [0, 3], duracion: [0.1, 1.5] };
+    radio: [0.5, 20], desde: [1, 1.6], hasta: [1, 1.6], entrada: [0, 3], salida: [0, 3], duracion: [0.1, 1.5], intensidad: [0.1, 1], exposicion: [0, 1],
+    desenfoque: [0, 1], franjas: [2, 3] };
   const numFx = (paso, k, def) => { const v = Number(paso[k]); const [lo, hi] = RANGOS_FX[k]; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def; };
   const COLORES_FX = { negro: "0,0,0", blanco: "255,255,255" };
   const rgbFx = (paso) => (paso.tipo === "tinte" && /^#[0-9a-fA-F]{6}$/.test(paso.color || "") ? [1, 3, 5].map((x) => parseInt(paso.color.slice(x, x + 2), 16)).join(",") : COLORES_FX[paso.color] || COLORES_FX.negro);
@@ -511,7 +568,7 @@
     const horizontal = p.fuente.ancho > p.fuente.alto && p.lienzo !== "16:9";
     return `<div class="escenario" id="escenario"><div class="pantalla" id="pantalla">
         ${p.relleno === "desenfoque" ? `<canvas id="fondo-borroso" aria-hidden="true"></canvas>` : ""}
-        <div class="capa-zoom" id="capa-zoom"><video id="video" src="${esc(fuenteVideo())}" playsinline preload="auto"></video></div>
+        <div class="capa-zoom" id="capa-zoom"><video id="video" src="${esc(fuenteVideo())}" playsinline preload="auto"></video><canvas class="paso-fx" id="paso-fx" hidden aria-hidden="true"></canvas></div>
         <div class="capas-fx" id="capas-fx" aria-hidden="true"></div>
         <div class="subs" id="subs" aria-hidden="true"></div><div class="texto-sobre" id="texto-sobre" aria-hidden="true"></div></div></div>
       <div class="reproductor"><button class="play" data-accion="play" aria-label="Reproducir" id="boton-play">▶</button>
@@ -681,8 +738,28 @@
   /** Muestra de un efecto: un cuadro del video con los mismos filtros de CSS que la vista previa (o un degradado sin video). */
   function muestraFx(ef, alto = 0) {
     const filtro = [], capas = [];
-    let clase = "";
+    let clase = "", cuerpo = "";
+    const lienzo = (c = "") => `<canvas data-muestra width="96" height="128"${c ? ` class="${c}"` : ""}></canvas>`;
     for (const paso of ef.pasos || []) {
+      // Transiciones: una animación corta que imita lo que pasa en la unión (la pantalla de verdad la dibuja pintarPasos).
+      if (paso.tipo === "interferencia") { clase += " anim-interferencia"; cuerpo = `<span class="canal c">${lienzo()}<i></i></span><span class="canal r">${lienzo()}<i></i></span>`; continue; }
+      if (paso.tipo === "franjas") {
+        const n = Math.round(numFx(paso, "franjas", 3)), v = (paso.direccion || "vertical") === "vertical";
+        clase += ` anim-franjas ${v ? "en-columnas" : "en-filas"}`;
+        cuerpo = Array.from({ length: n }, (_, q) => {
+          const a = (q * 100 / n).toFixed(2), b = (100 - (q + 1) * 100 / n).toFixed(2);
+          return `<span class="franja ${q % 2 ? "impar" : "par"}" style="clip-path:inset(${v ? `0 ${b}% 0 ${a}%` : `${a}% 0 ${b}% 0`})">${lienzo()}</span>`;
+        }).join("");
+        continue;
+      }
+      if (paso.tipo === "barrido") { clase += ` anim-barrido hacia-${["izquierda", "derecha", "arriba", "abajo"].includes(paso.direccion) ? paso.direccion : "izquierda"}`; cuerpo = `<span class="rollo">${lienzo()}${lienzo()}</span>`; continue; }
+      if (paso.tipo === "rebote") { clase += " anim-rebote"; continue; }
+      if (paso.tipo === "zoom_paso") { clase += " anim-zoom-paso"; continue; }
+      if (paso.tipo === "destello") {
+        clase += numFx(paso, "exposicion", 0) > 0 ? " anim-expo" : "";
+        capas.push(`<i class="anim-capa" style="background:${/^#[0-9a-fA-F]{6}$/.test(paso.color || "") ? paso.color : "#FFFFFF"}"></i>`);
+        continue;
+      }
       if (paso.tipo === "color") filtro.push(cssColor(paso));
       else if (paso.tipo === "desenfoque") filtro.push(`blur(${(numFx(paso, "radio", 4) / 6).toFixed(2)}px)`);
       else if (paso.tipo === "vineta") capas.push(`<i style="background:${vinetaCSS(numFx(paso, "fuerza", 0.5))}"></i>`);
@@ -690,7 +767,8 @@
       else if (paso.tipo === "zoom") clase = paso.curva === "golpe" ? "anim-golpe" : numFx(paso, "hasta", 1) >= numFx(paso, "desde", 1) ? "anim-acercar" : "anim-alejar";
       else capas.push(`<i class="anim-capa" style="background:rgb(${rgbFx(paso)})"></i>`);
     }
-    return `<span class="muestra-fx ${clase}"${alto ? ` style="height:${alto}px"` : ""}><canvas data-muestra width="96" height="128" style="filter:${filtro.join(" ") || "none"}"></canvas>${capas.join("")}</span>`;
+    return `<span class="muestra-fx ${clase.trim()}"${alto ? ` style="height:${alto}px"` : ""}>${cuerpo ? `<span class="cuerpo-fx" style="filter:${filtro.join(" ") || "none"}">${cuerpo}</span>`
+      : `<canvas data-muestra width="96" height="128" style="filter:${filtro.join(" ") || "none"}"></canvas>`}${capas.join("")}</span>`;
   }
   /** Copia el cuadro actual del video a cada muestra (con el recorte del lienzo, como «cover»). */
   function pintarMuestras() {
@@ -785,7 +863,14 @@
     const alto = grande ? 260 : 150, ancho = W < H ? alto * W / H : grande ? 300 : 160;
     const st = E.estilos.find((x) => x.id === pl.subtitulos?.estilo) || E.estilos.find((x) => x.id === "pop") || E.estilos[0];
     const escala = ancho / 1080, filtroTodo = (pl.efectos || []).map((id) => (efectoPorId(id)?.pasos || []).filter((p) => p.tipo === "color").map(cssColor).join(" ")).join(" ").trim();
-    const transicion = (id) => { const p = efectoPorId(id)?.pasos?.find((x) => x.tipo === "transicion"); return p ? (p.color === "negro" ? "negro" : "blanco") : id ? "blanco" : ""; };
+    // Cómo entra cada hueco: el pestañeo de siempre (negro o blanco) o un movimiento que se parece a la transición (pv-* en app.css).
+    const transicion = (id) => {
+      const p = efectoPorId(id)?.pasos?.find((x) => TRANSICIONES.includes(x.tipo));
+      if (!p) return id ? "blanco" : "";
+      if (p.tipo === "transicion") return p.color === "negro" ? "negro" : "blanco";
+      return { destello: "blanco", interferencia: "interferencia", franjas: "franjas", rebote: "rebote", zoom_paso: "zoom",
+        barrido: p.direccion === "arriba" || p.direccion === "abajo" ? "barrido-v" : "barrido" }[p.tipo];
+    };
     const bloques = pl.huecos.map((h, k) => {
       const filtro = (h.efectos || []).map((id) => (efectoPorId(id)?.pasos || []).filter((p) => p.tipo === "color").map(cssColor).join(" ")).join(" ").trim();
       const tr_ = k ? transicion(pl.huecos[k - 1].transicion) : "";
@@ -1366,19 +1451,51 @@
       const [i, f] = alcanceEf(p, ap), pedazos = intervalosSalida(p, i, f);
       if (!pedazos.length || !Array.isArray(ap.pasos)) return null;
       const a = pedazos[0][0], b = pedazos[pedazos.length - 1][1], juntas = uniones(p, i, f);
-      return { pedazos, pasos: ap.pasos.map((paso) => ({ paso, segs: paso.tipo === "zoom" ? segmentosZoom({ ...paso, desde: numFx(paso, "desde", 1), hasta: numFx(paso, "hasta", 1) }, a, b) : segmentosCapa(paso, a, b, juntas, pedazos) })) };
+      return { pedazos, pasos: ap.pasos.map((paso) => {
+        if (paso.tipo === "zoom") return { paso, segs: segmentosZoom({ ...paso, desde: numFx(paso, "desde", 1), hasta: numFx(paso, "hasta", 1) }, a, b) };
+        if (TRANSICIONES.includes(paso.tipo) && paso.tipo !== "transicion") {
+          return { paso, segs: segmentosPaso(paso, juntas), ventanas: ventanasPaso(paso, juntas), centro: ventanasPaso(paso, juntas, paso.tipo === "barrido" ? 0.5 : 0.4),
+            exposicion: paso.tipo === "destello" ? segmentosExposicion(paso, juntas) : null, instantes: paso.tipo === "interferencia" ? cortesInterferencia(paso, juntas) : null };
+        }
+        return { paso, segs: segmentosCapa(paso, a, b, juntas, pedazos) };
+      }) };
     }).filter(Boolean);
     fxCache = { p, k, v };
     return v;
   }
+  /** Qué efectos se ven en el segundo `te` del video exportado: filtros de CSS, capas de color, zoom y (`pasos`) lo que la vista
+   *  previa dibuja en un lienzo: la imagen corrida, partida o descompuesta de una transición (pintarPasos). */
   function efectosEn(p, t, te, escala) {
-    const r = { filtro: "", capas: "", zoom: 1 };
+    const r = { filtro: "", capas: "", zoom: 1, pasos: [] };
     if (te == null || !p.efectos?.length) return r;
     const filtro = [], capas = [], W = LIENZOS[p.lienzo][0];
+    const en = (vs) => vs.some(([a, b]) => a <= te && te <= b);
     for (const ef of infoEfectos(p)) {
       const dentro = ef.pedazos.some(([a, b]) => a <= te && te <= b);
-      for (const { paso, segs } of ef.pasos) {
+      for (const { paso, segs, ventanas, centro, exposicion, instantes } of ef.pasos) {
         if (paso.tipo === "zoom") { r.zoom *= valorEn(segs, te, 1); continue; }
+        if (ventanas) {
+          if (!en(ventanas)) continue;
+          const tipo = paso.tipo;
+          if (tipo === "rebote" || tipo === "zoom_paso") {
+            r.zoom *= valorEn(segs, te, 1);
+            if (tipo === "zoom_paso" && numFx(paso, "desenfoque", 0) > 0 && en(centro)) filtro.push(`blur(${(numFx(paso, "desenfoque", 0) * 16 * W / 1080 * escala).toFixed(2)}px)`);
+          } else if (tipo === "destello") {
+            const b = valorEn(exposicion, te, 1);
+            if (b > 1.0001) filtro.push(`brightness(${b.toFixed(4)})`);
+            const a = valorEn(segs, te, 0);
+            if (a > 0.001) capas.push(`<i style="background:${/^#[0-9a-fA-F]{6}$/.test(paso.color || "") ? paso.color : "#FFFFFF"};opacity:${a.toFixed(3)}"></i>`);
+          } else if (tipo === "barrido") {
+            r.pasos.push({ tipo, u: valorEn(segs, te, 0), direccion: paso.direccion || "izquierda",
+              estela: numFx(paso, "desenfoque", 0) > 0 && en(centro) ? numFx(paso, "desenfoque", 0) * 40 / 1080 : 0 });
+          } else if (tipo === "franjas") {
+            r.pasos.push({ tipo, v: valorEn(segs, te, 0), n: Math.round(numFx(paso, "franjas", 3)), vertical: (paso.direccion || "vertical") === "vertical" });
+          } else if (tipo === "interferencia") {
+            const x = instantes.find(([t0, t1]) => t0 <= te && te < t1);
+            if (x) r.pasos.push({ tipo, canales: x[2] / 1080, bandas: franjasInterferencia(paso).map((h, k) => ({ h, y: x[3 + 2 * k], dx: x[4 + 2 * k] })) });
+          }
+          continue;
+        }
         if (["tinte", "fundido", "transicion"].includes(paso.tipo)) {
           const a = valorEn(segs, te, 0);
           if (a > 0.001) capas.push(`<i style="background:rgb(${rgbFx(paso)});opacity:${a.toFixed(3)}"></i>`);
@@ -1393,6 +1510,79 @@
     r.filtro = filtro.join(" ");
     r.capas = capas.join("");
     return r;
+  }
+  // Lienzos de trabajo de las transiciones (se reusan: nada se crea mientras se reproduce).
+  const lienzosFx = [];
+  function lienzoFx(k, w, h) {
+    const c = lienzosFx[k] ||= document.createElement("canvas");
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+    const x = c.getContext("2d");
+    x.setTransform(1, 0, 0, 1, 0, 0); x.globalAlpha = 1; x.globalCompositeOperation = "source-over"; x.filter = "none"; x.clearRect(0, 0, w, h);
+    return [c, x];
+  }
+  /** Lo que una transición hace con la imagen, dibujado como lo hace ffmpeg (bin/efectos.py): el cuadro del video (con su encuadre)
+   *  en un lienzo encima del video, corrido (barrido, con su copia que entra por el otro lado y su estela), partido en franjas
+   *  sobre negro o descompuesto (franjas que saltan y los canales rojo y azul corridos). Queda dentro de la capa del zoom, así
+   *  que el zoom y los filtros de color le pasan igual que al video. */
+  function pintarPasos(pasos) {
+    const cv = $("#paso-fx"), v = $("#video"), pant = $("#pantalla");
+    if (!cv) return;
+    if (!pasos.length || !v || v.readyState < 2 || !pant) { if (!cv.hidden) cv.hidden = true; return; }
+    const dpr = Math.min(2, window.devicePixelRatio || 1), w = Math.max(2, Math.round(pant.clientWidth * dpr)), h = Math.max(2, Math.round(pant.clientHeight * dpr));
+    Object.assign(cv.style, { left: "0", top: "0", width: pant.clientWidth + "px", height: pant.clientHeight + "px" });
+    let [src, x] = lienzoFx(0, w, h), libre = 1;
+    // El cuadro como se ve: el fondo borroso (si hay) y el video con su tamaño y posición.
+    x.fillStyle = "#000"; x.fillRect(0, 0, w, h);
+    const fondo = $("#fondo-borroso");
+    if (fondo) { x.filter = `blur(${14 * dpr}px) brightness(.85)`; x.drawImage(fondo, -w * 0.05, -h * 0.05, w * 1.1, h * 1.1); x.filter = "none"; }
+    try { x.drawImage(v, parseFloat(v.style.left) * dpr, parseFloat(v.style.top) * dpr, parseFloat(v.style.width) * dpr, parseFloat(v.style.height) * dpr); } catch { cv.hidden = true; return; }
+    const nuevo = () => { const r = lienzoFx(libre, w, h); libre = libre === 1 ? 2 : 1; return r; };
+    for (const op of pasos) {
+      const [dst, d] = nuevo();
+      if (op.tipo === "barrido") {
+        const horizontal = op.direccion === "izquierda" || op.direccion === "derecha", largo = horizontal ? w : h;
+        const o = (op.direccion === "izquierda" || op.direccion === "arriba" ? -1 : 1) * largo * op.u, otro = o + (o < 0 ? largo : -largo);
+        const poner = (desplazar) => { for (const z of [desplazar, desplazar + otro - o]) d.drawImage(src, horizontal ? z : 0, horizontal ? 0 : z); };
+        if (op.estela > 0) {
+          // Estela: el promedio de copias corridas a lo largo del barrido (como el desenfoque gaussiano en un solo sentido de ffmpeg).
+          const sigma = op.estela * w, n = 9;
+          for (let k = 0; k < n; k++) { d.globalAlpha = 1 / (k + 1); poner(o + sigma * 1.7 * (2 * k / (n - 1) - 1)); }
+        } else poner(o);
+      } else if (op.tipo === "franjas") {
+        d.fillStyle = "#000"; d.fillRect(0, 0, w, h);
+        const largo = op.vertical ? h : w, total = op.vertical ? w : h;
+        const bordes = Array.from({ length: op.n + 1 }, (_, q) => Math.round(total * q / op.n));
+        for (let q = 0; q < op.n; q++) {
+          const a = bordes[q], b = bordes[q + 1], mueve = (q % 2 === 0 ? 1 : -1) * largo * op.v;
+          d.save(); d.beginPath(); op.vertical ? d.rect(a, 0, b - a, h) : d.rect(0, a, w, b - a); d.clip();
+          d.drawImage(src, op.vertical ? 0 : mueve, op.vertical ? mueve : 0); d.restore();
+        }
+      } else if (op.tipo === "interferencia") {
+        d.drawImage(src, 0, 0);
+        for (const { h: alto, y, dx } of op.bandas) {
+          // Igual que ffmpeg: una franja del cuadro (ya con las anteriores) salta de lado, a la misma altura.
+          const hh = Math.max(1, alto * h), yy = Math.min(h - hh, y * h);
+          const [tmp, t] = lienzoFx(3, w, Math.ceil(hh)); t.drawImage(dst, 0, yy, w, hh, 0, 0, w, hh);
+          d.drawImage(tmp, 0, 0, w, hh, dx * w, yy, w, hh);
+        }
+        // Los canales: el rojo corrido a un lado y el azul al otro (como rgbashift; el verde queda en su lugar).
+        const px = op.canales * w, capas = [["#f00", px], ["#0f0", 0], ["#00f", -px]].map(([color, dx], k) => {
+          const [c, cx] = lienzoFx(4 + k, w, h); cx.drawImage(dst, 0, 0); cx.globalCompositeOperation = "multiply"; cx.fillStyle = color; cx.fillRect(0, 0, w, h);
+          return [c, dx];
+        });
+        d.globalCompositeOperation = "source-over"; d.fillStyle = "#000"; d.fillRect(0, 0, w, h); d.globalCompositeOperation = "lighter";
+        for (const [c, dx] of capas) {
+          d.drawImage(c, dx, 0);
+          // rgbashift repite el borde (smear): lo que queda sin ese canal se rellena con la columna del borde.
+          if (dx > 0) d.drawImage(c, 0, 0, 1, h, 0, 0, dx, h); else if (dx < 0) d.drawImage(c, w - 1, 0, 1, h, w + dx, 0, -dx, h);
+        }
+      }
+      src = dst;
+    }
+    const cx = cv.getContext("2d");
+    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+    cx.drawImage(src, 0, 0);
+    if (cv.hidden) cv.hidden = false;
   }
   let tramosCache = null, tramosDe = null;
   function tramos() { const p = P(); if (tramosDe !== p || !tramosCache || tramosCache.k !== JSON.stringify(p.cortes)) { tramosCache = { k: JSON.stringify(p.cortes), t: conservados(p) }; tramosDe = p; } return tramosCache.t; }
@@ -1432,6 +1622,7 @@
       if (capa.dataset.filtro !== fx.filtro) { capa.style.filter = fx.filtro; capa.dataset.filtro = fx.filtro; }
     }
     const cf = $("#capas-fx"); if (cf && cf.dataset.html !== fx.capas) { cf.innerHTML = fx.capas; cf.dataset.html = fx.capas; }
+    pintarPasos(fx.pasos);
     // Fondo borroso
     const c = $("#fondo-borroso"); if (c && v.readyState >= 2) { try { c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); } catch {} }
     // Palabra activa en el panel de texto
@@ -1903,7 +2094,7 @@
     vocabularioActualizado(r) { if (r.ok) E.vocabulario = r.vocabulario; else toast(r.error || "No pude guardar."); pintar(); },
     _probar(f) { f(E); pintar(); },
     _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
-      tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, llenar, aplicarPlantilla, iniciosHuecos, segmentosZoom, segmentosCapa, valorEn, cssColor, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config, demoCatalogoPl: () => clonar(DEMO?.catalogo_plantillas || []) },
+      tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, llenar, aplicarPlantilla, iniciosHuecos, segmentosZoom, segmentosCapa, valorEn, cssColor, ventanasPaso, segmentosPaso, segmentosExposicion, cortesInterferencia, franjasInterferencia, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config, demoCatalogoPl: () => clonar(DEMO?.catalogo_plantillas || []) },
   };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────

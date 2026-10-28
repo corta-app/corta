@@ -1,0 +1,27 @@
+{
+ "formato": 1,
+ "id": "barrido",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Barrido",
+  "en": "Swipe"
+ },
+ "descripcion": {
+  "es": "La imagen se desliza a la izquierda con estela y entra la siguiente.",
+  "en": "The picture swipes left with a motion trail and the next one comes in."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "slide",
+  "deslizar",
+  "whip"
+ ],
+ "pasos": [
+  {
+   "tipo": "barrido",
+   "duracion": 0.5,
+   "direccion": "izquierda",
+   "desenfoque": 0.6
+  }
+ ]
+}

@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "falla-leve",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Falla leve",
+  "en": "Soft glitch"
+ },
+ "descripcion": {
+  "es": "Una interferencia corta y suave, para cortes rápidos.",
+  "en": "A short, gentle glitch for quick cuts."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "glitch",
+  "sutil",
+  "subtle"
+ ],
+ "pasos": [
+  {
+   "tipo": "interferencia",
+   "duracion": 0.2,
+   "intensidad": 0.35
+  }
+ ]
+}
