@@ -45,7 +45,7 @@ def cortes_por_palabras(palabras, silencio_min, muletillas, duracion):
 
 def silencios_ffmpeg(video, silencio_min, duracion, ruido_db=-35):
     """Sin transcripción: tramos donde el audio está bajo `ruido_db` por más de silencio_min segundos."""
-    r = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", video, "-af", f"silencedetect=noise={ruido_db}dB:d={silencio_min}",
+    r = subprocess.run([proyecto.programa("ffmpeg"), "-hide_banner", "-nostats", *proyecto.SOLO_ARCHIVOS, "-i", proyecto.entrada(video), "-af", f"silencedetect=noise={ruido_db}dB:d={silencio_min}",
                         "-f", "null", "-"], capture_output=True, text=True)
     inicios = [float(x) for x in re.findall(r"silence_start: ([\d.]+)", r.stderr)]
     fines = [float(x) for x in re.findall(r"silence_end: ([\d.]+)", r.stderr)]

@@ -296,6 +296,81 @@ class IA(unittest.TestCase):
         self.assertEqual(importar.palabras_de_whisper({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
 
 
+def con_entrada(script, accion, datos):
+    entrada = os.path.join(TMP, "entrada.json")
+    with open(entrada, "w", encoding="utf-8") as f:
+        json.dump(datos, f)
+    return correr(script, accion, entrada)
+
+
+class App(unittest.TestCase):
+    """Lo que usa la app de escritorio: estado, guardar y deshacer, pedidos por archivo de entrada y carpetas que no son proyectos."""
+
+    def test_estado(self):
+        carpeta = proyecto_de_prueba()
+        r = correr("estado.py")
+        self.assertTrue(r["ok"], r)
+        self.assertIn(os.path.realpath(carpeta), [x["carpeta"] for x in r["proyectos"]])
+        self.assertTrue(any(e["id"] == "pop" for e in r["estilos"]))
+        self.assertIn("modelo", r["config"])
+        roto = os.path.join(proyecto.BASE, "2000-01-01 Roto")
+        os.makedirs(roto, exist_ok=True)
+        with open(os.path.join(roto, "proyecto.json"), "w") as f:
+            f.write("{")
+        self.assertNotIn(roto, [x["carpeta"] for x in correr("estado.py")["proyectos"]], "un proyecto roto no rompe la lista")
+
+    def test_guardar_y_deshacer(self):
+        carpeta = proyecto_de_prueba()
+        p = proyecto.cargar(carpeta)
+        p["lienzo"], p["fuente"]["archivo"] = "1:1", "otro.mp4"
+        r = con_entrada("guardar.py", "proyecto", {"carpeta": carpeta, "proyecto": p})
+        self.assertTrue(r["ok"], r)
+        q = proyecto.cargar(carpeta)
+        self.assertEqual(q["lienzo"], "1:1")
+        self.assertEqual(q["fuente"]["archivo"], "original.mp4", "la interfaz no cambia el video del proyecto")
+        p["musica"] = {"archivo": "/etc/hosts", "volumen": 0.2}
+        self.assertFalse(con_entrada("guardar.py", "proyecto", {"carpeta": carpeta, "proyecto": p})["ok"], "música fuera del proyecto")
+        d = con_entrada("guardar.py", "deshacer", {"carpeta": carpeta})
+        self.assertTrue(d["ok"] and d["deshecho"], d)
+        self.assertEqual(d["proyecto"]["lienzo"], "9:16")
+
+    def test_carpetas_que_no_son_proyectos(self):
+        proyecto_de_prueba()
+        for carpeta in (TMP, proyecto.BASE, os.path.join(proyecto.BASE, ".corta"), os.path.join(proyecto.BASE, "..", "bin"), "", None, 3):
+            r = con_entrada("guardar.py", "deshacer", {"carpeta": carpeta})
+            self.assertFalse(r["ok"], carpeta)
+            r = con_entrada("editar_ia.py", "entrada", {"accion": "shorts", "carpeta": carpeta})
+            self.assertFalse(r["ok"], carpeta)
+
+    def test_pedir_por_archivo(self):
+        carpeta = proyecto_de_prueba()
+        r = con_entrada("editar_ia.py", "entrada", {"accion": "pedir", "carpeta": carpeta, "texto": "pon zoom; $(rm -rf ~) \"y\" 'más'"})
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["aplicadas"], 3)
+        r = con_entrada("editar_ia.py", "entrada", {"accion": "crear_short", "carpeta": carpeta, "desde": "0", "hasta": 2, "titulo": "x"})
+        self.assertFalse(r["ok"], "los tiempos tienen que ser números")
+
+    def test_programas_y_solo_archivos(self):
+        self.assertEqual(proyecto.entrada("a b/c.mp4")[:6], "file:/")
+        falsos = os.path.join(TMP, "programas")
+        os.makedirs(falsos, exist_ok=True)
+        ff = os.path.join(falsos, "ffmpeg")
+        with open(ff, "w") as f:
+            f.write("#!/bin/sh\n")
+        os.chmod(ff, 0o755)
+        os.environ["CORTA_PROGRAMAS"] = falsos
+        try:
+            self.assertEqual(proyecto.programa("ffmpeg"), ff, "el ffmpeg de la app gana sobre el del sistema")
+            self.assertNotEqual(proyecto.programa("ffprobe"), os.path.join(falsos, "ffprobe"))
+        finally:
+            del os.environ["CORTA_PROGRAMAS"]
+        for script in ("render.py", "importar.py", "limpiar.py"):
+            fuente = open(os.path.join(RAIZ, "bin", script), encoding="utf-8").read()
+            self.assertNotRegex(fuente, r'"-i", (?!proyecto\.entrada)', f"{script}: cada -i va con proyecto.entrada()")
+            self.assertNotIn('["ffmpeg"', fuente)
+            self.assertNotIn('["ffprobe"', fuente)
+
+
 class Seguridad(unittest.TestCase):
     """Content-Security-Policy de la interfaz y de la página pública (docs/)."""
 

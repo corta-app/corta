@@ -21,11 +21,12 @@ FUENTES = os.path.join(proyecto.RECURSOS, "ui", "fuentes")
 
 
 def ffmpeg():
-    return shutil.which("ffmpeg") or "ffmpeg"
+    return proyecto.programa("ffmpeg")
 
 
 def tiene_audio(video):
-    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", video],
+    r = subprocess.run([proyecto.programa("ffprobe"), *proyecto.SOLO_ARCHIVOS, "-v", "error", "-select_streams", "a",
+                        "-show_entries", "stream=index", "-of", "csv=p=0", proyecto.entrada(video)],
                        capture_output=True, text=True)
     return bool(r.stdout.strip())
 
@@ -125,9 +126,10 @@ def exportar(carpeta, al_avanzar=None):
         with open(grafo_txt, "w", encoding="utf-8") as f:
             f.write(grafo(p, tiene_audio(video), ruta_ass, bool(musica)))
         temporal = os.path.join(tmp, "salida.mp4")
-        cmd = [ffmpeg(), "-hide_banner", "-y", "-nostats", "-i", video]
+        # Solo archivos locales como entrada (-protocol_whitelist file, con «file:» delante de cada ruta).
+        cmd = [ffmpeg(), "-hide_banner", "-y", "-nostats", *proyecto.SOLO_ARCHIVOS, "-i", proyecto.entrada(video)]
         if musica:
-            cmd += ["-i", musica]
+            cmd += [*proyecto.SOLO_ARCHIVOS, "-i", proyecto.entrada(musica)]
         cmd += ["-filter_complex_script", grafo_txt, "-map", "[vs]", "-map", "[as]", "-c:v", "libx264", "-preset", "veryfast",
                 "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart",
                 "-progress", "pipe:1", temporal]

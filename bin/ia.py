@@ -67,7 +67,8 @@ def ejecutar_ia(prompt, timeout=600):
         if ia == "gemini":
             cmd = [comando, "-p", "Responde a las instrucciones de arriba. Entrega solo el resultado pedido.", "-o", "text"]
         else:
-            cmd = [comando, "-p", "--output-format", "text"]
+            # Sin herramientas ni servidores MCP: la IA solo responde texto, no puede leer ni cambiar nada.
+            cmd = [comando, "-p", "--output-format", "text", "--disallowedTools", "*", "--strict-mcp-config"]
         return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp)
 
 

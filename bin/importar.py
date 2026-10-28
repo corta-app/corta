@@ -23,8 +23,9 @@ ALUCINACIONES = {"thank you", "thanks for watching", "gracias", "gracias por ver
 
 
 def info(video):
-    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height:stream_tags=rotate:stream_side_data=rotation:format=duration",
-                        "-of", "json", video], capture_output=True, text=True)
+    r = subprocess.run([proyecto.programa("ffprobe"), *proyecto.SOLO_ARCHIVOS, "-v", "error", "-select_streams", "v:0",
+                        "-show_entries", "stream=width,height:stream_tags=rotate:stream_side_data=rotation:format=duration",
+                        "-of", "json", proyecto.entrada(video)], capture_output=True, text=True)
     d = json.loads(r.stdout or "{}")
     s = (d.get("streams") or [{}])[0]
     ancho, alto = int(s.get("width") or 0), int(s.get("height") or 0)
@@ -84,12 +85,14 @@ def transcribir(carpeta):
     modelo = os.path.join(MODELOS, ARCHIVOS_MODELO.get(cfg["modelo"], ARCHIVOS_MODELO["turbo"]))
     if not os.path.exists(modelo):
         raise RuntimeError("Falta el modelo de transcripción: descárgalo en Ajustes.")
-    binario = shutil.which("whisper-cli") or os.path.join(proyecto.RECURSOS, "bin", "whisper-cli")
-    if not os.path.exists(binario) and not shutil.which("whisper-cli"):
+    # En Mac viene dentro de la app (corta-transcribir, whisper.cpp con Metal y las mismas opciones); en desarrollo, whisper-cli.
+    binario = proyecto.programa("corta-transcribir", "whisper-cli")
+    if not os.path.isfile(binario):
         raise RuntimeError("No encontré el transcriptor (whisper-cli).")
     audio = os.path.join(carpeta, "audio.wav")
     proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "audio", "texto": "Preparando el audio…"})
-    subprocess.run(["ffmpeg", "-hide_banner", "-y", "-loglevel", "error", "-i", os.path.join(carpeta, p["fuente"]["archivo"]),
+    subprocess.run([proyecto.programa("ffmpeg"), "-hide_banner", "-y", "-loglevel", "error", *proyecto.SOLO_ARCHIVOS,
+                    "-i", proyecto.entrada(os.path.join(carpeta, p["fuente"]["archivo"])),
                     "-vn", "-ac", "1", "-ar", "16000", audio], check=True)
     proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "transcribiendo", "texto": "Transcribiendo en tu computador…"})
     hilos = str(max(2, min(8, (os.cpu_count() or 4) - 1)))

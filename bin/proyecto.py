@@ -50,6 +50,44 @@ def config():
     return {"ia": "claude", "idioma_ui": "", "idioma_audio": "auto", "modelo": "turbo", **leer_json(os.path.join(INTERNO, "config.json"), {})}
 
 
+# ───────────── Programas (ffmpeg, ffprobe, transcriptor) ─────────────
+def programa(*nombres):
+    """Ruta del primer programa que exista: primero los que vienen dentro de la app (CORTA_PROGRAMAS, verificados por huella al
+    empaquetar), después los del sistema (desarrollo). Si no hay ninguno, el primer nombre (el error lo da quien lo llame)."""
+    propios = os.environ.get("CORTA_PROGRAMAS")
+    if propios:
+        for n in nombres:
+            r = os.path.join(propios, n)
+            if os.path.isfile(r) and os.access(r, os.X_OK):
+                return r
+    for n in nombres:
+        r = shutil.which(n)
+        if r:
+            return r
+    return nombres[0]
+
+
+#: ffmpeg y ffprobe solo abren archivos locales: nada de http, tcp, concat, subfile ni otros protocolos (aunque un nombre lo pida).
+SOLO_ARCHIVOS = ["-protocol_whitelist", "file"]
+
+
+def entrada(ruta):
+    """Una ruta como entrada de ffmpeg: absoluta y con «file:» delante, así nunca se lee como opción ni como otro protocolo."""
+    return "file:" + os.path.abspath(ruta)
+
+
+def carpeta_valida(carpeta):
+    """La carpeta de un proyecto: una carpeta directa de ~/Corta (sin enlaces que lleven a otro lado) con su proyecto.json.
+    Lo que llega de la interfaz pasa por aquí antes de leer o escribir nada. Devuelve la ruta real o lanza ValueError."""
+    if not isinstance(carpeta, str) or not carpeta or "\x00" in carpeta:
+        raise ValueError("No encontré ese proyecto.")
+    real, base = os.path.realpath(carpeta), os.path.realpath(BASE)
+    nombre = os.path.basename(real)
+    if os.path.dirname(real) != base or nombre.startswith(".") or not os.path.isfile(os.path.join(real, "proyecto.json")):
+        raise ValueError("No encontré ese proyecto.")
+    return real
+
+
 # ───────────── Proyecto ─────────────
 def nuevo(titulo, fuente):
     """fuente = {"archivo", "duracion", "ancho", "alto"}. Vertical por defecto (Shorts, Reels y TikTok)."""

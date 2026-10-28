@@ -3,6 +3,9 @@
   editar_ia.py pedir <carpeta> "<lo que quieres>" <salida.json>   aplica los cambios (con respaldo para deshacer)
   editar_ia.py shorts <carpeta> <salida.json>                      propone los mejores momentos (no guarda nada)
   editar_ia.py crear_short <carpeta> <desde> <hasta> "<título>" <salida.json>   crea un proyecto nuevo con ese tramo
+  editar_ia.py entrada <entrada.json> <salida.json>   lo mismo, con lo que manda la app en un archivo (nunca texto de la persona
+                                                      como argumento): {"accion": "pedir"|"shorts"|"crear_short", "carpeta",
+                                                      "texto"?, "desde"?, "hasta"?, "titulo"?}; la carpeta tiene que ser de ~/Corta
 
 La IA nunca toca el proyecto directo: responde una lista de operaciones en JSON, se validan una por una y solo se aplican las
 válidas. Ve la transcripción con números de palabra y tiempos, nunca el video.
@@ -217,10 +220,34 @@ def crear_short(carpeta, desde, hasta, titulo):
     return {"ok": True, "carpeta": destino, "proyecto": q}
 
 
+def desde_entrada(ruta):
+    """Lo que manda la app (la interfaz) llega en un JSON: se revisa cada campo antes de usarlo."""
+    d = proyecto.leer_json(ruta, None)
+    if not isinstance(d, dict):
+        raise ValueError("No pude leer el pedido.")
+    carpeta = proyecto.carpeta_valida(d.get("carpeta"))
+    accion = d.get("accion")
+    if accion == "pedir":
+        texto = d.get("texto")
+        if not isinstance(texto, str) or not texto.strip():
+            raise ValueError("Escribe qué quieres cambiar.")
+        return pedir(carpeta, texto.strip()[:2000])
+    if accion == "shorts":
+        return shorts(carpeta)
+    if accion == "crear_short":
+        desde, hasta, titulo = d.get("desde"), d.get("hasta"), d.get("titulo", "")
+        if not all(isinstance(x, (int, float)) and not isinstance(x, bool) for x in (desde, hasta)) or not isinstance(titulo, str):
+            raise ValueError("Ese tramo no es válido.")
+        return crear_short(carpeta, float(desde), float(hasta), titulo[:80])
+    raise ValueError("No sé hacer eso.")
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     try:
-        if len(a) == 4 and a[0] == "pedir":
+        if len(a) == 3 and a[0] == "entrada":
+            r = desde_entrada(a[1])
+        elif len(a) == 4 and a[0] == "pedir":
             r = pedir(a[1], a[2])
         elif len(a) == 3 and a[0] == "shorts":
             r = shorts(a[1])
