@@ -632,14 +632,17 @@
       <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="exportar-ya">Exportar video</button></div>`;
   }
   function dialogoAjustes() {
+    const actualizando = E.act && E.act.paso !== "error";  // la app de escritorio manda el avance (actualizacionProgreso)
     return `<h2 id="t-aj">Ajustes</h2><p>Todo se procesa en tu computador. La IA usa tu propia cuenta.</p>
       <div class="seccion"><h3>Tu IA</h3>${filasIA()}</div>
       <div class="seccion"><h3>Transcripción</h3>${filasModelo()}</div>
       <div class="seccion"><h3>General</h3><div class="fila"><div class="txt"><b>Idioma de la app</b></div><select data-config="idioma_ui"><option value="es" ${E.idioma === "es" ? "selected" : ""}>Español</option><option value="en" ${E.idioma === "en" ? "selected" : ""}>English</option></select></div>
         <div class="fila"><div class="txt"><b>Carpeta de tus videos</b><small data-sin-traducir>${esc(E.carpeta)}</small></div><button class="boton" data-accion="abrir-carpeta">Abrir</button></div></div>
       <div class="seccion"><h3>Acerca de Corta</h3><p style="margin:0 0 8px;color:var(--suave)">${frase("Corta {v} · Gratis y de código abierto (AGPL-3.0).", { v: esc(E.version) })}</p>
-        <div class="fila"><div class="txt"><b>Actualizaciones</b><small>${E.buscando === "buscando" ? "Buscando…" : E.buscando === "alDia" ? "Estás en la última versión." : E.actualizacion?.hay ? "Hay una versión nueva." : "Corta revisa sola cada 6 horas."}</small></div>
-          ${E.actualizacion?.hay ? `<button class="boton principal" data-accion="actualizar">Actualizar</button>` : `<button class="boton" data-accion="buscar-act" ${E.buscando === "buscando" ? "disabled" : ""}>Buscar actualizaciones</button>`}</div>
+        <div class="fila"><div class="txt"><b>Actualizaciones</b>${actualizando ? `<small data-sin-traducir>${esc(E.act.texto || "")}</small>`
+          : `<small>${E.buscando === "buscando" ? "Buscando…" : E.buscando === "alDia" ? "Estás en la última versión." : E.buscando === "sinConexion" ? "No pude revisar. Revisa tu conexión." : E.actualizacion?.hay ? "Hay una versión nueva." : "Corta revisa sola cada 6 horas."}</small>`}</div>
+          ${actualizando ? `<div style="width:120px"><div class="barra-prog ${E.act.pct == null ? "indef" : ""}"><i style="width:${E.act.pct ?? 0}%"></i></div></div>`
+            : E.actualizacion?.hay ? `<button class="boton principal" data-accion="actualizar">Actualizar</button>` : `<button class="boton" data-accion="buscar-act" ${E.buscando === "buscando" ? "disabled" : ""}>Buscar actualizaciones</button>`}</div>
         <div class="enlaces"><a href="#" data-enlace="${ENLACES.sitio}">Sitio web</a><a href="#" data-enlace="${ENLACES.codigo}">Código</a><a href="#" data-enlace="${ENLACES.comunidad}">Comunidad</a></div></div>
       <div class="pie-dialogo"><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
   }
@@ -873,7 +876,7 @@
       case "ajustes": E.ajustes = true; return pintar();
       case "cerrar": if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; return pintar();
       case "abrir-carpeta": return host.enviar("abrirCarpeta", {});
-      case "actualizar": E.ajustes = false; host.enviar("actualizar"); return pintar();
+      case "actualizar": E.act = { paso: 1, texto: tr("Preparando…") }; host.enviar("actualizar"); return pintar();
       case "buscar-act": E.buscando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
       case "bv-fin": E.bv = null; E.bvCerrada = true; host.enviar("config", { bienvenida: true }); return pintar();
     }
@@ -1034,6 +1037,8 @@
       if (r.ok) return window.Corta.proyectoActualizado({ carpeta: r.carpeta, proyecto: r.proyecto, aviso: r.aviso || "Música lista" });
       if (r.error) toast(r.error);
     },
+    /** Avance de una actualización: {paso: 1–3 o "error", texto (ya traducido por la app), pct?}. */
+    actualizacionProgreso(r) { E.act = r; if (r.paso === "error") toast(r.texto || "No se pudo actualizar"); pintar(); },
     actualizacionRevisada(r) { E.buscando = r.hay ? null : r.sinConexion ? "sinConexion" : "alDia"; if (r.hay) E.actualizacion = r; pintar(); },
     _probar(f) { f(E); pintar(); },
     _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
@@ -1100,6 +1105,7 @@
       case "abrirEnlace": return window.open(d.url, "_blank", "noopener");
       case "abrirCarpeta": return toast("En la app, aquí se abre la carpeta");
       case "buscarActualizacion": return luego(500, () => A.actualizacionRevisada({ hay: false }));
+      case "actualizar": return luego(400, () => A.actualizacionProgreso({ paso: "error", texto: tr("En la vista previa no hay nada que actualizar.") }));
     }
   }
 

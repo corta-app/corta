@@ -33,8 +33,20 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 
 ## Estado
 Versión 0.1, recién nacida. Ya funcionan el motor (cortes, silencios, subtítulos, zooms, textos, encuadre, exportación vertical,
-edición con IA y Shorts) y la interfaz. La app de escritorio para Mac, Windows y Linux viene en camino. Puedes
-[probar la interfaz con un video de mentira](https://corta-app.github.io/corta/demo/).
+edición con IA y Shorts), la interfaz y la **app para Mac** (Apple Silicon, macOS 15 o más nuevo). Windows y Linux vienen en camino.
+Puedes [probar la interfaz con un video de mentira](https://corta-app.github.io/corta/demo/).
+
+## Instalar en Mac
+Corta para Mac trae todo adentro: no necesitas instalar Python, ffmpeg ni whisper. Mientras no haya una versión publicada, se arma
+desde el código en tu Mac (necesitas las herramientas de línea de comandos de Xcode: `xcode-select --install`):
+```bash
+git clone https://github.com/corta-app/corta ~/Developer/corta   # no en ~/corta: macOS no distingue ~/corta de ~/Corta (tus videos)
+cd ~/Developer/corta && bash build.sh                            # queda en ~/Applications/Corta.app
+```
+La primera vez elige tu idioma, tu IA y descarga el transcriptor (se verifica su huella). Tus videos y proyectos quedan en `~/Corta`;
+actualizar nunca los toca. Corta revisa sola si hay una versión nueva (en una instalación desde el código, con `git pull`).
+Dentro de la app van [ffmpeg](https://ffmpeg.org) (GPL, como programa aparte), [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
+(MIT) y Python portátil, todos descargados con su huella SHA-256 fija (`herramientas/empaquetar.sh`).
 
 ## Cómo funciona
 ```
@@ -62,7 +74,8 @@ Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal c
 Todos los tiempos están en segundos **del video original**: los cortes dicen qué se saca y lo demás se conserva.
 
 ## Desarrollo
-Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`).
+Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`). La app de Mac está en
+`app/` (Swift Package Manager, sin proyecto de Xcode): `bash build.sh` la arma e instala.
 ```bash
 cd ui && python3 -m http.server 8765         # interfaz con el video de mentira: http://localhost:8765 (?idioma=en, ?bienvenida, ?vacio)
 python3 bin/importar.py mi-video.mp4 /tmp/r.json   # crea el proyecto en ~/Corta
@@ -85,3 +98,7 @@ landscape footage to vertical, and lets your own AI (Claude Code, Codex or Gemin
 or pick the best moments of a long video as new Shorts. Add background music that ducks itself under your voice and fine-tune cuts,
 zooms and text on a multi-track timeline. Videos never leave your computer, there's no watermark, and the project is a
 plain open JSON file. Caption styles are data-only files anyone can create. Spanish-first, English included. Licensed under AGPL-3.0.
+
+**Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256). Until a release is
+published, build it from source: `git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`
+(installs to `~/Applications/Corta.app`; your videos live in `~/Corta`). Windows and Linux are on the way.

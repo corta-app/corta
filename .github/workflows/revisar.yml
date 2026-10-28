@@ -24,7 +24,9 @@ jobs:
           node --check ui/app.js
           python3 -m py_compile bin/*.py pruebas/*.py ejemplos/*.py
           python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('estilos/*.json') + ['ui/demo.json', 'pruebas/casos.json']]"
-          for f in herramientas/*.sh pruebas/*.sh; do bash -n "$f"; done
+          for f in build.sh herramientas/*.sh pruebas/*.sh; do bash -n "$f"; done
+      - name: Contrato interfaz ↔ app de Mac
+        run: python3 pruebas/contrato.py
       - name: Privacidad (correos personales y rutas de usuario)
         run: bash herramientas/revisar_privacidad.sh --generico
       - name: ffmpeg
@@ -41,3 +43,21 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with: { name: capturas, path: capturas, retention-days: 14, if-no-files-found: ignore }
+  mac:
+    # Compila la app de Mac (Swift solo compila en un Mac) cuando cambia algo de ella.
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { fetch-depth: 0, persist-credentials: false }
+      - name: ¿Cambió algo de la app de Mac?
+        id: cambio
+        # Lo que viene del evento entra por variables de entorno, nunca pegado en el guion.
+        env:
+          ANTES: ${{ github.event.before }}
+          EVENTO: ${{ github.event_name }}
+        run: |
+          if [ "$EVENTO" != "push" ] || ! git cat-file -e "$ANTES" 2>/dev/null || git diff --name-only "$ANTES" HEAD | grep -qE '^(app/|herramientas/empaquetar\.sh|build\.sh)'; then echo "si=1" >> "$GITHUB_OUTPUT"; fi
+      - name: Compilar
+        if: steps.cambio.outputs.si == '1'
+        run: cd app && swift build -c release

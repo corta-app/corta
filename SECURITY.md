@@ -33,6 +33,9 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
   unos días de espera (`.github/dependabot.yml`).
 - Python solo con biblioteca estándar; la interfaz y el motor no tienen dependencias de npm.
 - La interfaz tiene una Content-Security-Policy sin `unsafe-eval` ni scripts en línea; todo lo que viene de afuera se valida y se escapa.
+- En la app de Mac, la ventana solo carga la interfaz que viene adentro, el puente solo le responde a ella y los videos se sirven por
+  `corta://` solo desde los proyectos de `~/Corta`. ffmpeg solo abre archivos locales (`-protocol_whitelist file`), la IA corre sin
+  herramientas y lo que se descarga al armar la app (Python, ffmpeg, whisper.cpp) o al usarla (modelos) tiene su huella SHA-256 fija.
 
 ---
 
