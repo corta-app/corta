@@ -31,6 +31,7 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 | `ui/` | Interfaz única (`app.js`, `app.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros) + `demo/foto-1.jpg`, `demo/foto-2.jpg` (dibujos para llenar plantillas; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
 | `docs/` | Página pública (GitHub Pages); `pagina.yml` publica también `ui/` en `/demo/`. |
 | `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `transiciones.mjs` (vista previa ↔ exportado, con `cuadros_transiciones.py`), `velocidad.mjs` (velocidad por tramo: cada cuadro y cada palabra exportados contra la vista previa, con `cuadros_velocidad.py`, y el costo de exportar), `contrato.py` (interfaz ↔ `Ventana.swift`), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
+| `CHANGELOG.md` | Lo que cambia para quien usa la app, en palabras simples (ver «Lo que rodea a un cambio»). |
 | `herramientas/` | `generar_demo.py` (Pillow, solo para desarrollo), `imagenes.mjs` (capturas de la página), `generar_icono.mjs` (ícono de la app de Mac), `empaquetar.sh` (arma la app de Mac), `revisar_privacidad.sh`. |
 
 ## Reglas de la lógica compartida
@@ -163,6 +164,25 @@ transcriptor. Quien ya hizo la bienvenida no la repite; el idioma se cambia en A
   `?bienvenida`, `?vacio`, `window.Corta._probar(E => …)`), también a ancho de celular y en modo claro y oscuro.
 - Privacidad: `bash herramientas/revisar_privacidad.sh` antes de cada commit. Nunca subas videos reales: `.gitignore` solo deja los de la demo.
 - Commits con autor `@users.noreply.github.com`. El repo es público: cada commit se ve al tiro.
+
+## Lo que rodea a un cambio
+Un cambio está listo cuando la app **y lo que la cuenta** dicen lo mismo. Antes de empezar, anota qué tipo de cambio es; al terminar,
+revisa cada fila ("no aplica" se decide, no se supone):
+
+| Si el cambio… | Deja al día |
+|---|---|
+| agrega o cambia una función | la página (`docs/`: funciones, «cómo funciona», comparación, preguntas frecuentes), el README y la guía si la hay |
+| cambia lo que se ve | capturas de la página y del README (datos ficticios, español e inglés, normal y celular) e imagen para compartir si sale esa vista |
+| cambia un flujo o un paso | instrucciones paso a paso, preguntas frecuentes, textos de la bienvenida e instalación si la toca |
+| quita algo | bórralo de la página, el README y las guías: nada que prometa lo que ya no hace |
+| cambia el formato de datos o el puente | la documentación del formato, `ejemplos/` si existe y esta guía |
+| cambia carpetas, reglas o pruebas | esta guía (`AGENTS.md`) y `CONTRIBUTING.md` |
+| resuelve un issue | ciérralo con «Resuelto en …» dando crédito y abre issues para lo que quedó pendiente |
+| lo nota quien usa Corta | `CHANGELOG.md`: una línea en «Sin publicar», en lenguaje de persona («Ahora puedes…»), en español e inglés |
+
+Todo texto nuevo de la página y del README va en los dos idiomas, sin nada inventado. Antes de cerrar, busca con `grep` en `docs/` y el
+README el nombre o el texto viejo de lo que cambió. Al publicar una versión, las líneas de «Sin publicar» pasan a su número.
+Los issues que abrimos para una tarea traen una sección «Qué actualizar alrededor» con las filas de esta tabla que le tocan.
 
 ## Revisar aportes
 Todo entra por pull request y lo junta quien mantiene el proyecto, solo con su aprobación. Leer todo el diff antes de correr nada
