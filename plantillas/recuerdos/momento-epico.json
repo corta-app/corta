@@ -1,0 +1,93 @@
+{
+ "formato": 1,
+ "id": "momento-epico",
+ "categoria": "recuerdos",
+ "nombre": {
+  "es": "Momento épico",
+  "en": "Epic moment"
+ },
+ "descripcion": {
+  "es": "La previa, el momento en cámara lenta y el festejo. Para el gol, el truco o el salto que hay que ver dos veces.",
+  "en": "The build-up, the moment in slow motion and the celebration. For the goal, the trick or the jump worth watching twice."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "cámara lenta",
+  "deporte",
+  "slow motion",
+  "sports"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 2,
+   "tipo": "video",
+   "pista": {
+    "es": "La previa",
+    "en": "The build-up"
+   },
+   "velocidad": {
+    "v": 1.5
+   },
+   "transicion": "zoom-de-paso"
+  },
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "El momento",
+    "en": "The moment"
+   },
+   "velocidad": {
+    "v": 0.3,
+    "rampa": true,
+    "suavizar": "mezcla"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 2,
+   "tipo": "video",
+   "pista": {
+    "es": "Otra vez, más lento",
+    "en": "Again, slower"
+   },
+   "velocidad": {
+    "v": 0.5,
+    "suavizar": "mezcla"
+   },
+   "efectos": [
+    "contraste"
+   ],
+   "transicion": "fogonazo"
+  },
+  {
+   "dur": 2.5,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "El festejo",
+    "en": "The celebration"
+   }
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 1,
+   "texto": {
+    "es": "Espera…",
+    "en": "Wait for it…"
+   },
+   "posicion": 0.18
+  }
+ ],
+ "subtitulos": {
+  "estilo": "titular",
+  "activos": false
+ },
+ "efectos": [
+  "vivido"
+ ],
+ "musica": {
+  "bpm": 128
+ }
+}

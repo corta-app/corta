@@ -10,7 +10,8 @@
     pestana: "texto", seleccion: null, ancla: null, ia: { texto: "", enviando: false, historial: [] }, shorts: null, buscandoShorts: false,
     limpiando: false, ultimoAhorro: null, exportar: null, bv: null, bvCerrada: false, ajustes: false, probando: {}, resultadoIA: {},
     descarga: null, actualizacion: { hay: false }, act: null, buscando: null, idioma: "es", textos: {}, soltar: false,
-    lt: { zoom: 1, sel: null, ancho: 0 },  // línea de tiempo: zoom horizontal, tramo elegido ({lista, k}) y ancho visible en px
+    lt: { zoom: 1, sel: null, ancho: 0, vel: false },  // línea de tiempo: zoom horizontal, tramo elegido ({lista, k}), ancho visible en px
+                                                       // y si se ve la velocidad del tramo elegido
     vocabulario: { reemplazos: [], palabras: [] },
     editar: null,      // palabra(s) que se están corrigiendo: {desde, hasta, valor, donde: "texto" | "vista"}
     sugerencia: null,  // después de corregir: {de, a, n, todo, recordado} («¿Cambiar en todo el video?», «Recordar»)
@@ -115,14 +116,69 @@
     if (dur - t >= minimo) r.push({ i: r3(t), f: r3(dur) });
     return r;
   }
-  const duracionFinal = (p) => r3(conservados(p).reduce((a, t) => a + t.f - t.i, 0));
+  const duracionFinal = (p) => { const vels = velocidades(p); return r3(conservados(p).reduce((a, t) => a + lento(vels, t.i, t.f), 0)); };
+  /** Segundo del original → segundo del video exportado (null si quedó cortado). Cuenta la velocidad de cada tramo. */
   function aSalida(p, t, tramos) {
+    const vels = velocidades(p);
     let acumulado = 0;
     for (const tr_ of tramos || conservados(p)) {
-      if (tr_.i <= t && t <= tr_.f) return r3(acumulado + t - tr_.i);
-      acumulado += tr_.f - tr_.i;
+      if (tr_.i <= t && t <= tr_.f) return r3(acumulado + lento(vels, tr_.i, t));
+      acumulado += lento(vels, tr_.i, tr_.f);
     }
     return null;
+  }
+  // ───────────── Velocidad por tramo (la misma lógica que bin/proyecto.py; casos «velocidad» en pruebas/casos.json) ─────────────
+  // `velocidades`: [{i, f, v, rampa?, audio?, suavizar?, origen?}] en segundos del original. Con `rampa`, de 1× a v y de vuelta:
+  // la lentitud (1/v) sigue una curva suave en el primer y el último 30 % del tramo, y su integral (lo que dura) es un polinomio.
+  const VEL = { min: 0.25, max: 3, rampaMax: 0.75, minimo: 0.1, minRampa: 0.5, lado: 0.3 };
+  const numOk = (v) => typeof v === "number" && Number.isFinite(v);
+  const velocidades = (p) => (Array.isArray(p.velocidades) ? p.velocidades : []).filter((x) => x && numOk(x.i) && numOk(x.f) && numOk(x.v) && x.v > 0)
+    .sort((a, b) => a.i - b.i);
+  function integralVel(e, u) {
+    const x = Math.min(Math.max(u, e.i), e.f) - e.i;
+    if (!e.rampa) return x / e.v;
+    const d = e.f - e.i, lado = d * VEL.lado, k = 1 / e.v;
+    if (x <= lado) { const y = x / lado; return x + (k - 1) * lado * (y * y * y - y * y * y * y / 2); }
+    const sube = lado * (1 + k) / 2;
+    if (x <= d - lado) return sube + (x - lado) * k;
+    const z = x - (d - lado), y = z / lado;
+    return sube + (d - 2 * lado) * k + k * z + (1 - k) * lado * (y * y * y - y * y * y * y / 2);
+  }
+  /** Cuánto dura en el video exportado el pedazo a..b del original (sin mirar los cortes). */
+  function lento(vels, a, b) {
+    let r = b - a;
+    for (const e of vels) {
+      if (e.f <= a || e.i >= b) continue;
+      const c = Math.max(a, e.i), d = Math.min(b, e.f);
+      r += integralVel(e, d) - integralVel(e, c) - (d - c);
+    }
+    return r;
+  }
+  /** La velocidad en el segundo t del original (1 fuera de los tramos). */
+  function velocidadEn(vels, t) {
+    for (const e of vels) {
+      if (!(e.i <= t && t < e.f)) continue;
+      if (!e.rampa) return e.v;
+      const d = e.f - e.i, lado = d * VEL.lado, k = 1 / e.v, x = t - e.i, y = Math.min(x, d - x) / lado;
+      return 1 / (y >= 1 ? k : 1 + (k - 1) * y * y * (3 - 2 * y));
+    }
+    return 1;
+  }
+  /** La voz del tramo: «tono» (más rápida o lenta, con su tono) o «silencio» (bajo 0,5× se silencia sola). */
+  const audioDe = (e) => e.audio || (e.v < 0.5 ? "silencio" : "tono");
+  /** Pone `nueva` en i..f: lo que había ahí se recorta (un pedazo más corto que su mínimo se va); null o 1× sin rampa = normal. */
+  function ponerVelocidad(lista, i, f, nueva = null) {
+    const r = [], minimo = (e) => (e.rampa ? VEL.minRampa : VEL.minimo);
+    for (const e of lista) {
+      if (e.f <= i || e.i >= f) { r.push(e); continue; }
+      if (i - e.i >= minimo(e) - 1e-9) r.push({ ...e, f: r3(i) });
+      if (e.f - f >= minimo(e) - 1e-9) r.push({ ...e, i: r3(f) });
+    }
+    if (nueva && (nueva.rampa || nueva.v !== 1)) {
+      const { i: _i, f: _f, ...resto } = nueva;
+      r.push({ i: r3(i), f: r3(f), ...resto });
+    }
+    return r.sort((a, b) => a.i - b.i);
   }
   const palabraCortada = (p, w, cortes) => { const m = (w.i + w.f) / 2; return (cortes || unir(p.cortes || [])).some((c) => c.i <= m && m <= c.f); };
   function cortarPalabras(p, desde, hasta, motivo = "manual") {
@@ -245,24 +301,24 @@
   const alcanceEf = (p, ap) => ("i" in ap ? [ap.i, ap.f] : [0, p.fuente.duracion]);
   /** Los pedazos del tramo i..f (segundos del original) que quedan, en segundos del video exportado. */
   function intervalosSalida(p, i, f) {
-    const r = []; let acumulado = 0;
+    const r = [], vels = velocidades(p); let acumulado = 0;
     for (const t of conservados(p)) {
       const a = Math.max(t.i, i), b = Math.min(t.f, f);
-      if (b - a >= 0.02) r.push([r3a(acumulado + a - t.i), r3a(acumulado + b - t.i)]);
-      acumulado += t.f - t.i;
+      if (b - a >= 0.02) r.push([r3a(acumulado + lento(vels, t.i, a)), r3a(acumulado + lento(vels, t.i, b))]);
+      acumulado += lento(vels, t.i, t.f);
     }
     return r;
   }
   /** Dónde se juntan dos pedazos del tramo en el video exportado (ahí van las transiciones): un corte en medio o una división
    *  (donde dividiste o donde una plantilla pasa de un clip al siguiente). */
   function uniones(p, i, f) {
-    const r = []; let acumulado = 0, anterior = false;
+    const r = [], vels = velocidades(p); let acumulado = 0, anterior = false;
     const divs = (p.divisiones || []).filter((x) => typeof x === "number" && Number.isFinite(x) && i + 0.02 < x && x < f - 0.02).sort((a, b) => a - b);
     for (const t of conservados(p)) {
       const dentro = Math.min(t.f, f) - Math.max(t.i, i) >= 0.02;
       if (dentro && anterior) r.push(r3a(acumulado));
-      for (const d of divs) if (t.i + 0.02 < d && d < t.f - 0.02) r.push(r3a(acumulado + d - t.i));
-      anterior = dentro; acumulado += t.f - t.i;
+      for (const d of divs) if (t.i + 0.02 < d && d < t.f - 0.02) r.push(r3a(acumulado + lento(vels, t.i, d)));
+      anterior = dentro; acumulado += lento(vels, t.i, t.f);
     }
     return r;
   }
@@ -415,7 +471,11 @@
     for (const id of pl.efectos || []) poner(id);
     const textos = (pl.textos || []).map((t) => ({ i: ini[t.en_hueco], f: ini[t.en_hueco + 1], texto: t.texto[idioma] || t.texto.es, y: t.posicion ?? 0.18 }));
     const s = pl.subtitulos, sub = s && estilos.includes(s.estilo) ? { estilo: s.estilo, activos: s.activos ?? true } : null;
-    return { lienzo: pl.proporcion, divisiones: ini.slice(1, -1), textos, efectos: lista.slice(0, 40), subtitulos: sub, faltan };
+    const r = { lienzo: pl.proporcion, divisiones: ini.slice(1, -1), textos, efectos: lista.slice(0, 40), subtitulos: sub, faltan };
+    // La velocidad de cada hueco va como un tramo de `velocidades` del proyecto.
+    const vels = huecos.flatMap((h, k) => (h.velocidad ? [{ i: ini[k], f: ini[k + 1], ...h.velocidad }] : []));
+    if (vels.length) r.velocidades = vels;
+    return r;
   }
   /** Todos los efectos que usa una plantilla (sin repetir), como plantilla_formato.efectos_usados. */
   const efectosUsados = (pl) => [...new Set([...(pl.huecos || []).flatMap((h) => [...(h.efectos || []), ...(h.transicion ? [h.transicion] : [])]), ...(pl.efectos || [])])];
@@ -429,13 +489,13 @@
   }
   const igualJSON = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   /** Quita justo lo que hizo el cambio `id` de la IA, aunque después se haya editado otra cosa: lo que agregó (zooms, textos, cortes,
-   *  efectos con `origen: id`), los ajustes que cambió, los cortes que volvió a poner y las palabras que corrigió. Lo que la persona
+   *  efectos y velocidades con `origen: id`), los ajustes que cambió, los cortes que volvió a poner y las palabras que corrigió. Lo que la persona
    *  ya cambió a mano se conserva (deja de ser «de la IA») y se cuenta en `conservados`. Devuelve {quitados, conservados} o null. */
   function quitarCambioIA(p, id) {
     const c = (p.cambios_ia || []).find((x) => x.id === id);
     if (!c || c.estado === "quitado") return null;
     let quitados = 0, conservados = 0;
-    for (const lista of ["zooms", "textos", "cortes", "efectos"]) {
+    for (const lista of ["zooms", "textos", "cortes", "efectos", "velocidades"]) {
       if (!Array.isArray(p[lista])) continue;
       const copias = (c.agregados?.[lista] || []).map((x) => JSON.stringify(x));
       p[lista] = p[lista].filter((o) => {
@@ -837,7 +897,10 @@
   const CATEGORIAS_PL = [["todas", "Todas"], ["negocios", "Negocios"], ["presentacion", "Presentación"], ["recuerdos", "Recuerdos"], ["tutorial", "Tutoriales"], ["celebracion", "Celebraciones"]];
   const enIdioma = (x) => (x?.[E.idioma] || x?.es || "");
   const plantillaPorId = (id) => E.plantillas.find((x) => x.id === id);
-  const duracionPl = (pl) => iniciosHuecos(pl.huecos).at(-1);
+  /** Lo que dura un hueco en el video exportado (con su velocidad: a 0,5× dura el doble) y dónde empieza cada uno. */
+  const durHueco = (h) => (h.velocidad ? r3a(lento([{ i: 0, f: h.dur, ...h.velocidad }], 0, h.dur)) : h.dur);
+  const iniciosSalida = (huecos) => iniciosHuecos(huecos.map((h) => ({ dur: durHueco(h) })));
+  const duracionPl = (pl) => iniciosSalida(pl.huecos).at(-1);
   const segundosPl = (s) => (Number.isInteger(s) ? String(s) : segundos(s));
   function coincidePl(pl, categoria, busqueda) {
     if (categoria !== "todas" && pl.categoria !== categoria) return false;
@@ -859,7 +922,7 @@
   /** Vista previa de una plantilla, sin video: bloques de color con sus cortes, sus textos (en su estilo) y una barra con las uniones.
    *  La anima `animarPlantillas` (un hueco a la vez, al ritmo de sus duraciones). */
   function vistaPl(pl, grande = false) {
-    const [W, H] = LIENZOS[pl.proporcion] || LIENZOS["9:16"], ini = iniciosHuecos(pl.huecos), total = ini.at(-1);
+    const [W, H] = LIENZOS[pl.proporcion] || LIENZOS["9:16"], ini = iniciosSalida(pl.huecos), total = ini.at(-1);
     const alto = grande ? 260 : 150, ancho = W < H ? alto * W / H : grande ? 300 : 160;
     const st = E.estilos.find((x) => x.id === pl.subtitulos?.estilo) || E.estilos.find((x) => x.id === "pop") || E.estilos[0];
     const escala = ancho / 1080, filtroTodo = (pl.efectos || []).map((id) => (efectoPorId(id)?.pasos || []).filter((p) => p.tipo === "color").map(cssColor).join(" ")).join(" ").trim();
@@ -874,7 +937,7 @@
     const bloques = pl.huecos.map((h, k) => {
       const filtro = (h.efectos || []).map((id) => (efectoPorId(id)?.pasos || []).filter((p) => p.tipo === "color").map(cssColor).join(" ")).join(" ").trim();
       const tr_ = k ? transicion(pl.huecos[k - 1].transicion) : "";
-      return `<i class="pv-h ${h.tipo}${k ? "" : " on"}" data-k="${k}"${tr_ ? ` data-tr="${tr_}"` : ""} style="background:${colorHueco(pl.id, k)};--d:${h.dur}s${filtro ? `;filter:${filtro}` : ""}">
+      return `<i class="pv-h ${h.tipo}${k ? "" : " on"}" data-k="${k}"${tr_ ? ` data-tr="${tr_}"` : ""} style="background:${colorHueco(pl.id, k)};--d:${durHueco(h)}s${filtro ? `;filter:${filtro}` : ""}">
         <em aria-hidden="true">${ICONO_HUECO[h.tipo] || ""}</em>${grande && h.pista ? `<small>${esc(enIdioma(h.pista))}</small>` : ""}</i>`;
     }).join("");
     const textos = st ? (pl.textos || []).map((t) => `<b class="pv-t${t.en_hueco ? "" : " on"}" data-k="${t.en_hueco}" style="top:${(t.posicion ?? 0.18) * 100}%;${cssEstilo(st, escala)}font-size:${Math.max(7, st.tamano / 100 * ancho * 0.9).toFixed(1)}px">${esc(enIdioma(t.texto))}</b>`).join("") : "";
@@ -923,7 +986,7 @@
   function detallePlantilla(pl) {
     const x = E.pl, propia = plantillaPorId(pl.id), faltan = faltanPl(pl), catEf = x.catalogo?.efectos || E.catalogo?.efectos || [];
     const huecos = pl.huecos.map((h, k) => `<li><span class="num">${k + 1}</span><span class="txt">${h.pista ? `<b data-sin-traducir>${esc(enIdioma(h.pista))}</b>` : `<b>Lo que quieras</b>`}</span>
-      <small data-sin-traducir>${esc(tr({ video: "Video", foto: "Foto", cualquiera: "Video o foto" }[h.tipo]))} · ${T("{s} s", { s: esc(segundosPl(h.dur)) })}</small></li>`).join("");
+      <small data-sin-traducir>${esc(tr({ video: "Video", foto: "Foto", cualquiera: "Video o foto" }[h.tipo]))} · ${T("{s} s", { s: esc(segundosPl(durHueco(h))) })}${h.velocidad ? ` · ⏱ ${esc(nombreVel(h.velocidad))}` : ""}</small></li>`).join("");
     const faltaHTML = faltan.length ? `<div class="tarjeta falta-pl"><b>Usa efectos de la comunidad que no tienes</b>${faltan.map((id) => {
         const ef = catEf.find((e) => e.id === id), bajando = x.bajando[id];
         return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(ef ? nombreFx(ef) : id)}</b></div>
@@ -986,14 +1049,15 @@
       ${!fuenteMusica(p) ? `<p class="nota">Esta música está fuera de la carpeta del proyecto: no suena en la vista previa, pero sí al exportar. Elígela de nuevo para traerla a la carpeta.</p>` : ""}</div>${derechos}`;
   }
 
-  const EJEMPLOS_IA = ["Saca la parte donde me equivoco", "Pon zoom cuando digo algo importante", "Pon un título grande al inicio", "Ponle un filtro cálido", "Subtítulos de una palabra a la vez", "Hazlo cuadrado para Instagram"];
+  const EJEMPLOS_IA = ["Saca la parte donde me equivoco", "Pon zoom cuando digo algo importante", "Pon un título grande al inicio", "Ponle un filtro cálido", "Cámara lenta cuando digo «publicar»", "Subtítulos de una palabra a la vez", "Hazlo cuadrado para Instagram"];
   /** Qué dice el botón de un cambio de la IA: lo que agregó, contado («Quitar estos 6 zooms»), o «Quitar este cambio». */
   function etiquetaQuitar(c) {
     const a = c.agregados || {}, listas = Object.keys(a).filter((k) => a[k]?.length);
     const otros = (c.ajustes?.length || 0) + (c.restaurados ? 1 : 0) + (c.palabras?.length || 0);
     if (listas.length === 1 && !otros) {
       const n = a[listas[0]].length, nombres = { zooms: ["Quitar este zoom", "Quitar estos {n} zooms"], textos: ["Quitar este texto", "Quitar estos {n} textos"],
-        cortes: ["Quitar este corte", "Quitar estos {n} cortes"], efectos: ["Quitar este efecto", "Quitar estos {n} efectos"] }[listas[0]];
+        cortes: ["Quitar este corte", "Quitar estos {n} cortes"], efectos: ["Quitar este efecto", "Quitar estos {n} efectos"],
+        velocidades: ["Quitar esta velocidad", "Quitar estas {n} velocidades"] }[listas[0]];
       if (nombres) return Tp(n === 1 ? nombres[0] : nombres[1], { n });
     }
     return Tp("Quitar este cambio");
@@ -1048,10 +1112,11 @@
     s = Math.max(0, s || 0); const m = Math.floor(s / 60), x = (s - m * 60).toFixed(1).padStart(4, "0");
     return `${m}:${E.idioma === "es" ? x.replace(".", ",") : x}`;
   };
-  /** Los tramos que quedan, partidos donde la persona dividió (`divisiones`): se eligen en la pista de video para borrarlos,
-   *  recortarlos o ponerles un efecto. Al exportar no cortan nada: solo marcan dónde va una transición (`uniones`). */
+  /** Los tramos que quedan, partidos donde la persona dividió (`divisiones`) y donde cambia la velocidad: se eligen en la pista
+   *  de video para borrarlos, recortarlos, cambiarles la velocidad o ponerles un efecto. Al exportar no cortan nada: solo marcan dónde va una transición (`uniones`). */
   function tramosEdicion(p) {
-    const div = [...new Set(p.divisiones || [])].sort((a, b) => a - b), r = [];
+    // También se parte donde cambia la velocidad: el tramo lento (o rápido) se elige solo.
+    const div = [...new Set([...(p.divisiones || []), ...velocidades(p).flatMap((e) => [e.i, e.f])])].sort((a, b) => a - b), r = [];
     for (const t of conservados(p)) {
       let a = t.i;
       for (const d of div) if (d > a + MIN_TRAMO && d < t.f - MIN_TRAMO) { r.push({ i: a, f: r3(d) }); a = r3(d); }
@@ -1081,6 +1146,52 @@
     E.lt.sel = null;
     guardar(p, accion === "borrar" ? "Tramo borrado" : "Recortado");
   }
+  // ───────────── Velocidad de un tramo (cámara lenta, rápida o una rampa) ─────────────
+  const VELOCIDADES_LT = [0.25, 0.5, 1, 1.5, 2, 3];
+  const numVel = (v) => { const t = String(Math.round(v * 100) / 100); return E.idioma === "es" ? t.replace(".", ",") : t; };
+  /** «0,5×» o, en una rampa, «1 → 0,3 → 1×». */
+  const nombreVel = (e) => (e.rampa ? `1 → ${numVel(e.v)} → 1×` : `${numVel(e.v)}×`);
+  /** El tramo de `velocidades` que cubre un tramo de la línea de tiempo (o null: va a 1×). */
+  const velTramo = (p, x) => { const m = (x.i + x.f) / 2; return velocidades(p).find((e) => e.i <= m && m < e.f) || null; };
+  /** Cambia la velocidad del tramo elegido (`cambio`: v, rampa, suavizar o audio). Solo guarda los campos que no son los de
+   *  siempre: una rampa necesita v hasta 0,75 y medio segundo; suavizar, cámara lenta; el audio, solo si no es lo que haría solo. */
+  function cambiarVelocidad(cambio, guardarYa = true) {
+    const p = P(), s = E.lt.sel, tr_ = s?.lista === "tramos" && tramosEdicion(p)[s.k];
+    if (!tr_) return;
+    if (tr_.f - tr_.i < VEL.minimo) return toast("Este tramo es muy corto para cambiarle la velocidad");
+    const antes = velTramo(p, tr_), n = { v: antes?.v ?? 1 };
+    for (const k of ["rampa", "audio", "suavizar"]) if (antes?.[k] != null) n[k] = antes[k];
+    Object.assign(n, cambio);
+    n.v = Math.round(Math.max(VEL.min, Math.min(VEL.max, Number(n.v) || 1)) * 100) / 100;
+    if (cambio.rampa) n.v = Math.min(n.v, 0.3);                 // al prender la rampa: de 1× a 0,3× en el momento clave
+    else if ("v" in cambio && n.v > VEL.rampaMax) delete n.rampa;  // muy rápida para una rampa: velocidad pareja
+    if (!n.rampa) delete n.rampa;
+    if (n.rampa && tr_.f - tr_.i < VEL.minRampa) return toast("Para una rampa, el tramo tiene que durar al menos medio segundo");
+    if (n.v >= 1 || n.suavizar === "no") delete n.suavizar;
+    if (n.audio === audioDe({ v: n.v })) delete n.audio;
+    p.velocidades = ponerVelocidad(p.velocidades || [], tr_.i, tr_.f, n);
+    if (!p.velocidades.length) delete p.velocidades;
+    // Volver a 1× puede juntar el tramo con sus vecinos: se sigue eligiendo el que tiene el mismo centro.
+    const m = (tr_.i + tr_.f) / 2;
+    E.lt.sel = { lista: "tramos", k: Math.max(0, tramosEdicion(p).findIndex((x) => x.i <= m && m < x.f)) };
+    if (guardarYa) guardar(p); else { pintarInfo(); actualizarCapas(); }
+  }
+  function panelVelocidad(p, tr_) {
+    const e = velTramo(p, tr_), v = e?.v ?? 1, rampa = !!e?.rampa, sale = lento(velocidades(p), tr_.i, tr_.f);
+    const chips = VELOCIDADES_LT.map((x) => `<button class="chip" data-vel="${x}" aria-pressed="${!rampa && v === x}" data-sin-traducir>${esc(numVel(x))}×</button>`).join("");
+    const lenta = v < 1 && (v <= 0.5 || rampa), muda = e && audioDe(e) === "silencio";
+    // Las explicaciones van en el título (al pasar o mantener el dedo): en la pantalla, solo el nombre de cada opción.
+    const op = (dato, marcado, texto, ayuda = "") => `<label class="op-vel"${ayuda ? ` title="${ayuda}"` : ""}><input type="checkbox" class="interruptor" ${dato} ${marcado ? "checked" : ""}><span>${texto}</span></label>`;
+    return `<div class="lt-vel" role="group" aria-label="Velocidad del tramo">
+      <div class="chips-vel">${chips}</div>
+      <label class="fino-vel"><input type="range" min="${VEL.min}" max="${VEL.max}" step="0.05" value="${v}" data-vel-fino aria-label="Velocidad exacta">
+        <output id="vel-num" class="num" data-sin-traducir>${esc(numVel(v))}×</output></label>
+      ${op("data-vel-rampa", rampa, "Rampa", "Entra y sale suave: cámara lenta en el momento clave.")}
+      ${lenta ? op("data-vel-suavizar", !!e?.suavizar, "Suavizar", "Mezcla los cuadros para que la cámara lenta no salte.") : ""}
+      ${lenta && e?.suavizar ? op("data-vel-fluido", e.suavizar === "movimiento", "Más fluido (exportar tarda más)", "Inventa los cuadros que faltan. Exportar tarda bastante más.") : ""}
+      ${v < 0.5 || v > 2 || rampa ? op("data-vel-silencio", muda, "Silenciar el audio del tramo", "Bajo 0,5× la voz se silencia sola. La música nunca cambia de velocidad.") : ""}
+      <small class="nota">${frase("Dura {a} s y en el video, {b} s", { a: esc(segundos(tr_.f - tr_.i)), b: esc(segundos(sale)) })}</small></div>`;
+  }
   /** Hasta dónde se puede mover un borde: sin dar vuelta el tramo (mínimo 0,05 s), sin salir del video y sin pisar a sus vecinos. */
   function limitesBorde(lista, k, borde, dur) {
     const t = lista[k];
@@ -1103,28 +1214,54 @@
   // retorno 400 ms); aquí se imita con las palabras que quedan: desde un poco antes de cada palabra hasta 0,4 s después.
   const BAJA = 0.25, VOZ_ANTES = 0.03, VOZ_DESPUES = 0.4;
   function tramosVoz(p) {
-    const cortes = unir(p.cortes || []);
-    return unir(p.palabras.filter((w) => !palabraCortada(p, w, cortes)).map((w) => ({ i: Math.max(0, w.i - VOZ_ANTES), f: w.f + VOZ_DESPUES })));
+    // Donde la velocidad silencia la voz, la música no baja (al exportar, el sidechain no escucha nada ahí).
+    const cortes = unir(p.cortes || []), mudos = velocidades(p).filter((e) => audioDe(e) === "silencio");
+    return unir(p.palabras.filter((w) => !palabraCortada(p, w, cortes) && !mudos.some((e) => e.i <= (w.i + w.f) / 2 && (w.i + w.f) / 2 <= e.f))
+      .map((w) => ({ i: Math.max(0, w.i - VOZ_ANTES), f: w.f + VOZ_DESPUES })));
   }
   const cuantoBaja = (voz, t) => (voz.some((x) => x.i <= t && t <= x.f) ? BAJA : 1);
   let vozCache = null;
   function voz() {
-    const p = P(), k = JSON.stringify(p.cortes) + p.palabras.length;
+    const p = P(), k = JSON.stringify(p.cortes) + JSON.stringify(p.velocidades || []) + p.palabras.length;
     if (!vozCache || vozCache.p !== p || vozCache.k !== k) vozCache = { p, k, t: tramosVoz(p) };
     return vozCache.t;
   }
 
+  // La línea de tiempo dibuja cada tramo con lo que dura en el video exportado: a 0,5× se ve el doble de ancho y a 2×, la mitad
+  // (x = lento(0, t) / lento(0, duración); los cortes siguen rayados con su largo del original). `ltX` da la posición (0 a 1) del
+  // segundo t del original y `ltT`, al revés.
+  let ltCache = null;
+  function lineaVel(p) {
+    if (!ltCache || ltCache.p !== p || ltCache.lista !== p.velocidades || ltCache.dur !== p.fuente.duracion) {
+      const vels = velocidades(p), dur = p.fuente.duracion;
+      ltCache = { p, lista: p.velocidades, dur, vels, total: lento(vels, 0, dur) };
+    }
+    return ltCache;
+  }
+  const ltX = (p, t) => { const c = lineaVel(p), x = Math.max(0, Math.min(c.dur, t)); return c.vels.length ? lento(c.vels, 0, x) / c.total : x / c.dur; };
+  function ltT(p, x) {
+    const c = lineaVel(p); x = Math.max(0, Math.min(1, x));
+    if (!c.vels.length) return x * c.dur;
+    let lo = 0, hi = c.dur;
+    for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (ltX(p, m) < x) lo = m; else hi = m; }
+    return (lo + hi) / 2;
+  }
   function marcasRegla() {
-    const p = P(), dur = p.fuente.duracion, pxs = (E.lt.ancho || 600) * E.lt.zoom / dur;
+    const p = P(), dur = p.fuente.duracion, ancho = (E.lt.ancho || 600) * E.lt.zoom, pxs = ancho / dur;
     const paso = [0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 1800].find((s) => s * pxs >= 64) || 3600;
-    let html = "";
-    for (let t = 0; t < dur - paso * 0.5; t += paso) html += `<span class="marca" style="left:${(t / dur * 100).toFixed(3)}%">${esc(paso < 1 ? relojFino(t) : reloj(t))}</span>`;
+    let html = "", antes = -1e9;
+    for (let t = 0; t < dur - paso * 0.5; t += paso) {
+      const x = ltX(p, t);
+      if ((x - antes) * ancho < 52) continue;  // en un tramo rápido las marcas se juntan: se salta la que no cabe
+      antes = x;
+      html += `<span class="marca" style="left:${(x * 100).toFixed(3)}%">${esc(paso < 1 ? relojFino(t) : reloj(t))}</span>`;
+    }
     return html;
   }
   function lineaTiempo() {
     const p = P(), dur = p.fuente.duracion, sel = E.lt.sel;
-    const pct = (t) => (Math.max(0, Math.min(dur, t)) / dur * 100).toFixed(3) + "%";
-    const pos = (o) => `left:${pct(o.i)};width:${((Math.min(dur, o.f) - Math.max(0, o.i)) / dur * 100).toFixed(3)}%`;
+    const pct = (t) => (ltX(p, t) * 100).toFixed(3) + "%";
+    const pos = (o) => `left:${pct(o.i)};width:${((ltX(p, o.f) - ltX(p, o.i)) * 100).toFixed(3)}%`;
     const bordes = (lista, k, o) => ["i", "f"].map((b) => {
       const [lo, hi] = limitesBorde(p[lista], k, b, dur), nombre = Tp(NOMBRES_BORDE[lista][b === "i" ? 0 : 1], { n: k + 1 });
       return `<span class="borde ${b}" id="lt-${lista}-${k}-${b}" role="slider" tabindex="0" data-borde="${b}" aria-label="${esc(nombre)}"
@@ -1134,11 +1271,14 @@
     const bloque = (lista, k, o, clase, etiqueta = "", titulo = "", texto = null) => `<div class="bloque ${clase} ${sel?.lista === lista && sel.k === k ? "sel" : ""}"
       data-lt="${lista}" data-k="${k}" style="${pos(o)}"${titulo ? ` title="${esc(titulo)}"` : ""}>${bordes(lista, k, o)}<span class="etq" data-sin-traducir${texto != null ? ` data-texto="${esc(texto)}"` : ""}>${etiqueta}</span></div>`;
     const onda = Array.from({ length: 120 }, (_, k) => {
-      const t = (k + 0.5) / 120 * dur, habla = p.palabras.some((w) => w.i <= t && t <= w.f);
+      const t = ltT(p, (k + 0.5) / 120), habla = p.palabras.some((w) => w.i <= t && t <= w.f);
       return `<i style="height:${habla ? 30 + ((k * 37) % 50) : 4}%"></i>`;
     }).join("");
     const cortes = p.cortes.map((c, k) => bloque("cortes", k, c, "b-corte", "", MOTIVOS[c.motivo] || "")).join("");
-    const tramosLt = tramosEdicion(p).map((x, k) => `<div class="bloque b-tramo ${sel?.lista === "tramos" && sel.k === k ? "sel" : ""}" data-lt="tramos" data-k="${k}" style="${pos(x)}"></div>`).join("");
+    const tramosLt = tramosEdicion(p).map((x, k) => {
+      const e = velTramo(p, x);
+      return `<div class="bloque b-tramo ${e ? "con-vel" : ""} ${sel?.lista === "tramos" && sel.k === k ? "sel" : ""}" data-lt="tramos" data-k="${k}" style="${pos(x)}">${e ? `<span class="etq-vel" data-sin-traducir>${esc(nombreVel(e))}</span>` : ""}</div>`;
+    }).join("");
     const efs = p.efectos || [], globales = efs.filter((ap) => !("i" in ap)).map((ap) => nombreFx(efectoPorId(ap.efecto)) || ap.efecto);
     const efectosLt = (globales.length ? `<button class="lt-global-fx" data-pestana="efectos" data-sin-traducir>✨ ${esc(globales.join(" · "))}</button>` : "")
       + efs.map((ap, k) => ("i" in ap ? bloque("efectos", k, ap, "b-efecto", "", "", "✨ " + (nombreFx(efectoPorId(ap.efecto)) || ap.efecto)) : "")).join("");
@@ -1152,7 +1292,7 @@
     if (p.musica) {
       const N = 200, vz = voz(), puntos = ["0,100"];
       for (let k = 0; k <= N; k++) {
-        const t = k / N * dur, alto = palabraCortada(p, { i: t, f: t }, cortados) ? 0 : cuantoBaja(vz, t) === 1 ? 88 : 30;
+        const t = ltT(p, k / N), alto = palabraCortada(p, { i: t, f: t }, cortados) ? 0 : cuantoBaja(vz, t) === 1 ? 88 : 30;
         puntos.push(`${k},${100 - alto}`);
       }
       puntos.push(`${N},100`);
@@ -1205,9 +1345,12 @@
     if (!o || !("i" in o)) return `<span class="nota">Toca un tramo del video para borrarlo, recortarlo o ponerle un efecto. Arrastra los bordes para ajustarlos.</span>`;
     const v = { a: esc(relojFino(o.i)), b: esc(relojFino(o.f)) };
     if (s.lista === "tramos") {
+      const e = velTramo(p, o);
       return `${frase("Tramo de {a} a {b}", v, "b")}<span class="herr-tramo"><button class="boton sutil chico" data-tramo="inicio" title="Recorta desde el inicio del tramo hasta el cabezal">⇤ <span>Recortar</span></button>
         <button class="boton sutil chico" data-tramo="fin" title="Recorta desde el cabezal hasta el final del tramo"><span>Recortar</span> ⇥</button>
-        <button class="boton sutil chico" data-pestana="efectos">✨ <span>Efecto</span></button><button class="boton chico peligro" data-tramo="borrar">Borrar</button></span>`;
+        <button class="boton sutil chico ${E.lt.vel || e ? "activo" : ""}" data-accion="velocidad" aria-expanded="${!!E.lt.vel}">⏱ ${e ? `<span data-sin-traducir>${esc(nombreVel(e))}</span>` : "<span>Velocidad</span>"}</button>
+        <button class="boton sutil chico" data-pestana="efectos">✨ <span>Efecto</span></button><button class="boton chico peligro" data-tramo="borrar">Borrar</button></span>
+        ${E.lt.vel ? panelVelocidad(p, o) : ""}`;
     }
     const txt = { cortes: "Corte de {a} a {b}", zooms: "Zoom de {a} a {b}", textos: "Texto de {a} a {b}", efectos: "Efecto de {a} a {b}" }[s.lista];
     return `${frase(txt, v, "b")}<button class="boton sutil chico" data-accion="lt-quitar">${s.lista === "cortes" ? "Volver a poner" : "Quitar"}</button>`;
@@ -1223,8 +1366,8 @@
   function pintarBloque(lista, k) {
     const p = P(), o = p[lista][k], dur = p.fuente.duracion, el = document.querySelector(`.bloque[data-lt="${lista}"][data-k="${k}"]`);
     if (!el) return;
-    el.style.left = (Math.max(0, o.i) / dur * 100).toFixed(3) + "%";
-    el.style.width = ((Math.min(dur, o.f) - Math.max(0, o.i)) / dur * 100).toFixed(3) + "%";
+    el.style.left = (ltX(p, o.i) * 100).toFixed(3) + "%";
+    el.style.width = ((ltX(p, o.f) - ltX(p, o.i)) * 100).toFixed(3) + "%";
     for (const b of ["i", "f"]) {
       const h = $(`#lt-${lista}-${k}-${b}`), [lo, hi] = limitesBorde(p[lista], k, b, dur);
       if (!h) continue;
@@ -1244,7 +1387,7 @@
     const c = $("#lt-contenido"), p = P();
     if (!c || !p) return 0;
     const r = c.getBoundingClientRect();
-    return Math.max(0, Math.min(1, (x - r.left) / r.width)) * p.fuente.duracion;
+    return ltT(p, (x - r.left) / r.width);
   }
   function irA(t) {
     const v = $("#video"), p = P();
@@ -1253,9 +1396,9 @@
   }
   /** Imán: al arrastrar, el borde se pega al principio o fin de una palabra o al cabezal si pasa a menos de 8 px (Alt lo apaga). */
   function iman(p, t, cabezal) {
-    const c = $("#lt-contenido"), umbral = 8 / (c.getBoundingClientRect().width / p.fuente.duracion);
-    let mejor = t, dist = umbral;
-    const ver = (v) => { const d = Math.abs(v - t); if (d < dist) { dist = d; mejor = v; } };
+    const ancho = $("#lt-contenido").getBoundingClientRect().width, x = ltX(p, t);
+    let mejor = t, dist = 8;  // en píxeles: con velocidad, un segundo no mide lo mismo en toda la línea
+    const ver = (v) => { const d = Math.abs(ltX(p, v) - x) * ancho; if (d < dist) { dist = d; mejor = v; } };
     for (const w of p.palabras) { ver(w.i); ver(w.f); }
     if (cabezal != null) ver(cabezal);
     return mejor;
@@ -1266,12 +1409,12 @@
     const nuevo = dir === 0 ? 1 : niveles[Math.max(0, Math.min(niveles.length - 1, k + dir))];
     if (nuevo === E.lt.zoom) return;
     // Lo que está bajo el centro (o el cabezal) queda en el mismo lugar de la pantalla.
-    const vista = $("#lt-vista"), t = centro ?? $("#video")?.currentTime ?? 0, dur = p.fuente.duracion;
-    let rel = vista ? (t / dur * vista.scrollWidth - vista.scrollLeft) / vista.clientWidth : 0.5;
+    const vista = $("#lt-vista"), t = centro ?? $("#video")?.currentTime ?? 0, x = ltX(p, t);
+    let rel = vista ? (x * vista.scrollWidth - vista.scrollLeft) / vista.clientWidth : 0.5;
     if (!(rel >= 0 && rel <= 1)) rel = 0.5;
     E.lt.zoom = nuevo;
     pintar();
-    const v2 = $("#lt-vista"); if (v2) v2.scrollLeft = t / dur * v2.scrollWidth - rel * v2.clientWidth;
+    const v2 = $("#lt-vista"); if (v2) v2.scrollLeft = x * v2.scrollWidth - rel * v2.clientWidth;
   }
 
   // ───────────── Música en la vista previa: suena de verdad, sigue el tiempo del video exportado y baja cuando hablas ─────────────
@@ -1594,13 +1737,13 @@
     // Reloj y cabezal
     const salida = aSalida(p, t, tramos());
     const rel = $("#reloj"); if (rel && salida != null) rel.innerHTML = T("**{a}** de {b}", { a: esc(reloj(salida)), b: esc(reloj(duracionFinal(p))) });
-    const cab = $("#cabezal"); if (cab) cab.style.left = (t / p.fuente.duracion * 100).toFixed(3) + "%";
+    const cab = $("#cabezal"); if (cab) cab.style.left = (ltX(p, t) * 100).toFixed(3) + "%";
     const regla = $("#linea");
     if (regla && regla.getAttribute("aria-valuenow") !== String(Math.round(t))) { regla.setAttribute("aria-valuenow", Math.round(t)); regla.setAttribute("aria-valuetext", relojFino(t)); }
     // Con zoom, la línea de tiempo sigue al cabezal mientras se reproduce.
     const vista = $("#lt-vista");
     if (vista && E.lt.zoom > 1 && !v.paused && !arrastre) {
-      const x = t / p.fuente.duracion * vista.scrollWidth;
+      const x = ltX(p, t) * vista.scrollWidth;
       if (x < vista.scrollLeft || x > vista.scrollLeft + vista.clientWidth - 24) vista.scrollLeft = x - vista.clientWidth * 0.2;
     }
     // Medidor de la música (pestaña Música)
@@ -1671,6 +1814,14 @@
       if (ts.dataset.html !== h2) { ts.innerHTML = h2; ts.dataset.html = h2; }
     }
   }
+  /** La velocidad del momento t en la vista previa: playbackRate (con preservesPitch, como atempo) y la voz muda donde el tramo
+   *  la silencia. Lo mismo que exporta ffmpeg: el reloj y la música siguen el tiempo del video exportado (aSalida). */
+  function aplicarVelocidad(p, v, t) {
+    const vels = velocidades(p), e = vels.find((x) => x.i <= t && t < x.f);
+    const rate = Math.round(velocidadEn(vels, t) * 100) / 100, muda = !!e && audioDe(e) === "silencio";
+    if (Math.abs(v.playbackRate - rate) > 0.004) { v.preservesPitch = true; v.playbackRate = rate; }
+    if (v.muted !== muda) v.muted = muda;
+  }
   /** Mientras se reproduce: si cae dentro de un corte, salta al siguiente tramo; al final, se detiene. La música la sigue. */
   let ultimoCuadro = 0;
   function bucle(ahora = 0) {
@@ -1684,6 +1835,7 @@
         const sig = tr_.find((x) => x.i > t);
         if (sig) v.currentTime = sig.i; else { v.pause(); v.currentTime = tr_[0]?.i || 0; }
       }
+      aplicarVelocidad(p, v, v.currentTime);
       const b = $("#boton-play"); if (b) b.textContent = "❚❚";
     } else { const b = $("#boton-play"); if (b && b.textContent !== "▶") b.textContent = "▶"; }
     sincronizarMusica(dt);
@@ -1716,7 +1868,7 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo],[data-ver-pl],[data-pl-cat],[data-pl-fuente],[data-bajar-pl],[data-pl-bajar-fx],[data-elegir-clips],[data-cambiar-clip]");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo],[data-ver-pl],[data-pl-cat],[data-pl-fuente],[data-bajar-pl],[data-pl-bajar-fx],[data-elegir-clips],[data-cambiar-clip],[data-vel]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
     if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
@@ -1731,6 +1883,7 @@
     if (d.bajarFx && E.catalogo) { E.catalogo.bajando[d.bajarFx] = true; host.enviar("descargarEfecto", { id: d.bajarFx }); return pintar(); }
     if (d.quitarFx != null) { const ap = p.efectos?.[Number(d.quitarFx)]; if (ap) { p.efectos.splice(Number(d.quitarFx), 1); E.lt.sel = null; guardar(p, "Efecto quitado"); } return; }
     if (d.tramo) return editarTramo(d.tramo);
+    if (d.vel != null) return cambiarVelocidad({ v: Number(d.vel), rampa: false });
     if (d.verPl != null && E.pl) { E.pl.ver = d.verPl || null; pintar(); return $(".dialogo-pl")?.scrollTo?.(0, 0); }
     if (d.plCat && E.pl) { E.pl.categoria = d.plCat; return pintar(); }
     if (d.plFuente && E.pl) {
@@ -1787,6 +1940,7 @@
       case "quitar-musica": p.musica = null; return guardar(p, "Música quitada");
       case "lt-quitar": if (E.lt.sel && p[E.lt.sel.lista]?.[E.lt.sel.k]) quitarBloque(E.lt.sel.lista, E.lt.sel.k); return;
       case "dividir": return dividir();
+      case "velocidad": E.lt.vel = !E.lt.vel; return pintarInfo();
       case "fx-todo": E.seleccion = null; if (E.lt.sel?.lista === "tramos") E.lt.sel = null; return pintar();
       case "explorar-fx": E.catalogo = { estado: "cargando", efectos: [], categoria: E.catalogo?.categoria || "todos", busqueda: E.catalogo?.busqueda || "", bajando: {} }; host.enviar("catalogoEfectos"); return pintar();
       case "cortar-sel": return cortarSeleccion();
@@ -1852,6 +2006,11 @@
     }
     if (!p) return;
     if (ds.encuadre != null) { p.encuadre.x = Number(ev.target.value); return ajustarPantalla(); }
+    if (ds.velFino != null) {
+      // Mientras se arrastra: el número y la vista previa cambian; al soltar (change) se guarda y la línea de tiempo se acomoda.
+      const o = $("#vel-num"); if (o) o.textContent = numVel(Number(ev.target.value)) + "×";
+      return;
+    }
     if (ds.subPosicion != null) { p.subtitulos.posicion = Number(ev.target.value); return actualizarCapas(); }
     if (ds.musicaVolumen != null && p.musica) { p.musica.volumen = Math.round(Number(ev.target.value) * 100) / 100; const o = $("#musica-vol"); if (o) o.textContent = Math.round(p.musica.volumen * 100) + " %"; return; }
     if (ev.target.id === "pedido-ia") E.ia.texto = ev.target.value;
@@ -1882,6 +2041,11 @@
     const ds = ev.target.dataset || {}, p = P();
     if (ds.encuadre != null || ds.subPosicion != null || (ds.musicaVolumen != null && p?.musica)) return guardar(p);
     if (ds.relleno != null) { p.relleno = ev.target.value; return guardar(p); }
+    if (ds.velFino != null) return cambiarVelocidad({ v: Number(ev.target.value) });
+    if (ds.velRampa != null) return cambiarVelocidad({ rampa: ev.target.checked });
+    if (ds.velSuavizar != null) return cambiarVelocidad({ suavizar: ev.target.checked ? "mezcla" : "no" });
+    if (ds.velFluido != null) return cambiarVelocidad({ suavizar: ev.target.checked ? "movimiento" : "mezcla" });
+    if (ds.velSilencio != null) return cambiarVelocidad({ audio: ev.target.checked ? "silencio" : "tono" });
     if (ds.subActivos != null) { p.subtitulos.activos = ev.target.checked; return guardar(p); }
     if (ds.subPalabras != null) { p.subtitulos.palabras_por_linea = Number(ev.target.value); return guardar(p); }
     if (ds.huecoDesde != null && p?.plantilla) {
@@ -2093,7 +2257,7 @@
     /** Respuesta a `vocabulario`: {ok, vocabulario} o {ok: false, error}. */
     vocabularioActualizado(r) { if (r.ok) E.vocabulario = r.vocabulario; else toast(r.error || "No pude guardar."); pintar(); },
     _probar(f) { f(E); pintar(); },
-    _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
+    _pruebas: { conservados, aSalida, duracionFinal, lento, velocidadEn, ponerVelocidad, audioDe, velocidades, ltX, ltT, durHueco, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
       tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, llenar, aplicarPlantilla, iniciosHuecos, segmentosZoom, segmentosCapa, valorEn, cssColor, ventanasPaso, segmentosPaso, segmentosExposicion, cortesInterferencia, franjasInterferencia, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config, demoCatalogoPl: () => clonar(DEMO?.catalogo_plantillas || []) },
   };
 
@@ -2132,10 +2296,15 @@
           const ef = (DEMO.efectos || []).find((x) => x.id === "calido");
           if (ef) { (p.efectos ||= []).push({ efecto: "calido", pasos: clonar(ef.pasos), origen }); resumen = tr("Le puse el filtro «Cálido» a todo el video."); }
         }
+        else if (/lent|slow/.test(t)) {
+          const a = idx("listo"), b = idx("publicar");
+          p.velocidades = ponerVelocidad(p.velocidades || [], p.palabras[a].i, p.palabras[b].f, { v: 0.4, rampa: true, origen });
+          resumen = tr("Puse cámara lenta, con una rampa suave, en «listo para publicar».");
+        }
         else if (/equivoc|mistake|corta|cut/.test(t)) { cortarPalabras(p, idx("mmm"), idx("cómo"), "ia"); p.cortes[p.cortes.length - 1].origen = origen; resumen = tr("Corté «Mmm… te muestro cómo», que sobraba."); }
         // Igual que bin/editar_ia.py: lo agregado lleva `origen` y queda anotado en cambios_ia para poder quitarlo.
         const agregados = {};
-        for (const l of ["zooms", "textos", "cortes", "efectos"]) { const s = (p[l] || []).filter((o) => o.origen === origen); if (s.length) agregados[l] = clonar(s); }
+        for (const l of ["zooms", "textos", "cortes", "efectos", "velocidades"]) { const s = (p[l] || []).filter((o) => o.origen === origen); if (s.length) agregados[l] = clonar(s); }
         const ajustes = ["lienzo", "subtitulos.estilo", "subtitulos.activos", "subtitulos.palabras_por_linea"].filter((c) => !igualJSON(leerCampo(antes, c), leerCampo(p, c)))
           .map((c) => ({ campo: c, antes: leerCampo(antes, c), despues: leerCampo(p, c) }));
         if (!Object.keys(agregados).length && !ajustes.length) return A.iaRespondio({ ok: true, aplicadas: 0, resumen, proyecto: clonar(p) });

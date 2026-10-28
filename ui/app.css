@@ -453,3 +453,17 @@ input.buscar-fx { margin-bottom: 12px; }
   .pv-marco.grande { width: 100%; height: 240px; }
   .capa:has(.dialogo-pl) { padding: 10px; }
 }
+
+/* Velocidad de un tramo: chips con las de siempre, un control fino y las opciones que importan en ese tramo */
+.herr-tramo .boton.activo { color: var(--texto); background: var(--panel2); }
+.lt-vel { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 8px 0 2px; }
+.chips-vel { display: flex; flex-wrap: wrap; gap: 4px; }
+.chips-vel .chip { min-width: 44px; min-height: 32px; font-variant-numeric: tabular-nums; }
+.fino-vel { display: inline-flex; align-items: center; gap: 8px; }
+.fino-vel input { accent-color: var(--acento); width: 140px; }
+.fino-vel output { min-width: 42px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.op-vel { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; min-height: 32px; }
+.lt-vel .nota { flex: 1 1 100%; margin: 0; font-variant-numeric: tabular-nums; }
+.b-tramo.con-vel { background: var(--acento-suave); justify-content: center; }
+.b-tramo .etq-vel { font-size: 10.5px; font-weight: 700; color: var(--texto); white-space: nowrap; overflow: hidden; padding: 1px 6px; background: var(--panel); border-radius: 99px; box-shadow: 0 0 0 1px var(--linea); position: relative; pointer-events: none; font-variant-numeric: tabular-nums; }
+@media (max-width: 760px) { .fino-vel { flex: 1 1 100%; } .fino-vel input { flex: 1; width: auto; } .op-vel { flex: 1 1 100%; } }

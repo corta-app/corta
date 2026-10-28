@@ -60,7 +60,11 @@ const VISTAS = [
   ["efectos", "E=>{E.shorts=null;E.pestana='efectos'}"],
   ["efectos-aplicados", "E=>{const p=E.proyectos[0].proyecto;p.efectos=[{efecto:'vintage',pasos:[{tipo:'color',sepia:0.4}]},{efecto:'zoom-golpe',pasos:[{tipo:'zoom',desde:1,hasta:1.25,curva:'golpe'}],i:5,f:8},{efecto:'borrado',pasos:[{tipo:'vineta',fuerza:0.5}],i:9,f:12}];p.divisiones=[10];E.seleccion=[4,8]}"],
   ["efectos-tramo", "E=>{E.seleccion=null;E.lt.sel={lista:'tramos',k:1};E.fx={categoria:'movimiento',busqueda:''}}"],
-  ["efectos-buscar-nada", "E=>{E.lt.sel={lista:'efectos',k:1};E.fx={categoria:'todos',busqueda:'zzz'}}"],
+  ["velocidad", "E=>{const p=E.proyectos[0].proyecto;p.velocidades=[{i:12,f:14,v:0.5}];p.divisiones=[10,12,14];E.pestana='texto';E.lt.vel=true;E.lt.sel={lista:'tramos',k:2}}"],
+  ["velocidad-lenta", "E=>{const p=E.proyectos[0].proyecto;p.velocidades=[{i:12,f:14,v:0.25,suavizar:'movimiento'}]}"],
+  ["velocidad-rampa", "E=>{const p=E.proyectos[0].proyecto;p.velocidades=[{i:12,f:14,v:0.3,rampa:true,audio:'tono'},{i:20,f:22,v:3}]}"],
+  ["velocidad-normal", "E=>{const p=E.proyectos[0].proyecto;p.velocidades=[];E.lt.sel={lista:'tramos',k:1}}"],
+  ["efectos-buscar-nada", "E=>{E.lt.vel=false;E.lt.sel={lista:'efectos',k:1};E.fx={categoria:'todos',busqueda:'zzz'}}"],
   ["catalogo-cargando", "E=>{E.fx={categoria:'todos',busqueda:''};E.catalogo={estado:'cargando',efectos:[],categoria:'todos',busqueda:'',bajando:{}}}"],
   ["catalogo-error", "E=>{E.catalogo={estado:'error',efectos:[],categoria:'todos',busqueda:'',bajando:{}}}"],
   ["catalogo", "E=>{E.catalogo={estado:'listo',efectos:[{id:'neon',categoria:'filtro',nombre:{es:'Neón',en:'Neon'},descripcion:{es:'Colores eléctricos.',en:'Electric colors.'},autor:'Corta',pasos:[{tipo:'color',tono:40}]},{id:'vintage',categoria:'filtro',nombre:{es:'Vintage'},pasos:[{tipo:'color',sepia:0.4}]},{id:'zoom-x',categoria:'movimiento',nombre:{es:'Zoom'},pasos:[{tipo:'zoom',desde:1,hasta:1.2}]}],categoria:'todos',busqueda:'',bajando:{'zoom-x':true}}}"],
@@ -147,6 +151,17 @@ navegador.newPage = async (opciones) => {
       if (x.franjas && !igual(P.franjasInterferencia(x.paso), x.franjas)) m.push("franjasInterferencia " + JSON.stringify(P.franjasInterferencia(x.paso)));
       for (const [tt, v] of x.valores || []) if (P.valorEn(x.segmentos, tt, neutro) !== v) m.push(`valorEn ${t} ${tt}: ${P.valorEn(x.segmentos, tt, neutro)}`);
     }
+    const vc = c.velocidad, pv = vc.proyecto, vs = P.velocidades(pv);
+    for (const [a, b, e] of vc.lento) if (P.lento(vs, a, b) !== e) m.push(`lento ${a}–${b}: ${P.lento(vs, a, b)} (Python ${e})`);
+    for (const [t, e] of vc.a_salida) if (P.aSalida(pv, t) !== e) m.push(`aSalida con velocidad ${t}: ${P.aSalida(pv, t)}`);
+    if (P.duracionFinal(pv) !== vc.duracion_final) m.push("duracionFinal con velocidad " + P.duracionFinal(pv));
+    for (const [t, e] of vc.velocidad_en) if (P.velocidadEn(vs, t) !== e) m.push(`velocidadEn ${t}: ${P.velocidadEn(vs, t)} (Python ${e})`);
+    for (const x of vc.intervalos) {
+      if (!igual(P.intervalosSalida(pv, x.i, x.f), x.esperado)) m.push("intervalosSalida con velocidad " + JSON.stringify(P.intervalosSalida(pv, x.i, x.f)));
+      if (!igual(P.uniones(pv, x.i, x.f), x.uniones)) m.push("uniones con velocidad " + JSON.stringify(P.uniones(pv, x.i, x.f)));
+    }
+    for (const x of vc.poner) { const r = P.ponerVelocidad(JSON.parse(JSON.stringify(x.lista)), x.i, x.f, x.nueva); if (!igual(r, x.esperado)) m.push("ponerVelocidad " + JSON.stringify(r)); }
+    for (const [e, a] of vc.audio) if (P.audioDe(e) !== a) m.push("audioDe " + JSON.stringify(e));
     const pc = c.plantillas;
     for (const x of pc.llenar) { const r = P.llenar(x.huecos, x.clips); if (!igual(r, x.esperado)) m.push("llenar " + JSON.stringify(r)); }
     for (const x of pc.aplicar) { const r = P.aplicarPlantilla(x.plantilla, x.tipos, x.idioma, pc.efectos, x.estilos); if (!igual(r, x.esperado)) m.push("aplicarPlantilla " + JSON.stringify(r)); }
@@ -401,6 +416,81 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   await p.close();
 }
 
+// 11b) Velocidad: elegir un tramo, cámara lenta, rampa, control fino, silencio, la vista previa a esa velocidad y la IA
+{
+  const p = await navegador.newPage({ viewport: { width: 1360, height: 860 } });
+  p.on("pageerror", (e) => falla("error de JavaScript (velocidad): " + e.message));
+  await p.goto(BASE + "?idioma=es"); await p.waitForSelector(".app");
+  const proyecto = () => p.evaluate(() => { let r; window.Corta._probar((E) => { r = JSON.parse(JSON.stringify(E.proyectos[0].proyecto)); }); return r; });
+  const ancho = (k) => p.evaluate((x) => document.querySelector(`.b-tramo[data-k="${x}"]`).getBoundingClientRect().width, k);
+  await p.evaluate(() => window.Corta._probar((E) => { E.proyectos[0].proyecto.divisiones = [10, 20]; }));
+  const m = [];
+  await p.click('.b-tramo[data-k="1"]');
+  await p.click('#lt-sel [data-accion="velocidad"]');
+  await p.click('[data-vel="0.5"]');
+  let q = await proyecto();
+  if (JSON.stringify(q.velocidades) !== JSON.stringify([{ i: 10, f: 20, v: 0.5 }])) m.push("0,5× no quedó en el tramo: " + JSON.stringify(q.velocidades));
+  const [a0, a1] = [await ancho(0), await ancho(1)];
+  if (Math.abs(a1 / a0 - 2) > 0.03) m.push(`en la línea de tiempo el tramo a 0,5× no mide el doble (${(a1 / a0).toFixed(2)})`);
+  if (!(await p.textContent("#reloj")).includes("0:40")) m.push("el reloj no dice lo que dura el video con la cámara lenta: " + await p.textContent("#reloj"));
+  if (!(await p.textContent('.b-tramo[data-k="1"] .etq-vel')).includes("0,5×")) m.push("el tramo no muestra su velocidad");
+  await p.check("[data-vel-rampa]");
+  q = await proyecto();
+  if (JSON.stringify(q.velocidades) !== JSON.stringify([{ i: 10, f: 20, v: 0.3, rampa: true }])) m.push("la rampa no quedó: " + JSON.stringify(q.velocidades));
+  if (!(await p.$("[data-vel-silencio]:checked"))) m.push("en la rampa la voz no aparece silenciada");
+  if (!(await p.$("[data-vel-suavizar]"))) m.push("en cámara lenta no se ofrece «Suavizar»");
+  await p.check("[data-vel-suavizar]");
+  q = await proyecto();
+  if (q.velocidades[0].suavizar !== "mezcla") m.push("suavizar no quedó en «mezcla»: " + JSON.stringify(q.velocidades));
+  await p.evaluate(() => { const r = document.querySelector("[data-vel-fino]"); r.value = "2"; r.dispatchEvent(new Event("input", { bubbles: true })); r.dispatchEvent(new Event("change", { bubbles: true })); });
+  q = await proyecto();
+  if (JSON.stringify(q.velocidades) !== JSON.stringify([{ i: 10, f: 20, v: 2 }])) m.push("el control fino a 2× no dejó una velocidad pareja sin suavizar: " + JSON.stringify(q.velocidades));
+  await p.click('[data-vel="3"]');
+  await p.check("[data-vel-silencio]");
+  q = await proyecto();
+  if (q.velocidades[0].audio !== "silencio" || q.velocidades[0].v !== 3) m.push("silenciar a 3× no quedó: " + JSON.stringify(q.velocidades));
+  await p.click('[data-vel="1"]');
+  q = await proyecto();
+  if (q.velocidades) m.push("1× no dejó el tramo normal: " + JSON.stringify(q.velocidades));
+  if (!m.length) console.log("  ✓ Velocidad de un tramo: chips, rampa, suavizar, control fino y silencio; la línea de tiempo y el reloj se acomodan");
+  m.forEach((x) => falla("velocidad: " + x));
+  // Vista previa: el video corre a la velocidad del tramo (playbackRate) y la voz se calla donde se silencia
+  await p.evaluate(() => { document.querySelector("#video").currentTime = 1; });
+  await p.waitForTimeout(150);
+  const conVideo = await p.evaluate(() => document.querySelector("#video").readyState >= 2);
+  if (!conVideo) console.log("  - Vista previa de la velocidad: este Chromium no reproduce H.264");
+  else {
+    const medir = (v) => p.evaluate(async (vel) => {
+      window.Corta._probar((E) => { E.proyectos[0].proyecto.velocidades = [{ i: 10, f: 20, v: vel }]; });
+      const video = document.querySelector("#video"); video.pause(); video.currentTime = 12;
+      await new Promise((r) => video.addEventListener("seeked", r, { once: true }));
+      video.muted = false; await video.play().catch(() => {});
+      await new Promise((r) => setTimeout(r, 200));
+      const t0 = video.currentTime, w0 = performance.now();
+      await new Promise((r) => setTimeout(r, 1200));
+      const r = { ritmo: (video.currentTime - t0) / ((performance.now() - w0) / 1000), rate: video.playbackRate, muda: video.muted };
+      video.pause();
+      return r;
+    }, v);
+    const lenta = await medir(0.5), rapida = await medir(2), muy = await medir(0.25);
+    if (lenta.rate !== 0.5 || Math.abs(lenta.ritmo - 0.5) > 0.15 || lenta.muda) falla("vista previa a 0,5×: " + JSON.stringify(lenta));
+    else if (rapida.rate !== 2 || Math.abs(rapida.ritmo - 2) > 0.4) falla("vista previa a 2×: " + JSON.stringify(rapida));
+    else if (!muy.muda) falla("vista previa a 0,25×: la voz no se calla");
+    else console.log(`  ✓ Vista previa a la velocidad del tramo (0,5× avanza ${lenta.ritmo.toFixed(2)} s por segundo; 2×, ${rapida.ritmo.toFixed(2)}; a 0,25× la voz se calla)`);
+  }
+  // La IA (simulada) pone cámara lenta y «Quitar» la saca
+  await p.evaluate(() => window.Corta._probar((E) => { E.proyectos[0].proyecto.velocidades = []; E.pestana = "ia"; }));
+  await p.fill("#pedido-ia", "Cámara lenta cuando digo «publicar»"); await p.click('[data-accion="pedir-ia"]');
+  await p.waitForSelector("[data-quitar-ia]", { timeout: 4000 });
+  q = await proyecto();
+  const et = (await p.textContent("[data-quitar-ia]")).trim();
+  await p.click("[data-quitar-ia]");
+  const r = await proyecto();
+  if (q.velocidades?.length !== 1 || !q.velocidades[0].rampa || et !== "Quitar esta velocidad" || r.velocidades.length) falla("la IA y «Quitar» con la velocidad: " + JSON.stringify([q.velocidades, et, r.velocidades]));
+  else console.log("  ✓ La IA pone cámara lenta con rampa y «Quitar esta velocidad» la saca");
+  await p.close();
+}
+
 // 11) Cortes y efectos: dividir, ponerle un efecto a un tramo, borrarlo, la vista previa y el catálogo de la comunidad
 {
   const p = await navegador.newPage({ viewport: { width: 1360, height: 860 } });
@@ -491,7 +581,7 @@ for (const [modo, opciones] of [["celular", { viewport: { width: 390, height: 84
   await foto("1-galeria");
   await p.click('[data-pl-cat="tutorial"]');
   const ids = await p.$$eval("[data-ver-pl]:not([data-ver-pl=''])", (els) => els.map((e) => e.dataset.verPl));
-  if (ids.join() !== "receta-rapida,tutorial-3-pasos") falla(`categoría Tutoriales (${modo}): ` + ids.join());
+  if (ids.join() !== "a-toda-velocidad,receta-rapida,tutorial-3-pasos") falla(`categoría Tutoriales (${modo}): ` + ids.join());
   await p.click('[data-ver-pl="receta-rapida"]');
   await p.waitForSelector("[data-elegir-clips]");
   await p.waitForTimeout(1200);

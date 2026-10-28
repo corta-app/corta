@@ -32,6 +32,10 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 - **Dile a tu IA lo que quieres:** «pon zoom cuando digo el precio», «saca la parte donde me equivoco», «pon un título al inicio».
   Si no te gusta, **«Quitar»** deshace justo ese cambio de la IA, aunque hayas seguido editando.
 - **Shorts desde un video largo:** tu IA elige los mejores momentos de una clase, un podcast o un live, y cada uno queda como un video nuevo.
+- **Velocidad y cámara lenta:** toca un tramo y elige 0,25× a 3× (o un valor exacto). Subtítulos, textos y efectos siguen
+  sincronizados; la voz mantiene su tono (bajo 0,5× se silencia sola, y tú decides) y la música no se acelera. Una **rampa** pasa
+  suave de 1× a cámara lenta y vuelve, justo en el momento clave, y **Suavizar** evita que la cámara lenta salte. También se lo
+  puedes pedir a tu IA: «pon en cámara lenta cuando digo…».
 - **Cortes, efectos y filtros:** divide en el cabezal, borra o recorta un tramo, y ponle a todo el video o a un momento un filtro
   (blanco y negro, cálido, vintage…), un zoom o una transición en cada corte: interferencia, destello, franjas, rebote, barrido o
   zoom de paso, con la misma imagen en la vista previa y al exportar. Los efectos son archivos simples: la comunidad crea más en el
@@ -115,12 +119,14 @@ clips y fotos) y `plantilla-N.mp4` (los clips ya armados) en vez de `original.<e
 | `subtitulos` | `{activos, estilo, palabras_por_linea, posicion}` |
 | `zooms`, `textos` | `[{i, f, escala}]` y `[{i, f, texto, y}]` |
 | `efectos` | (opcional) `[{efecto, pasos, i?, f?, origen?}]`: los efectos aplicados, con sus pasos copiados (formato en [`efectos/README.md`](efectos/README.md)). Sin `i`/`f`, a todo el video. |
+| `velocidades` | (opcional) `[{i, f, v, rampa?, audio?, suavizar?, origen?}]`: la velocidad de un tramo del original, sin traslaparse. `v` de 0,25 a 3 (menos de 1 es cámara lenta). `rampa: true` pasa suave de 1× a `v` (hasta 0,75) y vuelve: sube en el primer 30 % del tramo y baja en el último 30 % (al menos 0,5 s). `audio`: `"tono"` (la voz más lenta o rápida con su tono, `atempo`) o `"silencio"`; sin decirlo, bajo 0,5× (y en una rampa así) se silencia. `suavizar` (solo en cámara lenta): `"mezcla"` (funde cuadros, casi gratis) o `"movimiento"` (inventa los cuadros que faltan; exportar tarda mucho más). Todo lo demás (palabras, textos, efectos) sigue en segundos del original: al exportar, cada momento cae donde le toca. |
 | `divisiones` | (opcional) `[segundos]`: dónde dividiste el video en la línea de tiempo (para elegir tramos). Al exportar no cortan nada: una transición del tramo pestañea ahí, como en un corte. |
 | `plantilla` | (opcional, solo en un video hecho con una plantilla) `{id, huecos: [{archivo, tipo, desde, dur, duracion}]}`: qué clip o foto (una copia en `clips/`) va en cada hueco, desde qué segundo y cuánto dura el hueco. Lo cambia solo la app (pestaña Clips), que vuelve a armar el video (`fuente`). |
-| `cambios_ia` | (opcional) Lo que hizo tu IA, para quitar justo ese cambio aunque hayas seguido editando: `[{id, estado: "aplicado" \| "quitado", pedido, resumen, fecha, agregados: {zooms, textos, cortes}, ajustes?: [{campo, antes, despues}], restaurados?: {antes, despues}, palabras?: [{antes, despues}], conservados?}]` (los últimos 20). Lo que agregó la IA lleva `"origen": "<id>"`. |
+| `cambios_ia` | (opcional) Lo que hizo tu IA, para quitar justo ese cambio aunque hayas seguido editando: `[{id, estado: "aplicado" \| "quitado", pedido, resumen, fecha, agregados: {zooms, textos, cortes, efectos, velocidades}, ajustes?: [{campo, antes, despues}], restaurados?: {antes, despues}, palabras?: [{antes, despues}], conservados?}]` (los últimos 20). Lo que agregó la IA lleva `"origen": "<id>"`. |
 | `musica` | `null` o `{archivo, volumen}`: `archivo` relativo a la carpeta del proyecto (la app copia la canción a `musica/`) o una ruta absoluta; `volumen` de 0 a 1. La música baja sola cuando hablas. |
 
-Todos los tiempos están en segundos **del video original**: los cortes dicen qué se saca y lo demás se conserva.
+Todos los tiempos están en segundos **del video original**: los cortes dicen qué se saca y lo demás se conserva. Un tramo a 0,5×
+dura el doble en el video exportado; un programa que lea el formato puede pasar al tiempo exportado con `proyecto.a_salida`.
 
 ### Vocabulario
 `~/Corta/vocabulario.json` guarda las palabras que corregiste y pediste recordar:
@@ -139,7 +145,7 @@ efecto con el mismo formato que el catálogo antes de guardarlo.
 
 ### Plantillas
 Las plantillas son JSON de solo datos (formato en [`plantillas/README.md`](plantillas/README.md)): huecos con su duración, efectos y
-transiciones por nombre, textos y el ritmo de la música para el que se pensaron (nunca un archivo de audio). Vienen 10 incluidas
+transiciones por nombre, textos, la velocidad de cada hueco (cámara lenta, rápida o una rampa) y el ritmo de la música para el que se pensaron (nunca un archivo de audio). Vienen 12 incluidas
 (`plantillas/`) y las que descargas del [catálogo](https://github.com/corta-app/corta-catalogo#plantillas) quedan en
 `~/Corta/.corta/plantillas/`, con la misma descarga verificada que los efectos. Si una plantilla usa un efecto del catálogo que no
 tienes, Corta te ofrece descargarlo.
@@ -170,7 +176,8 @@ or pick the best moments of a long video as new Shorts. Add background music tha
 zooms and text on a multi-track timeline. Videos never leave your computer, there's no watermark, and the project is a
 plain open JSON file. Caption styles are data-only files anyone can create. Fix any caption word in place (Corta remembers your
 brand names for future videos), split and trim segments, and add filters, zooms and transitions (glitch, flash, split, bounce,
-swipe, zoom through) to the whole video or one moment; the community shares more effects in the
+swipe, zoom through) to the whole video or one moment. Change the speed of any segment (0.25× to 3×, or a smooth slow-motion
+ramp right at the key moment) with captions and text kept in sync, the voice keeping its pitch and the music untouched; the community shares more effects in the
 [catalog](https://github.com/corta-app/corta-catalogo), downloadable for free from the app.
 **Templates:** pick one (product showcase, 30-second pitch, before and after, month in memories, quick recipe…), add your clips or
 photos and it builds itself with its cuts, transitions, effects and texts; then edit it like any other video. Templates are data-only

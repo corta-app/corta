@@ -58,7 +58,11 @@ OPERACIONES = """- {"op": "cortar", "desde": N, "hasta": M}             saca las
 - {"op": "lienzo", "valor": "9:16"|"1:1"|"4:5"|"16:9"}
 - {"op": "musica", "volumen": 0-0.5}                    (solo si ya hay música elegida)
 - {"op": "efecto", "id": "<id>", "desde": N, "hasta": M}  un efecto o filtro mientras se dicen esas palabras
-                                                       (sin desde/hasta: a todo el video)"""
+                                                       (sin desde/hasta: a todo el video)
+- {"op": "velocidad", "desde": N, "hasta": M, "v": 0.25-3, "rampa": true|false}   cámara lenta (v < 1) o rápida (v > 1)
+                                                       mientras se dicen esas palabras; "rampa": true pasa suave de 1× a v
+                                                       y vuelve (v de 0.25 a 0.75: «cámara lenta en el momento clave").
+                                                       Bajo 0.5× la voz se silencia sola. No la uses donde ya hay otra velocidad."""
 
 
 def transcripcion_numerada(p):
@@ -75,6 +79,14 @@ def transcripcion_numerada(p):
     return "\n".join(lineas)
 
 
+def velocidades_txt(p):
+    """Las velocidades que ya hay, para que la IA no las pise: «, velocidad: 0.5× de 3.2 s a 5.1 s»."""
+    vels = proyecto.velocidades(p)
+    if not vels:
+        return ""
+    return ", velocidad: " + "; ".join(f"{'rampa a ' if e.get('rampa') else ''}{e['v']:g}× de {e['i']:.1f} s a {e['f']:.1f} s" for e in vels[:10])
+
+
 def prompt_pedir(p, pedido, estilos):
     return f"""Eres el asistente de un editor de video vertical (Shorts, Reels, TikTok). La persona te pide un cambio y tú respondes
 SOLO con un JSON: {{"operaciones": [...], "resumen": "<una frase en el idioma del pedido contando qué hiciste>"}}.
@@ -85,7 +97,7 @@ Operaciones posibles (N y M son números de palabra de la transcripción de abaj
 Estilos de subtítulos disponibles: {", ".join(f"{s['id']} ({s['nombre']})" for s in estilos.values())}.
 Efectos disponibles: {", ".join(f"{e['id']} ({e['nombre']['es']}, {e['categoria']})" for e in efectos.disponibles().values())}.
 Estado actual: lienzo {p['lienzo']}, subtítulos {"activos" if p['subtitulos']['activos'] else "apagados"} con estilo {p['subtitulos']['estilo']},
-{len(p['zooms'])} zooms, {len(p['textos'])} textos, música {"sí" if p.get('musica') else "no"}.
+{len(p['zooms'])} zooms, {len(p['textos'])} textos, música {"sí" if p.get('musica') else "no"}{velocidades_txt(p)}.
 
 Reglas: haz solo lo que se pide. No cortes contenido importante si no te lo piden. Si el pedido no se puede hacer con estas
 operaciones, responde {{"operaciones": [], "resumen": "<explica qué no se puede y qué sí>"}}.
@@ -127,7 +139,7 @@ def aplicar(p, operaciones, estilos, origen=None):
 
     for o in operaciones if isinstance(operaciones, list) else []:
         tipo = o.get("op") if isinstance(o, dict) else None
-        r = rango(o) if tipo in ("cortar", "restaurar", "zoom", "texto", "corregir", "efecto") else None
+        r = rango(o) if tipo in ("cortar", "restaurar", "zoom", "texto", "corregir", "efecto", "velocidad") else None
         if tipo == "cortar" and r:
             proyecto.cortar_palabras(q, r[0], r[1], "ia")
             marca(q["cortes"][-1])
@@ -154,6 +166,9 @@ def aplicar(p, operaciones, estilos, origen=None):
             if r:
                 ap.update(i=w[r[0]]["i"], f=w[r[1]]["f"])
             q.setdefault("efectos", []).append(marca(ap))
+        elif tipo == "velocidad" and r and (vel := velocidad_valida(q, w[r[0]]["i"], w[r[1]]["f"], o)):
+            # Solo donde no hay otra velocidad: así «Quitar» deja todo como estaba (nada de lo de la persona se recorta).
+            q["velocidades"] = proyecto.poner_velocidad(q.get("velocidades", []), w[r[0]]["i"], w[r[1]]["f"], marca(vel))
         elif tipo == "corregir" and r and isinstance(o.get("texto"), str) and 0 < len(o["texto"].strip()) <= 80 \
                 and not any(a <= r[1] and r[0] <= b for a, b, _ in correcciones):
             correcciones.append((r[0], r[1], o["texto"].strip()))  # al final, de atrás para adelante (los números no se corren)
@@ -168,7 +183,7 @@ def aplicar(p, operaciones, estilos, origen=None):
         cambios_palabras.insert(0, {"antes": antes, "despues": q["palabras"][a:a + len(texto.split())]})
     if origen and hechas:
         agregados = {}
-        for lista in ("zooms", "textos", "cortes", "efectos"):
+        for lista in ("zooms", "textos", "cortes", "efectos", "velocidades"):
             suyos = [o for o in q.get(lista, []) if o.get("origen") == origen]
             if suyos:
                 agregados[lista] = copy.deepcopy(suyos)
@@ -187,6 +202,20 @@ def aplicar(p, operaciones, estilos, origen=None):
     if proyecto.validar(q):
         return p, [], list(operaciones)
     return q, hechas, malas
+
+
+def velocidad_valida(q, i, f, o):
+    """{v, rampa?} de una operación «velocidad» si se puede poner en i..f (rangos de proyecto.validar_velocidades y sin pisar
+    otra velocidad), o None."""
+    v, rampa = o.get("v"), o.get("rampa", False)
+    if not (proyecto.num(v) and proyecto.VEL_MIN <= v <= proyecto.VEL_MAX and isinstance(rampa, bool)):
+        return None
+    v = round(float(v), 2)
+    if (rampa and (v > proyecto.RAMPA_MAX or f - i < proyecto.MIN_RAMPA)) or f - i < proyecto.MIN_VEL or (v == 1 and not rampa):
+        return None
+    if any(x["f"] > i and x["i"] < f for x in proyecto.velocidades(q)):
+        return None
+    return {"v": v, "rampa": True} if rampa else {"v": v}
 
 
 def pedir(carpeta, pedido):
@@ -275,6 +304,8 @@ def crear_short(carpeta, desde, hasta, titulo):
     q["zooms"] = [z for z in q["zooms"] if z["f"] > desde and z["i"] < hasta]
     q["textos"] = [t for t in q["textos"] if t["f"] > desde and t["i"] < hasta]
     q["efectos"] = [x for x in q.get("efectos", []) if "i" not in x or (x["f"] > desde and x["i"] < hasta)]
+    if "velocidades" in q:
+        q["velocidades"] = [x for x in q["velocidades"] if x["f"] > desde and x["i"] < hasta]
     q["lienzo"] = "9:16"
     q["cambios_ia"] = []  # los cambios de la IA se quitan en el video donde se hicieron
     q.pop("plantilla", None)  # un Short de un video de plantilla es un video normal (sus clips quedan en el original)

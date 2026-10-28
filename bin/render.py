@@ -1,8 +1,15 @@
-"""Exportar: aplica cortes, encuadre, zooms, efectos (bin/efectos.py), subtítulos, textos y música con ffmpeg. Solo biblioteca estándar.
+"""Exportar: aplica cortes, encuadre, zooms, velocidad, efectos (bin/efectos.py), subtítulos, textos y música con ffmpeg. Solo biblioteca
+estándar.
 
   render.py <carpeta> <salida.json>          deja exportado-<lienzo>.mp4 en la carpeta
 
 El avance queda en <carpeta>/estado.json ({"paso": "exportando", "pct"}). El video original nunca se modifica.
+
+Lista blanca de filtros de ffmpeg de este grafo (más los de bin/efectos.py), siempre con números que calcula el código:
+  trim, setpts, fps, scale, crop, split, boxblur, eq, overlay, setsar, format, ass     cada pieza, el encuadre y los subtítulos
+  atrim, asetpts, aresample, anullsrc, concat, anull, aloop, volume, asplit, sidechaincompress, amix   voz y música
+  tpad, framerate, minterpolate, atempo, apad                                         velocidad por tramo (cámara lenta y rápida)
+La música se agrega después de unir las piezas: nunca se acelera ni se pone lenta.
 """
 import json
 import math
@@ -33,13 +40,15 @@ def tiene_audio(video):
 
 
 def piezas(p):
-    """Los tramos conservados, partidos donde empieza o termina un zoom: cada pieza lleva su escala."""
+    """Los tramos conservados, partidos donde empieza o termina un zoom o una velocidad: cada pieza lleva su escala y su
+    velocidad (`vel`: el tramo de `velocidades` que la cubre, o None)."""
     zooms = sorted(p.get("zooms", []), key=lambda z: z["i"])
+    vels = proyecto.velocidades(p)
     r = []
     for t in proyecto.conservados(p):
         bordes = {t["i"], t["f"]}
-        for z in zooms:
-            for b in (z["i"], z["f"]):
+        for x in zooms + vels:
+            for b in (x["i"], x["f"]):
                 if t["i"] < b < t["f"]:
                     bordes.add(b)
         puntos = sorted(bordes)
@@ -48,8 +57,70 @@ def piezas(p):
                 continue
             medio = (a + b) / 2
             escala = max([z["escala"] for z in zooms if z["i"] <= medio <= z["f"]] or [1])
-            r.append({"i": round(a, 3), "f": round(b, 3), "escala": escala})
+            vel = next((e for e in vels if e["i"] <= medio < e["f"]), None)
+            r.append({"i": round(a, 3), "f": round(b, 3), "escala": escala, "vel": vel})
     return r
+
+
+def _n(x):
+    """Número para el grafo de ffmpeg: siempre dígitos, punto y signo (nunca texto)."""
+    s = f"{float(x):.6f}".rstrip("0").rstrip(".")
+    return "0" if s in ("", "-0") else s
+
+
+def atempo(v):
+    """La voz más rápida o más lenta sin cambiar el tono: atempo encadenado, cada uno entre 0,5 y 2 (donde suena mejor)."""
+    r = []
+    while v < 0.5 - 1e-9:
+        r.append("atempo=0.5")
+        v /= 0.5
+    while v > 2 + 1e-9:
+        r.append("atempo=2")
+        v /= 2
+    if abs(v - 1) > 1e-6:
+        r.append(f"atempo={_n(v)}")
+    return r
+
+
+def tiempo_vel(e, a):
+    """setpts de una pieza que empieza en el segundo a del original y cae en el tramo de velocidad `e` (después de
+    setpts=PTS-STARTPTS): cada cuadro va al segundo del exportado que le toca (`proyecto.lento`, la misma cuenta)."""
+    if not e.get("rampa"):
+        return f"setpts=PTS/{_n(e['v'])}"
+    d = e["f"] - e["i"]
+    lado, k = d * proyecto.RAMPA_LADO, 1 / e["v"]
+    x = f"({_n(a - e['i'])}+T)"
+    y1 = f"({x}/{_n(lado)})"
+    y3 = f"(({x}-{_n(d - lado)})/{_n(lado)})"
+    curva = lambda y: f"({y}*{y}*{y}-{y}*{y}*{y}*{y}/2)"  # noqa: E731
+    sube = lado * (1 + k) / 2
+    r1 = f"{x}+{_n((k - 1) * lado)}*{curva(y1)}"
+    r2 = f"{_n(sube)}+({x}-{_n(lado)})*{_n(k)}"
+    r3 = f"{_n(sube + (d - 2 * lado) * k)}+{_n(k)}*({x}-{_n(d - lado)})+{_n((1 - k) * lado)}*{curva(y3)}"
+    w0 = proyecto._integral(e, a)
+    return f"setpts='(if(lte({x},{_n(lado)}),{r1},if(lte({x},{_n(d - lado)}),{r2},{r3}))-{_n(w0)})/TB'"
+
+
+#: Cámara lenta fluida (`suavizar`): «mezcla» funde cada cuadro con el siguiente (framerate: cuesta casi nada) y «movimiento»
+#: inventa los cuadros que faltan siguiendo el movimiento (minterpolate, compensación bilateral con búsqueda corta: la forma
+#: eficiente). Medido con pruebas/velocidad.mjs (8 s de 1280×720 a 1080×1920, 2 núcleos): 1× 3 s; 0,5× 5,6 s; 0,25× 10 s; 0,25×
+#: con «mezcla» 11 s; 2× 1,6 s; 3× 1,5 s; rampa a 0,3× 6–9 s; 0,5× con «movimiento» 74 s (unas 13 veces más que «mezcla»). Por eso
+#: «mezcla» es la de siempre y «movimiento» es opcional («Más fluido»).
+SUAVIZAR = {"mezcla": "framerate=fps=30", "movimiento": "minterpolate=fps=30:mi_mode=mci:mc_mode=obmc:me_mode=bilat:search_param=8"}
+
+
+def tramos_audio(e, a, b, pasos=8):
+    """La voz de una rampa va en escalones (atempo no cambia de velocidad por sí solo): cada lado de la rampa en `pasos` pedazos,
+    cada uno a su velocidad media, así dura justo lo mismo que la imagen. → [(c, d), …] dentro de a..b."""
+    d = e["f"] - e["i"]
+    lado = d * proyecto.RAMPA_LADO
+    bordes = {a, b}
+    for j in range(pasos + 1):
+        for x in (e["i"] + lado * j / pasos, e["f"] - lado + lado * j / pasos):
+            if a < x < b:
+                bordes.add(x)
+    puntos = sorted(bordes)
+    return [(c, dd) for c, dd in zip(puntos, puntos[1:]) if dd - c > 0.001]
 
 
 def par(n):
@@ -77,16 +148,36 @@ def grafo(p, con_audio, ruta_ass, con_musica):
     fuente = p["fuente"]
     marco = encuadre(p, fuente["ancho"], fuente["alto"])
     partes, etiquetas = [], []
+    vels = proyecto.velocidades(p)
     for k, pz in enumerate(piezas(p)):
-        v = f"[0:v]trim=start={pz['i']}:end={pz['f']},setpts=PTS-STARTPTS,fps=30,{marco}"
+        e = pz["vel"]
+        # Con velocidad: cada cuadro va a su segundo del exportado (setpts), la cámara lenta se puede suavizar y la pieza dura
+        # justo lo que dice proyecto.lento (tpad repite el último cuadro si faltara uno; trim corta lo que sobre).
+        largo = _n(proyecto.lento(vels, pz["i"], pz["f"]))
+        v = f"[0:v]trim=start={pz['i']}:end={pz['f']},setpts=PTS-STARTPTS"
+        if e:
+            v += "," + tiempo_vel(e, pz["i"]) + ("," + SUAVIZAR[e["suavizar"]] if e.get("suavizar") in SUAVIZAR else "")
+        v += ",fps=30" + (f",tpad=stop_mode=clone:stop_duration=0.2,trim=end={largo}" if e else "") + f",{marco}"
         if pz["escala"] > 1:
             zw, zh = par(W * pz["escala"]), par(H * pz["escala"])
             v += f",scale={zw}:{zh},crop={W}:{H}"
         partes.append(v + f",setsar=1,format=yuv420p[v{k}]")
-        if con_audio:
-            partes.append(f"[0:a]atrim=start={pz['i']}:end={pz['f']},asetpts=PTS-STARTPTS,aresample=48000[a{k}]")
+        recorte = f"[0:a]atrim=start={pz['i']}:end={pz['f']},asetpts=PTS-STARTPTS,aresample=48000"
+        justo = f"apad=whole_dur={largo},atrim=end={largo}"
+        if not con_audio:
+            partes.append(f"anullsrc=r=48000:cl=stereo,atrim=duration={largo if e else pz['f'] - pz['i']}[a{k}]")
+        elif not e:
+            partes.append(recorte + f"[a{k}]")
+        elif proyecto.audio_de(e) == "silencio":
+            partes.append(recorte + f",volume=0,{justo}[a{k}]")
+        elif not e.get("rampa"):
+            partes.append(",".join([recorte, *atempo(e["v"]), justo]) + f"[a{k}]")
         else:
-            partes.append(f"anullsrc=r=48000:cl=stereo,atrim=duration={pz['f'] - pz['i']}[a{k}]")
+            trozos = tramos_audio(e, pz["i"], pz["f"])
+            for j, (c, d) in enumerate(trozos):
+                partes.append(",".join([f"[0:a]atrim=start={_n(c)}:end={_n(d)},asetpts=PTS-STARTPTS,aresample=48000",
+                                        *atempo((d - c) / proyecto.lento(vels, c, d))]) + f"[a{k}r{j}]")
+            partes.append("".join(f"[a{k}r{j}]" for j in range(len(trozos))) + f"concat=n={len(trozos)}:v=0:a=1,{justo}[a{k}]")
         etiquetas.append(f"[v{k}][a{k}]")
     n = len(etiquetas)
     if not n:

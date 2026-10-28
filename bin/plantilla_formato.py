@@ -24,7 +24,9 @@ que ya pasaron su propia validación.
     "pista": {"es": "Tu producto de frente"},     opcional: qué poner en el hueco (hasta 40)
     "efectos": ["calido"],                        opcional: hasta 3 efectos que no sean transiciones, solo en este hueco
     "transicion": "destello",                     opcional: cómo pasa al hueco siguiente (un efecto con solo pasos de transición)
-    "zoom": "acercar"}                            opcional, solo si cae una foto: acercar (por defecto) | alejar | no
+    "zoom": "acercar",                            opcional, solo si cae una foto: acercar (por defecto) | alejar | no
+    "velocidad": {"v": 0.3, "rampa": true}}       opcional: cámara lenta o rápida en el hueco (ver VELOCIDAD); `dur` sigue
+                                                  siendo lo que se toma del clip: en el video exportado dura dur / v
  ],
  "textos": [{"en_hueco": 0, "texto": {"es": "…"}, "posicion": 0.18}],   opcional, hasta 10: texto encima de un hueco
                                                   (hasta 60 caracteres; posicion = altura de 0,08 a 0,9)
@@ -44,7 +46,13 @@ TIPOS = ("video", "foto", "cualquiera")
 ZOOMS = ("acercar", "alejar", "no")
 CLAVES = {"formato", "id", "categoria", "nombre", "descripcion", "autor", "etiquetas", "proporcion", "huecos", "textos",
           "subtitulos", "efectos", "musica"}
-CLAVES_HUECO = {"dur", "tipo", "pista", "efectos", "transicion", "zoom"}
+CLAVES_HUECO = {"dur", "tipo", "pista", "efectos", "transicion", "zoom", "velocidad"}
+#: La velocidad de un hueco, con los mismos rangos que `velocidades` en proyecto.json (bin/proyecto.py):
+#:   v          0,25 a 3 (1 = normal; menos es cámara lenta, más es rápida)
+#:   rampa      true: pasa suave de 1× a v y vuelve (v hasta 0,75): «cámara lenta en el momento clave»
+#:   audio      "tono" (la voz más lenta o rápida, con su tono) o "silencio" (bajo 0,5× se silencia sola)
+#:   suavizar   solo en cámara lenta: "mezcla" (funde los cuadros, casi gratis) o "movimiento" (inventa cuadros; tarda más)
+VELOCIDAD = {"v": (0.25, 3), "rampa_max": 0.75, "audio": ("tono", "silencio"), "suavizar": ("mezcla", "movimiento")}
 CLAVES_TEXTO = {"en_hueco", "texto", "posicion"}
 DUR = (0.5, 15)
 MAX_HUECOS, MAX_TOTAL, MAX_TEXTOS, MAX_EFECTOS = 20, 90, 10, 3
@@ -82,6 +90,16 @@ def _textos(v, largo):
 
 def _ids(v, maximo):
     return isinstance(v, list) and len(v) <= maximo and len(set(map(str, v))) == len(v) and all(isinstance(x, str) and ef.ID.fullmatch(x) for x in v)
+
+
+def velocidad_valida(x):
+    if not (isinstance(x, dict) and set(x) <= {"v", "rampa", "audio", "suavizar"} and _numero(x.get("v"))):
+        return False
+    v = x["v"]
+    lo, hi = VELOCIDAD["v"]
+    return (lo <= v <= hi and ("rampa" not in x or (x["rampa"] is True and v <= VELOCIDAD["rampa_max"]))
+            and (v != 1 or x.get("rampa") is True) and x.get("audio", "tono") in VELOCIDAD["audio"]
+            and ("suavizar" not in x or (x["suavizar"] in VELOCIDAD["suavizar"] and v < 1)))
 
 
 def duracion(d):
@@ -143,6 +161,9 @@ def validar_plantilla(d, archivo=None):
                 e.append(f"{donde}.transicion: el último hueco no pasa a otro.")
         if "zoom" in h and h["zoom"] not in ZOOMS:
             e.append(f"{donde}.zoom: " + ", ".join(ZOOMS) + ".")
+        if "velocidad" in h and not velocidad_valida(h["velocidad"]):
+            e.append(f"{donde}.velocidad: {{\"v\": 0.25 a 3, \"rampa\"?: true (v hasta 0.75), \"audio\"?: tono | silencio, "
+                     "\"suavizar\"?: mezcla | movimiento (solo en cámara lenta)}.")
     if total > MAX_TOTAL + 1e-9:
         e.append(f"huecos: entre todos, hasta {MAX_TOTAL} s.")
     textos = d.get("textos", [])

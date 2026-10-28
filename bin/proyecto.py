@@ -178,9 +178,10 @@ def validar(p):
     div = p.get("divisiones", [])
     if not (isinstance(div, list) and len(div) <= 500 and all(isinstance(t, (int, float)) and not isinstance(t, bool) and 0 < t < dur for t in div)):
         e.append("divisiones: lista de segundos dentro del video.")
-    for lista in ("cortes", "zooms", "textos", "efectos"):
+    e += validar_velocidades(p.get("velocidades", []), dur)
+    for lista in ("cortes", "zooms", "textos", "efectos", "velocidades"):
         if any(isinstance(o, dict) and "origen" in o and not (isinstance(o["origen"], str) and ORIGEN.fullmatch(o["origen"]))
-               for o in p.get(lista, [])):
+               for o in (p.get(lista) if isinstance(p.get(lista), list) else [])):
             e.append(f"{lista}: origen debe ser el id de un cambio de la IA.")
     c = p.get("cambios_ia")
     if c is not None and not (isinstance(c, list) and len(c) <= 50 and all(
@@ -250,17 +251,131 @@ def conservados(p, minimo=0.04):
 
 
 def duracion_final(p):
-    return round(sum(t["f"] - t["i"] for t in conservados(p)), 3)
+    vels = velocidades(p)
+    return round(sum(lento(vels, t["i"], t["f"]) for t in conservados(p)), 3)
 
 
 def a_salida(p, t, tramos=None):
-    """Segundo del original → segundo del video exportado (None si ese momento quedó cortado)."""
+    """Segundo del original → segundo del video exportado (None si ese momento quedó cortado). Cuenta la velocidad de cada tramo."""
+    vels = velocidades(p)
     acumulado = 0.0
     for tr in tramos or conservados(p):
         if tr["i"] <= t <= tr["f"]:
-            return round(acumulado + t - tr["i"], 3)
-        acumulado += tr["f"] - tr["i"]
+            return round(acumulado + lento(vels, tr["i"], t), 3)
+        acumulado += lento(vels, tr["i"], tr["f"])
     return None
+
+
+# ───────────── Velocidad por tramo (la misma lógica en ui/app.js; casos «velocidad» en pruebas/casos.json) ─────────────
+# `velocidades`: [{i, f, v, rampa?, audio?, suavizar?, origen?}] en segundos del original, sin traslaparse. `v` va de 0,25× a 3×.
+# Con `rampa`, el tramo pasa suave de 1× a `v` y vuelve: sube en el primer 30 % del tramo, se queda en `v` y baja en el último 30 %.
+# Lo que dura en el video exportado es la integral de 1/velocidad (`lento`): en una rampa, la lentitud (1/v) sigue una curva
+# suave (smoothstep) y su integral es un polinomio, así que Python, JS y la expresión de ffmpeg dan lo mismo sin aproximar.
+VEL_MIN, VEL_MAX, RAMPA_MAX = 0.25, 3, 0.75
+MIN_VEL, MIN_RAMPA, MAX_VEL = 0.1, 0.5, 100
+RAMPA_LADO = 0.3
+AUDIOS = ("tono", "silencio")
+SUAVES = ("mezcla", "movimiento")
+CLAVES_VEL = {"i", "f", "v", "rampa", "audio", "suavizar", "origen"}
+
+
+def validar_velocidades(lista, dur):
+    if not isinstance(lista, list) or len(lista) > MAX_VEL:
+        return [f"velocidades: lista de hasta {MAX_VEL}."]
+    e = []
+    for x in lista:
+        if not (isinstance(x, dict) and set(x) <= CLAVES_VEL and all(num(x.get(k)) for k in ("i", "f", "v"))):
+            e.append("velocidades: cada una {i, f, v, rampa?, audio?, suavizar?}.")
+            continue
+        if not (0 <= x["i"] < x["f"] <= dur + 0.05 and x["f"] - x["i"] >= MIN_VEL - 1e-9):
+            e.append(f"velocidades: el tramo {x['i']}–{x['f']} está fuera del video, al revés o dura menos de {MIN_VEL} s.")
+        if not VEL_MIN <= x["v"] <= VEL_MAX:
+            e.append(f"velocidades: v de {VEL_MIN} a {VEL_MAX}.")
+        if "rampa" in x and not (x["rampa"] is True and x["v"] <= RAMPA_MAX and x["f"] - x["i"] >= MIN_RAMPA - 1e-9):
+            e.append(f"velocidades: una rampa es «rampa»: true, con v hasta {RAMPA_MAX} y de al menos {MIN_RAMPA} s.")
+        if "audio" in x and x["audio"] not in AUDIOS:
+            e.append("velocidades: audio debe ser «tono» o «silencio».")
+        if "suavizar" in x and not (x["suavizar"] in SUAVES and x["v"] < 1):
+            e.append("velocidades: suavizar («mezcla» o «movimiento») solo en cámara lenta.")
+    if not e:
+        orden = sorted(lista, key=lambda x: x["i"])
+        if any(b["i"] < a["f"] - 1e-9 for a, b in zip(orden, orden[1:])):
+            e.append("velocidades: los tramos no pueden traslaparse.")
+    return e
+
+
+def velocidades(p):
+    """Las velocidades del proyecto, ordenadas (solo las que tienen i, f y v)."""
+    lista = p.get("velocidades") if isinstance(p.get("velocidades"), list) else []
+    return sorted((x for x in lista if isinstance(x, dict) and all(num(x.get(k)) for k in ("i", "f", "v")) and x["v"] > 0),
+                  key=lambda x: x["i"])
+
+
+def _integral(e, u):
+    """Segundos del exportado desde el inicio del tramo `e` hasta el segundo u del original (dentro del tramo)."""
+    x = min(max(u, e["i"]), e["f"]) - e["i"]
+    if not e.get("rampa"):
+        return x / e["v"]
+    d = e["f"] - e["i"]
+    lado, k = d * RAMPA_LADO, 1 / e["v"]
+    if x <= lado:
+        y = x / lado
+        return x + (k - 1) * lado * (y * y * y - y * y * y * y / 2)
+    sube = lado * (1 + k) / 2
+    if x <= d - lado:
+        return sube + (x - lado) * k
+    z = x - (d - lado)
+    y = z / lado
+    return sube + (d - 2 * lado) * k + k * z + (1 - k) * lado * (y * y * y - y * y * y * y / 2)
+
+
+def lento(vels, a, b):
+    """Cuánto dura en el video exportado el pedazo a..b del original (sin mirar los cortes)."""
+    r = b - a
+    for e in vels:
+        if e["f"] <= a or e["i"] >= b:
+            continue
+        c, d = max(a, e["i"]), min(b, e["f"])
+        r += _integral(e, d) - _integral(e, c) - (d - c)
+    return r
+
+
+def velocidad_en(vels, t):
+    """La velocidad en el segundo t del original (1 fuera de los tramos)."""
+    for e in vels:
+        if e["i"] <= t < e["f"]:
+            if not e.get("rampa"):
+                return e["v"]
+            d = e["f"] - e["i"]
+            lado, k, x = d * RAMPA_LADO, 1 / e["v"], t - e["i"]
+            y = min(x, d - x) / lado
+            s = k if y >= 1 else 1 + (k - 1) * y * y * (3 - 2 * y)
+            return 1 / s
+    return 1
+
+
+def audio_de(e):
+    """Qué pasa con la voz en el tramo: «tono» (más rápida o lenta, con el mismo tono) o «silencio». En cámara muy lenta (menos de
+    0,5×, también en una rampa) se silencia, salvo que la persona diga otra cosa."""
+    return e.get("audio") or ("silencio" if e["v"] < 0.5 else "tono")
+
+
+def poner_velocidad(lista, i, f, nueva=None):
+    """Pone `nueva` ({v, rampa?, audio?, suavizar?, origen?}) en el tramo i..f: lo que había ahí se recorta (un pedazo que queda
+    más corto que su mínimo se va). Con `nueva` None o 1× sin rampa, el tramo vuelve a la velocidad normal. Devuelve otra lista."""
+    r = []
+    minimo = lambda e: MIN_RAMPA if e.get("rampa") else MIN_VEL  # noqa: E731
+    for e in lista:
+        if e["f"] <= i or e["i"] >= f:
+            r.append(e)
+            continue
+        if i - e["i"] >= minimo(e) - 1e-9:
+            r.append({**e, "f": round(i, 3)})
+        if e["f"] - f >= minimo(e) - 1e-9:
+            r.append({**e, "i": round(f, 3)})
+    if nueva and (nueva.get("rampa") or nueva.get("v") != 1):
+        r.append({"i": round(i, 3), "f": round(f, 3), **{k: v for k, v in nueva.items() if k not in ("i", "f")}})
+    return sorted(r, key=lambda e: e["i"])
 
 
 def palabra_cortada(p, w, cortes=None):

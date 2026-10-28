@@ -10,7 +10,8 @@ efectos aplicados con sus pasos copiados (el proyecto se exporta igual aunque de
   {"efecto": "calido", "pasos": [...], "i"?: s, "f"?: s, "origen"?: "ia-…"}     sin i/f = todo el video
 
 Todo pasa en el tiempo del video EXPORTADO, después de unir las piezas y antes de los subtítulos (que nunca se desenfocan ni se
-mueven). Un efecto de un tramo se activa en los pedazos de ese tramo que quedan (`intervalos`). La misma lógica de tiempos existe
+mueven). Un efecto de un tramo se activa en los pedazos de ese tramo que quedan (`intervalos`), ya con la velocidad de cada tramo
+(`proyecto.lento`: un tramo a 0,5× dura el doble en el exportado y su efecto también). La misma lógica de tiempos existe
 en ui/app.js (`intervalosSalida`, `uniones`, `segmentosZoom`, `segmentosCapa`, `valorEn`); casos en pruebas/casos.json («efectos»).
 
 Lista blanca de filtros de ffmpeg (solo estos, con números que salen de rangos validados; ningún texto del efecto llega a ffmpeg):
@@ -95,27 +96,27 @@ def alcance(p, ap):
 
 def intervalos_salida(p, i, f):
     """Los pedazos del tramo i..f (segundos del original) que quedan, en segundos del video exportado: [[a, b], …]."""
-    r, acumulado = [], 0.0
+    r, acumulado, vels = [], 0.0, proyecto.velocidades(p)
     for t in proyecto.conservados(p):
         a, b = max(t["i"], i), min(t["f"], f)
         if b - a >= 0.02:
-            r.append([_r3(acumulado + a - t["i"]), _r3(acumulado + b - t["i"])])
-        acumulado += t["f"] - t["i"]
+            r.append([_r3(acumulado + proyecto.lento(vels, t["i"], a)), _r3(acumulado + proyecto.lento(vels, t["i"], b))])
+        acumulado += proyecto.lento(vels, t["i"], t["f"])
     return r
 
 
 def uniones(p, i, f):
     """Dónde se juntan dos pedazos del tramo i..f en el video exportado: un corte en medio o una división (`divisiones`, donde
     dividiste o donde una plantilla pasa de un clip al siguiente). Ahí van las transiciones."""
-    r, acumulado, anterior = [], 0.0, False
+    r, acumulado, anterior, vels = [], 0.0, False, proyecto.velocidades(p)
     divs = sorted(x for x in p.get("divisiones", []) if isinstance(x, (int, float)) and not isinstance(x, bool) and i + 0.02 < x < f - 0.02)
     for t in proyecto.conservados(p):
         dentro = min(t["f"], f) - max(t["i"], i) >= 0.02
         if dentro and anterior:
             r.append(_r3(acumulado))
-        r += [_r3(acumulado + d - t["i"]) for d in divs if t["i"] + 0.02 < d < t["f"] - 0.02]
+        r += [_r3(acumulado + proyecto.lento(vels, t["i"], d)) for d in divs if t["i"] + 0.02 < d < t["f"] - 0.02]
         anterior = dentro
-        acumulado += t["f"] - t["i"]
+        acumulado += proyecto.lento(vels, t["i"], t["f"])
     return r
 
 

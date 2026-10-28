@@ -416,6 +416,24 @@
   "No pude leer la plantilla.": "I couldn't read the template.",
   "No pude armar el video.": "I couldn't build the video.",
   "Elige {n} clips o fotos. Van en orden de nombre; después puedes cambiar cada uno.": "Choose {n} clips or photos. They go in name order; you can change each one later.",
-  "Elige otro clip o foto para este hueco": "Choose another clip or photo for this slot"
+  "Elige otro clip o foto para este hueco": "Choose another clip or photo for this slot",
+  "Cámara lenta cuando digo «publicar»": "Slow motion when I say “publish”",
+  "Velocidad": "Speed",
+  "Velocidad del tramo": "Segment speed",
+  "Velocidad exacta": "Exact speed",
+  "Rampa": "Ramp",
+  "Entra y sale suave: cámara lenta en el momento clave.": "Eases in and out: slow motion right at the key moment.",
+  "Suavizar": "Smooth",
+  "Mezcla los cuadros para que la cámara lenta no salte.": "Blends frames so slow motion doesn't stutter.",
+  "Inventa los cuadros que faltan. Exportar tarda bastante más.": "Creates the missing frames. Exporting takes much longer.",
+  "Silenciar el audio del tramo": "Mute this segment's audio",
+  "Dura {a} s y en el video, {b} s": "Lasts {a} s, and {b} s in the video",
+  "Este tramo es muy corto para cambiarle la velocidad": "This segment is too short to change its speed",
+  "Para una rampa, el tramo tiene que durar al menos medio segundo": "A ramp needs a segment of at least half a second",
+  "Quitar esta velocidad": "Remove this speed change",
+  "Quitar estas {n} velocidades": "Remove these {n} speed changes",
+  "Puse cámara lenta, con una rampa suave, en «listo para publicar».": "I added slow motion, with a smooth ramp, on “ready to publish”.",
+  "Más fluido (exportar tarda más)": "Smoother (slower to export)",
+  "Bajo 0,5× la voz se silencia sola. La música nunca cambia de velocidad.": "Below 0.5× the voice is muted automatically. Music never changes speed."
  }
 }

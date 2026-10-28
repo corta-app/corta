@@ -1,0 +1,81 @@
+{
+ "formato": 1,
+ "id": "a-toda-velocidad",
+ "categoria": "tutorial",
+ "nombre": {
+  "es": "A toda velocidad",
+  "en": "Fast forward"
+ },
+ "descripcion": {
+  "es": "Un proceso largo en cámara rápida y el resultado a velocidad normal. Para recetas, armados y limpiezas.",
+  "en": "A long process in fast motion and the result at normal speed. For recipes, builds and clean-ups."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "cámara rápida",
+  "timelapse",
+  "proceso",
+  "process"
+ ],
+ "proporcion": "9:16",
+ "huecos": [
+  {
+   "dur": 3,
+   "tipo": "video",
+   "pista": {
+    "es": "Cómo empieza",
+    "en": "How it starts"
+   },
+   "transicion": "barrido"
+  },
+  {
+   "dur": 9,
+   "tipo": "video",
+   "pista": {
+    "es": "Todo el proceso",
+    "en": "The whole process"
+   },
+   "velocidad": {
+    "v": 3,
+    "audio": "silencio"
+   },
+   "transicion": "destello"
+  },
+  {
+   "dur": 3,
+   "tipo": "cualquiera",
+   "pista": {
+    "es": "El resultado",
+    "en": "The result"
+   },
+   "efectos": [
+    "zoom-lento"
+   ]
+  }
+ ],
+ "textos": [
+  {
+   "en_hueco": 1,
+   "texto": {
+    "es": "3× más rápido",
+    "en": "3× faster"
+   },
+   "posicion": 0.18
+  },
+  {
+   "en_hueco": 2,
+   "texto": {
+    "es": "¡Listo!",
+    "en": "Done!"
+   },
+   "posicion": 0.18
+  }
+ ],
+ "subtitulos": {
+  "estilo": "caja",
+  "activos": true
+ },
+ "musica": {
+  "bpm": 120
+ }
+}

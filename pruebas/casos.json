@@ -2509,6 +2509,30 @@
      "salida": 1,
      "color": "negro"
     }
+   ],
+   "zoom-de-paso": [
+    {
+     "tipo": "zoom_paso",
+     "duracion": 0.5,
+     "intensidad": 0.6,
+     "desenfoque": 0.4
+    }
+   ],
+   "fogonazo": [
+    {
+     "tipo": "destello",
+     "duracion": 0.35,
+     "color": "#FFFFFF",
+     "intensidad": 0.9,
+     "exposicion": 0.8
+    }
+   ],
+   "contraste": [
+    {
+     "tipo": "color",
+     "contraste": 1.3,
+     "saturacion": 1.1
+    }
    ]
   },
   "aplicar": [
@@ -2871,6 +2895,229 @@
       "otro-que-falta"
      ]
     }
+   },
+   {
+    "plantilla": {
+     "formato": 1,
+     "id": "momento-epico",
+     "categoria": "recuerdos",
+     "nombre": {
+      "es": "Momento épico",
+      "en": "Epic moment"
+     },
+     "descripcion": {
+      "es": "La previa, el momento en cámara lenta y el festejo. Para el gol, el truco o el salto que hay que ver dos veces.",
+      "en": "The build-up, the moment in slow motion and the celebration. For the goal, the trick or the jump worth watching twice."
+     },
+     "autor": "Corta",
+     "etiquetas": [
+      "cámara lenta",
+      "deporte",
+      "slow motion",
+      "sports"
+     ],
+     "proporcion": "9:16",
+     "huecos": [
+      {
+       "dur": 2,
+       "tipo": "video",
+       "pista": {
+        "es": "La previa",
+        "en": "The build-up"
+       },
+       "velocidad": {
+        "v": 1.5
+       },
+       "transicion": "zoom-de-paso"
+      },
+      {
+       "dur": 3,
+       "tipo": "video",
+       "pista": {
+        "es": "El momento",
+        "en": "The moment"
+       },
+       "velocidad": {
+        "v": 0.3,
+        "rampa": true,
+        "suavizar": "mezcla"
+       },
+       "transicion": "destello"
+      },
+      {
+       "dur": 2,
+       "tipo": "video",
+       "pista": {
+        "es": "Otra vez, más lento",
+        "en": "Again, slower"
+       },
+       "velocidad": {
+        "v": 0.5,
+        "suavizar": "mezcla"
+       },
+       "efectos": [
+        "contraste"
+       ],
+       "transicion": "fogonazo"
+      },
+      {
+       "dur": 2.5,
+       "tipo": "cualquiera",
+       "pista": {
+        "es": "El festejo",
+        "en": "The celebration"
+       }
+      }
+     ],
+     "textos": [
+      {
+       "en_hueco": 1,
+       "texto": {
+        "es": "Espera…",
+        "en": "Wait for it…"
+       },
+       "posicion": 0.18
+      }
+     ],
+     "subtitulos": {
+      "estilo": "titular",
+      "activos": false
+     },
+     "efectos": [
+      "vivido"
+     ],
+     "musica": {
+      "bpm": 128
+     }
+    },
+    "tipos": [
+     "video",
+     "video",
+     "video",
+     "foto"
+    ],
+    "idioma": "es",
+    "estilos": [
+     "titular",
+     "pop"
+    ],
+    "esperado": {
+     "lienzo": "9:16",
+     "divisiones": [
+      2.0,
+      5.0,
+      7.0
+     ],
+     "textos": [
+      {
+       "i": 2.0,
+       "f": 5.0,
+       "texto": "Espera…",
+       "y": 0.18
+      }
+     ],
+     "efectos": [
+      {
+       "efecto": "zoom-de-paso",
+       "pasos": [
+        {
+         "tipo": "zoom_paso",
+         "duracion": 0.5,
+         "intensidad": 0.6,
+         "desenfoque": 0.4
+        }
+       ],
+       "i": 1.5,
+       "f": 2.5
+      },
+      {
+       "efecto": "destello",
+       "pasos": [
+        {
+         "tipo": "transicion",
+         "duracion": 0.3,
+         "color": "blanco"
+        }
+       ],
+       "i": 4.5,
+       "f": 5.5
+      },
+      {
+       "efecto": "contraste",
+       "pasos": [
+        {
+         "tipo": "color",
+         "contraste": 1.3,
+         "saturacion": 1.1
+        }
+       ],
+       "i": 5.0,
+       "f": 7.0
+      },
+      {
+       "efecto": "fogonazo",
+       "pasos": [
+        {
+         "tipo": "destello",
+         "duracion": 0.35,
+         "color": "#FFFFFF",
+         "intensidad": 0.9,
+         "exposicion": 0.8
+        }
+       ],
+       "i": 6.5,
+       "f": 7.5
+      },
+      {
+       "efecto": "zoom-lento",
+       "pasos": [
+        {
+         "tipo": "zoom",
+         "desde": 1,
+         "hasta": 1.15,
+         "curva": "suave"
+        }
+       ],
+       "i": 7.0,
+       "f": 9.5
+      },
+      {
+       "efecto": "vivido",
+       "pasos": [
+        {
+         "tipo": "color",
+         "contraste": 1.1,
+         "saturacion": 1.5
+        }
+       ]
+      }
+     ],
+     "subtitulos": {
+      "estilo": "titular",
+      "activos": false
+     },
+     "faltan": [],
+     "velocidades": [
+      {
+       "i": 0.0,
+       "f": 2.0,
+       "v": 1.5
+      },
+      {
+       "i": 2.0,
+       "f": 5.0,
+       "v": 0.3,
+       "rampa": true,
+       "suavizar": "mezcla"
+      },
+      {
+       "i": 5.0,
+       "f": 7.0,
+       "v": 0.5,
+       "suavizar": "mezcla"
+      }
+     ]
+    }
    }
   ],
   "uniones": {
@@ -2925,5 +3172,576 @@
     }
    ]
   }
+ },
+ "velocidad": {
+  "_nota": "Velocidad por tramo: lo mismo en bin/proyecto.py (lento, a_salida, velocidad_en, poner_velocidad, audio_de), bin/efectos.py y ui/app.js. Los valores de lento se comparan exactos.",
+  "proyecto": {
+   "fuente": {
+    "duracion": 10
+   },
+   "cortes": [
+    {
+     "i": 3.5,
+     "f": 4,
+     "motivo": "manual"
+    },
+    {
+     "i": 9,
+     "f": 10,
+     "motivo": "manual"
+    }
+   ],
+   "divisiones": [
+    2,
+    7
+   ],
+   "velocidades": [
+    {
+     "i": 1,
+     "f": 3,
+     "v": 0.5
+    },
+    {
+     "i": 4.5,
+     "f": 5.5,
+     "v": 2,
+     "audio": "silencio"
+    },
+    {
+     "i": 6,
+     "f": 8,
+     "v": 0.3,
+     "rampa": true,
+     "suavizar": "mezcla"
+    }
+   ]
+  },
+  "lento": [
+   [
+    0,
+    10,
+    14.766666666666666
+   ],
+   [
+    0,
+    1,
+    1
+   ],
+   [
+    1,
+    3,
+    4.0
+   ],
+   [
+    2,
+    2.5,
+    1.0
+   ],
+   [
+    3.4,
+    4.6,
+    1.15
+   ],
+   [
+    5,
+    7,
+    3.3833333333333337
+   ],
+   [
+    6,
+    6.6,
+    1.299999999999999
+   ],
+   [
+    6.2,
+    7.9,
+    4.9175154320987655
+   ],
+   [
+    7.5,
+    8,
+    0.9726080246913575
+   ],
+   [
+    6,
+    8,
+    5.266666666666667
+   ]
+  ],
+  "a_salida": [
+   [
+    0,
+    0.0
+   ],
+   [
+    0.5,
+    0.5
+   ],
+   [
+    1,
+    1.0
+   ],
+   [
+    2,
+    3.0
+   ],
+   [
+    3,
+    5.0
+   ],
+   [
+    3.5,
+    5.5
+   ],
+   [
+    3.6,
+    null
+   ],
+   [
+    4,
+    5.5
+   ],
+   [
+    5,
+    6.25
+   ],
+   [
+    6,
+    7.0
+   ],
+   [
+    6.3,
+    7.431
+   ],
+   [
+    7,
+    9.633
+   ],
+   [
+    7.7,
+    11.835
+   ],
+   [
+    8,
+    12.267
+   ],
+   [
+    8.99,
+    13.257
+   ],
+   [
+    9.5,
+    null
+   ],
+   [
+    10,
+    null
+   ]
+  ],
+  "duracion_final": 13.267,
+  "velocidad_en": [
+   [
+    0,
+    1
+   ],
+   [
+    1,
+    0.5
+   ],
+   [
+    2.99,
+    0.5
+   ],
+   [
+    3,
+    1
+   ],
+   [
+    4.6,
+    2
+   ],
+   [
+    6,
+    1.0
+   ],
+   [
+    6.3,
+    0.4615384615384618
+   ],
+   [
+    6.6,
+    0.3
+   ],
+   [
+    7,
+    0.3
+   ],
+   [
+    7.4,
+    0.3
+   ],
+   [
+    7.9,
+    0.8526315789473693
+   ],
+   [
+    8,
+    1
+   ]
+  ],
+  "intervalos": [
+   {
+    "i": 0,
+    "f": 10,
+    "esperado": [
+     [
+      0.0,
+      5.5
+     ],
+     [
+      5.5,
+      13.267
+     ]
+    ],
+    "uniones": [
+     3.0,
+     5.5,
+     9.633
+    ]
+   },
+   {
+    "i": 1,
+    "f": 3,
+    "esperado": [
+     [
+      1.0,
+      5.0
+     ]
+    ],
+    "uniones": [
+     3.0
+    ]
+   },
+   {
+    "i": 2,
+    "f": 8,
+    "esperado": [
+     [
+      3.0,
+      5.5
+     ],
+     [
+      5.5,
+      12.267
+     ]
+    ],
+    "uniones": [
+     5.5,
+     9.633
+    ]
+   },
+   {
+    "i": 6,
+    "f": 8,
+    "esperado": [
+     [
+      7.0,
+      12.267
+     ]
+    ],
+    "uniones": [
+     9.633
+    ]
+   },
+   {
+    "i": 4.5,
+    "f": 5.5,
+    "esperado": [
+     [
+      6.0,
+      6.5
+     ]
+    ],
+    "uniones": []
+   }
+  ],
+  "poner": [
+   {
+    "lista": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ],
+    "i": 2,
+    "f": 5,
+    "nueva": {
+     "v": 2
+    },
+    "esperado": [
+     {
+      "i": 1,
+      "f": 2,
+      "v": 0.5
+     },
+     {
+      "i": 2,
+      "f": 5,
+      "v": 2
+     },
+     {
+      "i": 5,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ]
+   },
+   {
+    "lista": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ],
+    "i": 0.5,
+    "f": 1.05,
+    "nueva": {
+     "v": 3
+    },
+    "esperado": [
+     {
+      "i": 0.5,
+      "f": 1.05,
+      "v": 3
+     },
+     {
+      "i": 1.05,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ]
+   },
+   {
+    "lista": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ],
+    "i": 1,
+    "f": 3,
+    "nueva": null,
+    "esperado": [
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ]
+   },
+   {
+    "lista": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ],
+    "i": 1,
+    "f": 3,
+    "nueva": {
+     "v": 1
+    },
+    "esperado": [
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ]
+   },
+   {
+    "lista": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ],
+    "i": 4.2,
+    "f": 5.8,
+    "nueva": {
+     "v": 1.5,
+     "audio": "silencio",
+     "origen": "ia-a"
+    },
+    "esperado": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4.2,
+      "f": 5.8,
+      "v": 1.5,
+      "audio": "silencio",
+      "origen": "ia-a"
+     }
+    ]
+   },
+   {
+    "lista": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ],
+    "i": 0,
+    "f": 10,
+    "nueva": {
+     "v": 0.4,
+     "rampa": true
+    },
+    "esperado": [
+     {
+      "i": 0,
+      "f": 10,
+      "v": 0.4,
+      "rampa": true
+     }
+    ]
+   },
+   {
+    "lista": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ],
+    "i": 3,
+    "f": 4,
+    "nueva": {
+     "v": 0.25,
+     "suavizar": "movimiento"
+    },
+    "esperado": [
+     {
+      "i": 1,
+      "f": 3,
+      "v": 0.5
+     },
+     {
+      "i": 3,
+      "f": 4,
+      "v": 0.25,
+      "suavizar": "movimiento"
+     },
+     {
+      "i": 4,
+      "f": 6,
+      "v": 0.3,
+      "rampa": true
+     }
+    ]
+   }
+  ],
+  "audio": [
+   [
+    {
+     "v": 0.25
+    },
+    "silencio"
+   ],
+   [
+    {
+     "v": 0.5
+    },
+    "tono"
+   ],
+   [
+    {
+     "v": 0.3,
+     "rampa": true
+    },
+    "silencio"
+   ],
+   [
+    {
+     "v": 2
+    },
+    "tono"
+   ],
+   [
+    {
+     "v": 3,
+     "audio": "silencio"
+    },
+    "silencio"
+   ],
+   [
+    {
+     "v": 0.25,
+     "audio": "tono"
+    },
+    "tono"
+   ]
+  ]
  }
 }

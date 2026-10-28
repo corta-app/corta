@@ -736,6 +736,117 @@ class Plantillas(unittest.TestCase):
             self.assertEqual(a.read(), b.read(), "bin/plantilla_formato.py y el del catálogo deben ser iguales")
 
 
+class Velocidad(unittest.TestCase):
+    """Velocidad por tramo: la misma cuenta en Python y JS (casos «velocidad»), validada, exportada con la duración justa."""
+
+    def test_casos(self):
+        c = CASOS["velocidad"]
+        p = c["proyecto"]
+        vels = proyecto.velocidades(p)
+        self.assertEqual(proyecto.validar_velocidades(p["velocidades"], 10), [])
+        for a, b, e in c["lento"]:
+            self.assertEqual(proyecto.lento(vels, a, b), e, (a, b))
+        for t, e in c["a_salida"]:
+            self.assertEqual(proyecto.a_salida(p, t), e, t)
+        self.assertEqual(proyecto.duracion_final(p), c["duracion_final"])
+        for t, e in c["velocidad_en"]:
+            self.assertEqual(proyecto.velocidad_en(vels, t), e, t)
+        for x in c["intervalos"]:
+            self.assertEqual(efectos.intervalos_salida(p, x["i"], x["f"]), x["esperado"], x)
+            self.assertEqual(efectos.uniones(p, x["i"], x["f"]), x["uniones"], x)
+        for x in c["poner"]:
+            self.assertEqual(proyecto.poner_velocidad(json.loads(json.dumps(x["lista"])), x["i"], x["f"], x["nueva"]), x["esperado"], x)
+        for e, a in c["audio"]:
+            self.assertEqual(proyecto.audio_de(e), a)
+
+    def test_rampa_continua_y_cuenta_exacta(self):
+        e = {"i": 2, "f": 4, "v": 0.3, "rampa": True}
+        # Sin saltos: la integral por pedazos coincide en los bordes y la velocidad va de 1 a 0,3 y vuelve.
+        for u in (2.6, 3.4):
+            self.assertAlmostEqual(proyecto._integral(e, u - 1e-9), proyecto._integral(e, u + 1e-9), places=6)
+        self.assertAlmostEqual(proyecto.velocidad_en([e], 2), 1)
+        self.assertAlmostEqual(proyecto.velocidad_en([e], 3), 0.3)
+        self.assertAlmostEqual(proyecto.lento([e], 2, 4), 2 * (0.3 + 0.7 / 0.3), places=9)
+        # La lentitud media de cada escalón de la voz da justo lo mismo que la imagen.
+        import render
+        trozos = render.tramos_audio(e, 2, 4)
+        self.assertAlmostEqual(sum(proyecto.lento([e], a, b) for a, b in trozos), proyecto.lento([e], 2, 4), places=9)
+
+    def test_validar(self):
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 10, "ancho": 640, "alto": 360})
+        bien = [{"i": 1, "f": 2, "v": 0.5, "suavizar": "mezcla", "audio": "tono"}, {"i": 2, "f": 4, "v": 0.3, "rampa": True}, {"i": 5, "f": 6, "v": 3, "origen": "ia-a"}]
+        self.assertEqual(proyecto.validar({**p, "velocidades": bien}), [])
+        for malo in ([{"i": 1, "f": 2, "v": 4}], [{"i": 1, "f": 2, "v": 0.1}], [{"i": 1, "f": 3, "v": 0.5}, {"i": 2, "f": 4, "v": 2}],
+                     [{"i": 1, "f": 2, "v": 0.9, "rampa": True}], [{"i": 1, "f": 1.3, "v": 0.3, "rampa": True}], [{"i": 1, "f": 2, "v": 2, "suavizar": "mezcla"}],
+                     [{"i": 1, "f": 2, "v": 0.5, "audio": "fuerte"}], [{"i": 1, "f": 2, "v": "0.5"}], [{"i": 1, "f": 1.05, "v": 0.5}],
+                     [{"i": 9, "f": 12, "v": 0.5}], [{"i": 1, "f": 2, "v": 0.5, "filtro": "x"}], [{"i": 1, "f": 2, "v": 0.5, "rampa": False}], {"i": 1}, 5):
+            self.assertTrue(proyecto.validar({**p, "velocidades": malo}), malo)
+
+    def test_grafo_solo_lista_blanca(self):
+        import re
+        import render
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 9, "ancho": 640, "alto": 360})
+        p["cortes"] = [{"i": 3.5, "f": 4, "motivo": "manual"}]
+        p["zooms"] = [{"i": 1.5, "f": 2.5, "escala": 1.2}]
+        p["musica"] = {"archivo": "musica/a.mp3", "volumen": 0.2}
+        p["velocidades"] = [{"i": 1, "f": 3, "v": 0.25, "suavizar": "movimiento", "audio": "tono"}, {"i": 4.2, "f": 5, "v": 3},
+                            {"i": 6, "f": 8, "v": 0.3, "rampa": True, "suavizar": "mezcla", "audio": "tono"}, {"i": 8, "f": 8.5, "v": 0.4}]
+        self.assertEqual(proyecto.validar(p), [])
+        g = render.grafo(p, True, "/tmp/s.ass", True)
+        permitidos = {"trim", "setpts", "fps", "scale", "crop", "split", "boxblur", "eq", "overlay", "setsar", "format", "ass", "atrim", "asetpts",
+                      "aresample", "anullsrc", "concat", "anull", "aloop", "volume", "asplit", "sidechaincompress", "amix", "tpad", "framerate",
+                      "minterpolate", "atempo", "apad"}
+        sin = re.sub(r"'[^']*'", "''", g)
+        for filtro in re.split(r"[,;]", re.sub(r"\[[^\]]*\]", "", sin)):
+            self.assertIn(filtro.split("=")[0], permitidos, filtro)
+        for expr in re.findall(r"setpts='([^']*)'", g):
+            self.assertRegex(expr, r"^[0-9A-Za-z_.+\-*/(),]*$")
+        for x in re.findall(r"atempo=([0-9.]+)", g):
+            self.assertTrue(0.5 <= float(x) <= 2, x)
+        self.assertIn("atempo=0.5,atempo=0.5", g, "0,25× con tono: dos atempo")
+        self.assertIn("volume=0", g, "0,4× sin decir nada: la voz se silencia")
+        self.assertIn("minterpolate", g)
+        self.assertIn("framerate=fps=30", g)
+
+    def test_exportar_dura_lo_justo(self):
+        import render
+        carpeta = proyecto_de_prueba()
+        p = proyecto.cargar(carpeta)
+        p["cortes"] = [{"i": 4, "f": 4.5, "motivo": "manual"}]
+        p["velocidades"] = [{"i": 1, "f": 2.5, "v": 0.5}, {"i": 3, "f": 4, "v": 2}, {"i": 5, "f": 7, "v": 0.3, "rampa": True, "audio": "tono"},
+                            {"i": 7.5, "f": 8.5, "v": 0.25, "suavizar": "mezcla"}]
+        proyecto.guardar(carpeta, p)
+        r = correr("render.py", carpeta)
+        self.assertTrue(r["ok"], r)
+        info = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,duration", "-of", "json", r["archivo"]],
+                                         capture_output=True, text=True).stdout)
+        for s in info["streams"]:
+            self.assertAlmostEqual(float(s["duration"]), proyecto.duracion_final(p), delta=1.5 / 30, msg=s["codec_type"])
+
+    def test_ia_pone_velocidad_y_se_anota(self):
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 9, "ancho": 640, "alto": 360})
+        p["palabras"] = json.loads(json.dumps(PALABRAS))
+        n = len(p["palabras"])
+        q, hechas, malas = editar_ia.aplicar(p, [{"op": "velocidad", "desde": 1, "hasta": 3, "v": 0.4, "rampa": True},
+                                                 {"op": "velocidad", "desde": 2, "hasta": 4, "v": 2},
+                                                 {"op": "velocidad", "desde": 5, "hasta": 6, "v": 9},
+                                                 {"op": "velocidad", "desde": 5, "hasta": n + 3, "v": 2}], {}, "ia-v1")
+        self.assertEqual((len(hechas), len(malas)), (1, 3), "pisar otra velocidad, fuera de rango o palabras que no existen: no")
+        self.assertEqual(q["velocidades"], [{"i": PALABRAS[1]["i"], "f": PALABRAS[3]["f"], "v": 0.4, "rampa": True, "origen": "ia-v1"}])
+        self.assertEqual(q["cambios_ia"][-1]["agregados"]["velocidades"], q["velocidades"])
+        self.assertIn("velocidad", editar_ia.OPERACIONES)
+        self.assertIn("rampa a 0.4×", editar_ia.velocidades_txt(q))
+
+    def test_plantilla_con_velocidad(self):
+        base = {"formato": 1, "id": "x-y", "categoria": "recuerdos", "nombre": {"es": "X"}, "proporcion": "9:16"}
+        def errores(vel):
+            return plantilla_formato.validar_plantilla({**base, "huecos": [{"dur": 2, "tipo": "video", "velocidad": vel}]})
+        for bien in ({"v": 0.5}, {"v": 3, "audio": "silencio"}, {"v": 0.3, "rampa": True, "suavizar": "movimiento"}):
+            self.assertEqual(errores(bien), [], bien)
+        for malo in ({"v": 1}, {"v": 5}, {"v": 0.9, "rampa": True}, {"v": 2, "suavizar": "mezcla"}, {"v": 0.5, "filtro": "x"}, 0.5, {"v": True}):
+            self.assertTrue(errores(malo), malo)
+
+
 class Vocabulario(unittest.TestCase):
     """Corregir palabras sin perder los tiempos y el vocabulario que se aplica al transcribir (marca inventada: «Kalumi»)."""
 

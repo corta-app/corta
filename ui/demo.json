@@ -2173,6 +2173,100 @@
   },
   {
    "formato": 1,
+   "id": "momento-epico",
+   "categoria": "recuerdos",
+   "nombre": {
+    "es": "Momento épico",
+    "en": "Epic moment"
+   },
+   "descripcion": {
+    "es": "La previa, el momento en cámara lenta y el festejo. Para el gol, el truco o el salto que hay que ver dos veces.",
+    "en": "The build-up, the moment in slow motion and the celebration. For the goal, the trick or the jump worth watching twice."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cámara lenta",
+    "deporte",
+    "slow motion",
+    "sports"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 2,
+     "tipo": "video",
+     "pista": {
+      "es": "La previa",
+      "en": "The build-up"
+     },
+     "velocidad": {
+      "v": 1.5
+     },
+     "transicion": "zoom-de-paso"
+    },
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "El momento",
+      "en": "The moment"
+     },
+     "velocidad": {
+      "v": 0.3,
+      "rampa": true,
+      "suavizar": "mezcla"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "video",
+     "pista": {
+      "es": "Otra vez, más lento",
+      "en": "Again, slower"
+     },
+     "velocidad": {
+      "v": 0.5,
+      "suavizar": "mezcla"
+     },
+     "efectos": [
+      "contraste"
+     ],
+     "transicion": "fogonazo"
+    },
+    {
+     "dur": 2.5,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "El festejo",
+      "en": "The celebration"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "Espera…",
+      "en": "Wait for it…"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "titular",
+    "activos": false
+   },
+   "efectos": [
+    "vivido"
+   ],
+   "musica": {
+    "bpm": 128
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
    "id": "recuerdos-del-mes",
    "categoria": "recuerdos",
    "nombre": {
@@ -2357,6 +2451,88 @@
    "subtitulos": {
     "estilo": "pop",
     "activos": true
+   },
+   "origen": "incluida"
+  },
+  {
+   "formato": 1,
+   "id": "a-toda-velocidad",
+   "categoria": "tutorial",
+   "nombre": {
+    "es": "A toda velocidad",
+    "en": "Fast forward"
+   },
+   "descripcion": {
+    "es": "Un proceso largo en cámara rápida y el resultado a velocidad normal. Para recetas, armados y limpiezas.",
+    "en": "A long process in fast motion and the result at normal speed. For recipes, builds and clean-ups."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cámara rápida",
+    "timelapse",
+    "proceso",
+    "process"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 3,
+     "tipo": "video",
+     "pista": {
+      "es": "Cómo empieza",
+      "en": "How it starts"
+     },
+     "transicion": "barrido"
+    },
+    {
+     "dur": 9,
+     "tipo": "video",
+     "pista": {
+      "es": "Todo el proceso",
+      "en": "The whole process"
+     },
+     "velocidad": {
+      "v": 3,
+      "audio": "silencio"
+     },
+     "transicion": "destello"
+    },
+    {
+     "dur": 3,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "El resultado",
+      "en": "The result"
+     },
+     "efectos": [
+      "zoom-lento"
+     ]
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "3× más rápido",
+      "en": "3× faster"
+     },
+     "posicion": 0.18
+    },
+    {
+     "en_hueco": 2,
+     "texto": {
+      "es": "¡Listo!",
+      "en": "Done!"
+     },
+     "posicion": 0.18
+    }
+   ],
+   "subtitulos": {
+    "estilo": "caja",
+    "activos": true
+   },
+   "musica": {
+    "bpm": 120
    },
    "origen": "incluida"
   },
@@ -2669,6 +2845,82 @@
    "archivo": "plantillas/negocios/oferta-del-dia.json",
    "sha256": "afdb6fe00804d88d9fc904e7ccc1e95ed8c3d483a7c75874fa3eae190b612fbe",
    "bytes": 1264
+  },
+  {
+   "formato": 1,
+   "id": "la-repeticion",
+   "categoria": "recuerdos",
+   "nombre": {
+    "es": "La repetición",
+    "en": "The replay"
+   },
+   "descripcion": {
+    "es": "La jugada a velocidad normal y después la repetición en cámara lenta, como en la tele.",
+    "en": "The play at normal speed, then the slow-motion replay, just like on TV."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "deporte",
+    "fútbol",
+    "cámara lenta",
+    "replay"
+   ],
+   "proporcion": "9:16",
+   "huecos": [
+    {
+     "dur": 4,
+     "tipo": "video",
+     "pista": {
+      "es": "La jugada",
+      "en": "The play"
+     },
+     "transicion": "barrido"
+    },
+    {
+     "dur": 2,
+     "tipo": "video",
+     "pista": {
+      "es": "La misma jugada, de cerca",
+      "en": "The same play, up close"
+     },
+     "velocidad": {
+      "v": 0.25,
+      "suavizar": "mezcla"
+     },
+     "efectos": [
+      "contraste"
+     ],
+     "transicion": "destello"
+    },
+    {
+     "dur": 2,
+     "tipo": "cualquiera",
+     "pista": {
+      "es": "El festejo",
+      "en": "The celebration"
+     }
+    }
+   ],
+   "textos": [
+    {
+     "en_hueco": 1,
+     "texto": {
+      "es": "Repetición",
+      "en": "Replay"
+     },
+     "posicion": 0.12
+    }
+   ],
+   "subtitulos": {
+    "estilo": "titular",
+    "activos": false
+   },
+   "musica": {
+    "bpm": 124
+   },
+   "archivo": "plantillas/recuerdos/la-repeticion.json",
+   "sha256": "f6b9ba899ab14981a8ee6fed881fe5ac87e2ee4e5f49ba4d6f7eaad0c15317b7",
+   "bytes": 1210
   },
   {
    "formato": 1,

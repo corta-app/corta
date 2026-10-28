@@ -11,3 +11,4 @@ echo "Contrato"; python3 pruebas/contrato.py
 echo "Python"; python3 pruebas/test_python.py 2>&1 | tail -3
 echo "Interfaz"; node pruebas/interfaz.mjs
 echo "Transiciones (vista previa ↔ exportado)"; node pruebas/transiciones.mjs
+echo "Velocidad (vista previa ↔ exportado)"; node pruebas/velocidad.mjs

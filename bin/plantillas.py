@@ -14,7 +14,7 @@ ganan sobre las incluidas con el mismo id).
 Cómo se arma: los huecos van uno detrás de otro en un solo video («plantilla-N.mp4», el `fuente` del proyecto), del tamaño del
 lienzo. Lo demás es un proyecto normal y editable: textos, efectos de cada hueco (con sus pasos copiados), transiciones en la unión
 de dos huecos (una división en `divisiones` + un efecto de pasos «transicion» alrededor; ver `efectos.uniones`), estilo de los
-subtítulos y efectos de todo el video. `plantilla` en el proyecto recuerda qué clip va en cada hueco y desde qué segundo, para
+subtítulos, efectos de todo el video y la velocidad de cada hueco (`velocidades`). `plantilla` en el proyecto recuerda qué clip va en cada hueco y desde qué segundo, para
 cambiarlo después sin perder lo demás. Las mismas reglas (`llenar`, `aplicar`) existen en ui/app.js (casos «plantillas» en
 pruebas/casos.json).
 
@@ -136,7 +136,7 @@ def aplicar(plantilla, tipos, idioma, efectos_disp, estilos):
     """Lo que la plantilla pone en el proyecto, ya en el tiempo del video armado. `tipos` = "video" | "foto" de lo que cayó en cada
     hueco; `efectos_disp` = {id: pasos} de los efectos que hay; `estilos` = ids. Una foto se mueve sola (zoom lento, salvo
     `zoom: "no"` o si el hueco ya trae un efecto con zoom). Un efecto que no está queda en `faltan` (la app ofrece descargarlo).
-    → {lienzo, divisiones, textos, efectos, subtitulos (o None), faltan}"""
+    → {lienzo, divisiones, textos, efectos, subtitulos (o None), faltan, velocidades? (si algún hueco tiene velocidad)}"""
     huecos = plantilla["huecos"]
     ini = inicios(huecos)
     faltan, lista = [], []
@@ -166,8 +166,13 @@ def aplicar(plantilla, tipos, idioma, efectos_disp, estilos):
                "y": t.get("posicion", 0.18)} for t in plantilla.get("textos", [])]
     s = plantilla.get("subtitulos")
     sub = {"estilo": s["estilo"], "activos": s.get("activos", True)} if s and s["estilo"] in estilos else None
-    return {"lienzo": plantilla["proporcion"], "divisiones": ini[1:-1], "textos": textos, "efectos": lista[:40], "subtitulos": sub,
-            "faltan": faltan}
+    r = {"lienzo": plantilla["proporcion"], "divisiones": ini[1:-1], "textos": textos, "efectos": lista[:40], "subtitulos": sub,
+         "faltan": faltan}
+    # La velocidad de cada hueco (cámara lenta, rápida o una rampa) va como un tramo de `velocidades` del proyecto.
+    vels = [{"i": ini[k], "f": ini[k + 1], **h["velocidad"]} for k, h in enumerate(huecos) if "velocidad" in h]
+    if vels:
+        r["velocidades"] = vels
+    return r
 
 
 # ───────────── Armar el video ─────────────
@@ -302,6 +307,8 @@ def crear(d):
         disp = efectos.disponibles()
         ap = aplicar(pl, [h["tipo"] for h in huecos], idioma, {i: e["pasos"] for i, e in disp.items()}, set(subtitulos.estilos()))
         p.update(lienzo=ap["lienzo"], divisiones=ap["divisiones"], textos=ap["textos"], efectos=ap["efectos"])
+        if ap.get("velocidades"):
+            p["velocidades"] = ap["velocidades"]
         if ap["subtitulos"]:
             p["subtitulos"].update(ap["subtitulos"])
         p["plantilla"] = {"id": pl["id"], "huecos": huecos}
