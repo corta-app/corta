@@ -483,7 +483,7 @@ class Vocabulario(unittest.TestCase):
         self.assertEqual([[x["t"] for x in g] for g in subtitulos.lineas(lw["palabras"], lw["por_linea"])], lw["esperado"])
 
     def test_tiempos(self):
-        w = [{"t": "seaboy", "i": 1.0, "f": 2.0}]
+        w = [{"t": "calumi", "i": 1.0, "f": 2.0}]
         r = vocabulario.editar_palabras(w, 0, 0, "Kalumi")
         self.assertEqual((r[0]["i"], r[0]["f"]), (1.0, 2.0), "una palabra corregida mantiene su inicio y su fin")
         r = vocabulario.editar_palabras(w, 0, 0, "ab cdef")
