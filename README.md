@@ -19,6 +19,8 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 - **Edita por texto.** Corta transcribe tu video en tu computador, palabra por palabra. Borras una frase y se borra del video.
 - **Saca silencios y muletillas** de una vez («eh», «mmm», pausas largas). Lo puedes deshacer cuando quieras.
 - **Subtítulos animados** al estilo de los Shorts, en cualquier idioma. Los estilos son archivos simples que cualquiera puede crear.
+- **Corrige cualquier palabra** tocándola, en el texto o sobre el video, sin perder los tiempos. Si el nombre de tu marca salió mal,
+  lo cambias en todo el video de una vez y Corta lo recuerda para tus próximos videos.
 - **Vertical primero:** 9:16, 1:1, 4:5 o 16:9, con encuadre ajustable o fondo borroso para videos horizontales.
 - **Dile a tu IA lo que quieres:** «pon zoom cuando digo el precio», «saca la parte donde me equivoco», «pon un título al inicio».
 - **Shorts desde un video largo:** tu IA elige los mejores momentos de una clase, un podcast o un live, y cada uno queda como un video nuevo.
@@ -65,13 +67,22 @@ Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal c
 |---|---|
 | `fuente` | `{archivo, duracion, ancho, alto}` del video original. |
 | `lienzo`, `relleno`, `encuadre` | Formato (`9:16`, `1:1`, `4:5`, `16:9`), `recorte` o `desenfoque`, y qué parte del video se ve (`x`, `y` de 0 a 1). |
-| `palabras` | `[{t, i, f}]`: cada palabra con su inicio y fin en segundos del original. |
+| `palabras` | `[{t, i, f, linea?}]`: cada palabra con su inicio y fin en segundos del original. `linea` (opcional) es lo que decidiste a mano: `"fin"` corta la frase del subtítulo después de esa palabra y `"sigue"` la une con la siguiente. |
 | `cortes` | `[{i, f, motivo}]`: lo que no va. `motivo`: `silencio`, `muletilla`, `manual`, `ia` o `fuera` (fuera de un Short). |
 | `subtitulos` | `{activos, estilo, palabras_por_linea, posicion}` |
 | `zooms`, `textos` | `[{i, f, escala}]` y `[{i, f, texto, y}]` |
 | `musica` | `null` o `{archivo, volumen}`: `archivo` relativo a la carpeta del proyecto (la app copia la canción a `musica/`) o una ruta absoluta; `volumen` de 0 a 1. La música baja sola cuando hablas. |
 
 Todos los tiempos están en segundos **del video original**: los cortes dicen qué se saca y lo demás se conserva.
+
+### Vocabulario
+`~/Corta/vocabulario.json` guarda las palabras que corregiste y pediste recordar:
+```json
+{"formato": 1, "reemplazos": [{"de": "calumi", "a": "Kalumi"}], "palabras": ["Kalumi"]}
+```
+Al transcribir un video nuevo, cada reemplazo se aplica por palabra completa (sin mirar tildes ni mayúsculas; `de` puede tener varias
+palabras, como «ca lumi») y las palabras propias se le pasan al transcriptor como vocabulario, para que reconozca mejor nombres y
+marcas. Lo ves y lo borras en Ajustes → Vocabulario.
 
 ## Desarrollo
 Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`). La app de Mac está en

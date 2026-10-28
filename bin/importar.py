@@ -1,7 +1,8 @@
 """Traer un video a Corta y transcribirlo en tu computador. Solo biblioteca estándar.
 
   importar.py <video> <salida.json>                 crea ~/Corta/<nombre>/ con proyecto.json (vertical por defecto)
-  importar.py transcribir <carpeta> <salida.json>   transcribe con whisper (palabra por palabra) y guarda las palabras
+  importar.py transcribir <carpeta> <salida.json>   transcribe con whisper (palabra por palabra) y guarda las palabras,
+                                                    ya corregidas con el vocabulario de la persona (bin/vocabulario.py)
 
 El video se copia a la carpeta del proyecto (nunca se modifica). El avance queda en <carpeta>/estado.json.
 """
@@ -15,6 +16,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import proyecto  # noqa: E402
+import vocabulario  # noqa: E402
 
 MODELOS = os.path.join(proyecto.INTERNO, "modelos")
 ARCHIVOS_MODELO = {"turbo": "ggml-large-v3-turbo-q5_0.bin", "small": "ggml-small-q5_1.bin"}
@@ -97,17 +99,32 @@ def transcribir(carpeta):
     proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "transcribiendo", "texto": "Transcribiendo en tu computador…"})
     hilos = str(max(2, min(8, (os.cpu_count() or 4) - 1)))
     salida = os.path.join(carpeta, "transcripcion")
-    r = subprocess.run([binario, "-m", modelo, "-l", cfg.get("idioma_audio") or "auto", "-t", hilos, "-f", audio,
-                        "-ml", "1", "-sow", "-oj", "-of", salida, "-np"], capture_output=True, text=True, timeout=4 * 3600)
-    os.remove(audio)
+    args = [binario, "-m", modelo, "-l", cfg.get("idioma_audio") or "auto", "-t", hilos, "-f", audio,
+            "-ml", "1", "-sow", "-oj", "-of", salida, "-np"]
+    # El vocabulario de la persona (nombres, marcas) ayuda a whisper a reconocerlos. Va en un archivo, nunca como argumento:
+    # corta-transcribir lo lee con --prompt-archivo. whisper-cli no sabe leerlo de un archivo; con él solo se corrige después.
+    vocab = vocabulario.leer()
+    texto_prompt = vocabulario.prompt(vocab)
+    archivo_prompt = os.path.join(carpeta, "vocabulario.txt")
+    if texto_prompt and os.path.basename(binario).startswith("corta-transcribir"):
+        with open(archivo_prompt, "w", encoding="utf-8") as f:
+            f.write(texto_prompt)
+        args += ["--prompt-archivo", archivo_prompt]
+    try:
+        r = subprocess.run(args, capture_output=True, text=True, timeout=4 * 3600)
+    finally:
+        for x in (audio, archivo_prompt):
+            if os.path.exists(x):
+                os.remove(x)
     if r.returncode != 0 or not os.path.exists(salida + ".json"):
         raise RuntimeError("La transcripción falló: " + (r.stderr or "")[-300:])
     p = proyecto.cargar(carpeta)
-    p["palabras"] = palabras_de_whisper(proyecto.leer_json(salida + ".json", {}))
+    p["palabras"], corregidas = vocabulario.reemplazar_todo(palabras_de_whisper(proyecto.leer_json(salida + ".json", {})),
+                                                          vocabulario.pares(vocab))
     os.remove(salida + ".json")
     proyecto.guardar(carpeta, p)
     os.remove(os.path.join(carpeta, "estado.json"))
-    return {"ok": True, "palabras": len(p["palabras"]), "proyecto": p}
+    return {"ok": True, "palabras": len(p["palabras"]), "corregidas": corregidas, "proyecto": p}
 
 
 if __name__ == "__main__":

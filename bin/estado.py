@@ -2,7 +2,8 @@
 
   estado.py <salida.json>
 
-{"ok", "proyectos": [{"carpeta", "proyecto"}] (los más nuevos primero), "estilos": [...], "config": {...}}. Lo propio de cada
+{"ok", "proyectos": [{"carpeta", "proyecto"}] (los más nuevos primero), "estilos": [...], "config": {...},
+"vocabulario": {...}}. Lo propio de cada
 app (IA instaladas, modelos descargados, versión, avance de lo que está corriendo) lo agrega la app. Un proyecto.json que no se
 puede leer o no es válido no aparece (y no rompe la lista).
 """
@@ -13,6 +14,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
+import vocabulario  # noqa: E402
 
 
 def proyectos():
@@ -35,7 +37,8 @@ def proyectos():
 
 
 def estado():
-    return {"ok": True, "proyectos": proyectos(), "estilos": list(subtitulos.estilos().values()), "config": proyecto.config()}
+    return {"ok": True, "proyectos": proyectos(), "estilos": list(subtitulos.estilos().values()), "config": proyecto.config(),
+            "vocabulario": vocabulario.leer()}
 
 
 if __name__ == "__main__":

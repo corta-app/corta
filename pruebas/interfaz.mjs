@@ -43,6 +43,11 @@ const VISTAS = [
   ["texto", "E=>{E.pestana='texto'}"],
   ["texto-seleccion", "E=>{E.seleccion=[4,8];E.ancla=4}"],
   ["texto-limpio", "E=>{E.seleccion=null;E.ultimoAhorro=9.3}"],
+  ["texto-corrigiendo", "E=>{E.editar={desde:3,hasta:3,valor:'Ana.',donde:'texto'}}"],
+  ["texto-sugerencia", "E=>{E.editar=null;E.seleccion=[3,3];E.sugerencia={de:'calumi',a:'Kalumi',n:2,todo:false,recordado:false}}"],
+  ["texto-sugerencia-hecha", "E=>{E.sugerencia={de:'calumi',a:'Kalumi',n:1,todo:true,recordado:false}}"],
+  ["vista-corrigiendo", "E=>{E.sugerencia={de:'calumi',a:'Kalumi',n:0,todo:false,recordado:true};E.seleccion=null;E.editar={desde:3,hasta:3,valor:'Ana.',donde:'vista'}}"],
+  ["texto-linea", "E=>{E.editar=null;E.sugerencia=null;E.proyectos[0].proyecto.palabras[1].linea='fin';E.proyectos[0].proyecto.palabras[5].linea='sigue';E.seleccion=[1,1]}"],
   ["subtitulos", "E=>{E.pestana='subtitulos'}"],
   ["ia", "E=>{E.pestana='ia';E.ia={texto:'',enviando:false,historial:[{pedido:'Pon zoom',ok:true,resumen:'Listo.',aplicadas:1},{pedido:'x',ok:false,error:'x'}]}}"],
   ["ia-enviando", "E=>{E.ia.enviando=true;E.ia.texto='Pon un título'}"],
@@ -67,6 +72,7 @@ const VISTAS = [
   ["exportado", "E=>{E.exportar={paso:'listo',duracion:21}}"],
   ["exportar-error", "E=>{E.exportar={paso:'error',error:'x'}}"],
   ["ajustes", "E=>{E.exportar=null;E.ajustes=true}"],
+  ["ajustes-vocabulario", "E=>{E.vocabulario={reemplazos:[{de:'calumi',a:'Kalumi'}],palabras:['Kalumi','Ana']}}"],
   ["ajustes-al-dia", "E=>{E.buscando='alDia'}"],
   ["vacio", "E=>{E.ajustes=false;E.proyectos=[];E.sel=null}"],
 ];
@@ -91,6 +97,11 @@ navegador.newPage = async (opciones) => {
     { const p = { cortes: JSON.parse(JSON.stringify(c.restaurar.cortes)) }; P.restaurar(p, c.restaurar.i, c.restaurar.f); if (!igual(p.cortes, c.restaurar.esperado)) m.push("restaurar " + JSON.stringify(p.cortes)); }
     { const r = P.cortesPorPalabras(c.palabras, c.limpiar.silencio, c.limpiar.muletillas, c.duracion); if (!igual(r, c.limpiar.esperado)) m.push("limpiar " + JSON.stringify(r)); }
     { const r = P.lineas(c.palabras, c.lineas.por_linea).map((g) => g.map((w) => w.t)); if (!igual(r, c.lineas.esperado)) m.push("lineas " + JSON.stringify(r)); }
+    const ed = c.editar;
+    for (const x of ed.editar) { const r = P.editarPalabras(ed.palabras, x.desde, x.hasta, x.texto); if (!igual(r, x.esperado)) m.push("editarPalabras " + JSON.stringify(r)); }
+    for (const x of ed.reemplazar) { const r = P.reemplazarTodo(ed.palabras, x.pares); if (!igual(r, [x.esperado, x.n])) m.push("reemplazarTodo " + JSON.stringify(r)); }
+    for (const [t, n] of ed.normalizar) if (P.normalizar(t) !== n) m.push("normalizar " + t);
+    { const r = P.lineas(ed.lineas.palabras, ed.lineas.por_linea).map((g) => g.map((w) => w.t)); if (!igual(r, ed.lineas.esperado)) m.push("lineas con «linea» " + JSON.stringify(r)); }
     return m;
   }, casos);
   malos.forEach((x) => falla("lógica distinta a Python: " + x));
@@ -219,6 +230,69 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   if (!(await p.evaluate(() => window.Corta._pruebas.musica().paused))) falla("la música sigue sonando con el video en pausa");
   await p.click('[data-accion="quitar-musica"]');
   if ((await proyecto()).musica !== null) falla("quitar la música no dejó musica: null");
+  await p.close();
+}
+
+// 9) Corregir subtítulos por palabra: en el texto y sobre la vista previa, cambiar en todo el video, recordar y deshacer
+{
+  const p = await navegador.newPage({ viewport: { width: 1360, height: 860 } });
+  p.on("pageerror", (e) => falla("error de JavaScript (corregir palabras): " + e.message));
+  await p.goto(BASE + "?idioma=es"); await p.waitForSelector(".app");
+  const proyecto = () => p.evaluate(() => { let r; window.Corta._probar((E) => { r = JSON.parse(JSON.stringify(E.proyectos[0].proyecto)); }); return r; });
+  // «Kalumi» es una marca inventada; la transcripción la escribió mal dos veces («calumi.» y «Calumi»).
+  const k1 = 3, k2 = await p.evaluate(() => { let k; window.Corta._probar((E) => { const w = E.proyectos[0].proyecto.palabras; k = w.findIndex((x) => x.t === "Short"); w[3].t = "calumi."; w[k].t = "Calumi"; }); return k; });
+  const antes = (await proyecto()).palabras[k1];
+  await p.click(`[data-w="${k1}"]`); await p.click(`[data-w="${k1}"]`);  // tocar otra vez la palabra elegida la corrige
+  await p.fill("#editar-palabra", "Kalumi."); await p.keyboard.press("Enter");
+  let q = await proyecto();
+  if (q.palabras[k1].t !== "Kalumi." || q.palabras[k1].i !== antes.i || q.palabras[k1].f !== antes.f) falla("corregir en el texto no guardó la palabra con sus tiempos: " + JSON.stringify(q.palabras[k1]));
+  const aviso = await p.textContent(".sugerencia").catch(() => "");
+  if (!/«calumi» por «Kalumi» en todo el video \(1 vez\)/.test(aviso)) falla("no apareció «¿Cambiar en todo el video?»: " + aviso);
+  await p.click('[data-accion="sug-todo"]');
+  q = await proyecto();
+  if (q.palabras[k2].t !== "Kalumi") falla("«Cambiar en todo el video» no cambió la otra: " + q.palabras[k2].t);
+  await p.click('[data-accion="sug-recordar"]');
+  await p.waitForFunction(() => { let r; window.Corta._probar((E) => { r = E.vocabulario.reemplazos.length; }); return r === 1; }, null, { timeout: 2000 }).catch(() => falla("«Recordar» no lo dejó en el vocabulario"));
+  if (await p.$(".sugerencia")) falla("el aviso no se cerró después de cambiar y recordar");
+  else console.log("  ✓ Corregir una palabra mantiene sus tiempos; se cambia en todo el video y se recuerda");
+  // Sobre la vista previa: tocar la palabra del subtítulo y escribir dos palabras (se reparten el tiempo)
+  await p.evaluate((t) => { document.querySelector("#video").currentTime = t; }, antes.i + 0.05);
+  await p.waitForSelector(`[data-sub-w="${k1}"]`, { timeout: 3000 }).catch(() => {});
+  if (!(await p.$(`[data-sub-w="${k1}"]`))) console.log("  - Vista previa: este Chromium no muestra el cuadro del video, se prueba solo el texto");
+  else {
+    await p.click(`[data-sub-w="${k1}"]`);
+    await p.fill("#editar-sub", "Kalumi Studio."); await p.keyboard.press("Enter");
+    q = await proyecto();
+    const [a, b] = q.palabras.slice(k1, k1 + 2);
+    if (a.t !== "Kalumi" || b.t !== "Studio." || a.i !== antes.i || b.f !== antes.f || a.f !== b.i) falla("corregir en la vista previa no repartió el tiempo: " + JSON.stringify([a, b]));
+    else console.log("  ✓ Sobre la vista previa: tocar la palabra la corrige y dos palabras se reparten su tiempo");
+    await p.click('[data-accion="deshacer"]');
+    await p.waitForTimeout(150);
+    if ((await proyecto()).palabras[k1].t !== "Kalumi.") falla("deshacer no volvió a la corrección anterior");
+  }
+  // Esc cancela; vacía la quita del subtítulo sin cortar el video
+  await p.click(`[data-w="${k1}"]`); await p.click(`[data-w="${k1}"]`);
+  await p.fill("#editar-palabra", "otra cosa"); await p.keyboard.press("Escape");
+  q = await proyecto();
+  if (q.palabras[k1].t !== "Kalumi.") falla("Esc no canceló la corrección");
+  const n = q.palabras.length, cortes = JSON.stringify(q.cortes);
+  await p.click(`[data-w="${k1}"]`); await p.fill("#editar-palabra", ""); await p.keyboard.press("Enter");  // sigue elegida: un toque basta
+  q = await proyecto();
+  if (q.palabras.length !== n - 1 || JSON.stringify(q.cortes) !== cortes) falla("dejarla vacía no la quitó solo del subtítulo");
+  // Separar la frase después de una palabra
+  await p.click('[data-w="1"]');
+  await p.click('[data-accion="linea-sel"]');
+  q = await proyecto();
+  if (!["fin", "sigue"].includes(q.palabras[1].linea)) falla("separar o unir no marcó la palabra: " + JSON.stringify(q.palabras[1]));
+  else console.log(`  ✓ Esc cancela, vacía sale del subtítulo y la frase se ${q.palabras[1].linea === "fin" ? "separa" : "une"} a mano`);
+  // Ajustes: el vocabulario se ve y se borra
+  await p.evaluate(() => window.Corta._probar((E) => { E.ajustes = true; }));
+  const fila = await p.textContent(".dialogo").catch(() => "");
+  if (!/calumi\s*→\s*Kalumi/.test(fila)) falla("Ajustes no muestra el vocabulario");
+  await p.click("[data-vocab-quitar]");
+  await p.waitForFunction(() => !document.querySelector("[data-vocab-quitar]"), null, { timeout: 2000 }).catch(() => falla("Quitar del vocabulario no lo borró"));
+  await p.fill("#vocab-nueva", "Kalumi"); await p.keyboard.press("Enter");
+  await p.waitForSelector(".chip-vocab", { timeout: 2000 }).then(() => console.log("  ✓ Ajustes: el vocabulario se ve, se borra y se agregan palabras")).catch(() => falla("no se agregó la palabra al vocabulario"));
   await p.close();
 }
 

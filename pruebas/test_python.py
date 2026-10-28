@@ -21,6 +21,9 @@ os.makedirs(BIN_FALSO)
 destino = os.path.join(BIN_FALSO, "claude")
 shutil.copy(os.path.join(RAIZ, "pruebas", "ia_falsa.py"), destino)
 os.chmod(destino, os.stat(destino).st_mode | stat.S_IEXEC)
+destino = os.path.join(BIN_FALSO, "corta-transcribir")
+shutil.copy(os.path.join(RAIZ, "pruebas", "transcriptor_falso.py"), destino)
+os.chmod(destino, os.stat(destino).st_mode | stat.S_IEXEC)
 os.environ["PATH"] = BIN_FALSO + os.pathsep + os.environ["PATH"]
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 
@@ -29,6 +32,7 @@ import importar  # noqa: E402
 import limpiar  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
+import vocabulario  # noqa: E402
 
 with open(os.path.join(RAIZ, "pruebas", "casos.json"), encoding="utf-8") as f:
     CASOS = json.load(f)
@@ -294,6 +298,82 @@ class IA(unittest.TestCase):
                                    {"text": " [música]", "offsets": {"from": 500, "to": 900}}, {"text": " Ana", "offsets": {"from": 1000, "to": 1300}}]}
         self.assertEqual(importar.palabras_de_whisper(datos), [{"t": "Hola,", "i": 0.0, "f": 0.42}, {"t": "Ana", "i": 1.0, "f": 1.3}])
         self.assertEqual(importar.palabras_de_whisper({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
+
+
+class Vocabulario(unittest.TestCase):
+    """Corregir palabras sin perder los tiempos y el vocabulario que se aplica al transcribir (marca inventada: «Kalumi»)."""
+
+    def test_casos(self):
+        c = CASOS["editar"]
+        w = c["palabras"]
+        for x in c["editar"]:
+            self.assertEqual(vocabulario.editar_palabras(w, x["desde"], x["hasta"], x["texto"]), x["esperado"], x)
+        for x in c["reemplazar"]:
+            self.assertEqual(vocabulario.reemplazar_todo(w, x["pares"]), (x["esperado"], x["n"]), x["pares"])
+        for t, n in c["normalizar"]:
+            self.assertEqual(vocabulario.normalizar(t), n)
+        lw = c["lineas"]
+        self.assertEqual([[x["t"] for x in g] for g in subtitulos.lineas(lw["palabras"], lw["por_linea"])], lw["esperado"])
+
+    def test_tiempos(self):
+        w = [{"t": "seaboy", "i": 1.0, "f": 2.0}]
+        r = vocabulario.editar_palabras(w, 0, 0, "Kalumi")
+        self.assertEqual((r[0]["i"], r[0]["f"]), (1.0, 2.0), "una palabra corregida mantiene su inicio y su fin")
+        r = vocabulario.editar_palabras(w, 0, 0, "ab cdef")
+        self.assertEqual([(x["i"], x["f"]) for x in r], [(1.0, 1.333), (1.333, 2.0)], "varias palabras se reparten el tiempo según su largo")
+        self.assertEqual(vocabulario.editar_palabras(w, 0, 0, "  "), [], "vacía: sale del subtítulo")
+
+    def test_archivo(self):
+        def cambio(**d):
+            return con_entrada("vocabulario.py", "entrada", d)
+        r = cambio(accion="agregar", de="calumi", a="Kalumi")
+        self.assertTrue(r["ok"], r)
+        cambio(accion="agregar", de="CALÚMI", a="Kalumi")  # el mismo «de» sin tildes ni mayúsculas: no se duplica
+        cambio(accion="palabra", palabra="Ana Pérez")
+        v = vocabulario.leer()
+        self.assertEqual(v["reemplazos"], [{"de": "CALÚMI", "a": "Kalumi"}])
+        self.assertEqual(v["palabras"], ["Ana Pérez"])
+        self.assertEqual(vocabulario.prompt(v), "Kalumi, Ana Pérez")
+        for malo in ({"accion": "agregar", "de": "<b>", "a": "x"}, {"accion": "agregar", "de": "a" * 61, "a": "x"},
+                     {"accion": "palabra", "palabra": "uno\ndos"}, {"accion": "borrar_todo"}):
+            self.assertFalse(con_entrada("vocabulario.py", "entrada", malo)["ok"], malo)
+        with open(vocabulario.ruta(), "w", encoding="utf-8") as f:  # cambiado a mano y con cosas raras: se queda solo lo válido
+            json.dump({"reemplazos": [{"de": "ok", "a": "Bien"}, {"de": 3}, "x"], "palabras": ["", "Bien", None]}, f)
+        self.assertEqual(vocabulario.leer(), {"formato": 1, "reemplazos": [{"de": "ok", "a": "Bien"}], "palabras": ["Bien"]})
+        cambio(accion="quitar", de="OK")
+        cambio(accion="quitar_palabra", palabra="bien")
+        self.assertEqual(vocabulario.leer(), {"formato": 1, "reemplazos": [], "palabras": []})
+
+    def test_transcribir_con_vocabulario(self):
+        os.makedirs(importar.MODELOS, exist_ok=True)
+        with open(os.path.join(importar.MODELOS, importar.ARCHIVOS_MODELO["turbo"]), "wb") as f:
+            f.write(b"modelo ficticio")
+        con_entrada("vocabulario.py", "entrada", {"accion": "agregar", "de": "calumi", "a": "Kalumi"})
+        con_entrada("vocabulario.py", "entrada", {"accion": "palabra", "palabra": "Ana"})
+        recibido = os.path.join(TMP, "prompt.txt")
+        os.environ["CORTA_PRUEBA_PROMPT"] = recibido
+        try:
+            carpeta = correr("importar.py", VIDEO)["carpeta"]
+            r = correr("importar.py", "transcribir", carpeta)
+        finally:
+            del os.environ["CORTA_PRUEBA_PROMPT"]
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(" ".join(w["t"] for w in r["proyecto"]["palabras"]), "Hola, soy de Kalumi. Kalumi ayuda a Ana.")
+        self.assertEqual(r["corregidas"], 2)
+        with open(recibido, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "Kalumi, Ana", "el vocabulario le llega al transcriptor en un archivo")
+        self.assertFalse(os.path.exists(os.path.join(carpeta, "vocabulario.txt")), "el archivo del vocabulario no queda en la carpeta")
+        con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
+        con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
+
+    def test_validar_palabras(self):
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 10, "ancho": 1920, "alto": 1080})
+        p["palabras"] = [{"t": "hola", "i": 0, "f": 1, "linea": "fin"}]
+        self.assertEqual(proyecto.validar(p), [])
+        p["palabras"][0]["linea"] = "otra"
+        self.assertTrue(proyecto.validar(p))
+        p["palabras"][0] = {"t": "", "i": 0, "f": 1}
+        self.assertTrue(proyecto.validar(p))
 
 
 def con_entrada(script, accion, datos):

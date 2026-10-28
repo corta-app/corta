@@ -62,15 +62,26 @@ def estilos():
     return todos
 
 
+#: Una línea unida a mano («sigue») igual se corta al llegar a este largo.
+MAX_LINEA = 8
+
+
 def lineas(palabras, por_linea):
-    """Agrupa palabras en líneas: corta por cantidad, por puntuación y por pausas largas (más de 0,6 s)."""
+    """Agrupa palabras en líneas: corta por cantidad, por puntuación y por pausas largas (más de 0,6 s). Lo que la persona
+    decidió manda: `linea: "fin"` en una palabra corta la línea después de ella; `linea: "sigue"` la une con la siguiente (hasta
+    MAX_LINEA palabras)."""
     grupos, actual = [], []
     for k, w in enumerate(palabras):
         actual.append(w)
         siguiente = palabras[k + 1] if k + 1 < len(palabras) else None
         fin_frase = re.search(r"[.!?…,;:]$", w["t"])
         pausa = siguiente is not None and siguiente["i"] - w["f"] > 0.6
-        if len(actual) >= por_linea or fin_frase or pausa or siguiente is None:
+        marca = w.get("linea")
+        if marca == "sigue":
+            cortar = len(actual) >= MAX_LINEA
+        else:
+            cortar = marca == "fin" or len(actual) >= por_linea or fin_frase or pausa
+        if cortar or siguiente is None:
             grupos.append(actual)
             actual = []
     return grupos

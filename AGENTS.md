@@ -22,7 +22,7 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 
 | Ruta | Qué es |
 |---|---|
-| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + encuadre + zoom, concat, subtítulos, música con sidechain), `importar.py` (copiar el video, ffprobe, transcribir con `whisper-cli -ml 1 -sow -oj`), `musica.py` (copia la canción elegida a `musica/` del proyecto, sin pisar copias anteriores, y la deja en `musica`), `editar_ia.py` (pedidos, Shorts y crear un Short; `entrada <entrada.json>` para lo que manda la app), `ia.py` (la IA del usuario, sin herramientas), `estado.py` (proyectos, estilos y config para la app), `guardar.py` (guardar y deshacer lo que manda la interfaz, por archivo de entrada). El último argumento de cada script es la ruta del JSON de salida. |
+| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + encuadre + zoom, concat, subtítulos, música con sidechain), `importar.py` (copiar el video, ffprobe, transcribir con `whisper-cli -ml 1 -sow -oj`), `musica.py` (copia la canción elegida a `musica/` del proyecto, sin pisar copias anteriores, y la deja en `musica`), `editar_ia.py` (pedidos, Shorts y crear un Short; `entrada <entrada.json>` para lo que manda la app), `ia.py` (la IA del usuario, sin herramientas), `estado.py` (proyectos, estilos, config y vocabulario para la app), `guardar.py` (guardar y deshacer lo que manda la interfaz, por archivo de entrada), `vocabulario.py` (corregir palabras sin perder tiempos y el vocabulario de `~/Corta/vocabulario.json`, que `importar.py` aplica al transcribir y le pasa al transcriptor en un archivo, `--prompt-archivo`). El último argumento de cada script es la ruta del JSON de salida. |
 | `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode). `Sources/Corta/`: `CortaApp.swift` (arranque y menús), `Ventana.swift` (WKWebView + puente: un `case` por acción; trabajos largos y su avance), `Medios.swift` (`corta://`), `Servicios.swift` (rutas, config, idioma, IA, modelos con huella, `Procesador`, `EnOrden`), `Actualizaciones.swift`. `Sources/Transcribir/` es `corta-transcribir` (whisper.cpp oficial con Metal, mismas opciones que `whisper-cli`). `Corta.icns` sale de `herramientas/generar_icono.mjs`. |
 | `build.sh`, `herramientas/empaquetar.sh` | Arman `dist/Corta.app` (Python portátil, ffmpeg/ffprobe y whisper.framework verificados por SHA-256, más bin/, ui/ y estilos/) + zip + `.sha256`; `build.sh` la instala en `~/Applications` y se niega si hay una exportación o transcripción en curso. |
 | `estilos/` | Estilos de subtítulos incluidos y `README.md` con el formato. |
@@ -33,8 +33,15 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 
 ## Reglas de la lógica compartida
 La misma regla existe en Python (para exportar) y en `ui/app.js` (para la vista previa): `conservados`, `a_salida`, `cortar_palabras`,
-`restaurar`, `cortes_por_palabras` (limpiar) y `lineas` (subtítulos). Si cambias una, cambia las dos y su caso en `pruebas/casos.json`.
+`restaurar`, `cortes_por_palabras` (limpiar), `lineas` (subtítulos, con `linea: "fin" | "sigue"` de la persona) y, en
+`bin/vocabulario.py`, `normalizar`, `editar_palabras` y `reemplazar_todo` (corregir palabras). Si cambias una, cambia las dos y su
+caso en `pruebas/casos.json`.
 Todos los tiempos son segundos del video original; una palabra está cortada si su punto medio cae en un corte.
+
+**Corregir subtítulos:** tocar otra vez la palabra elegida (o tocarla sobre la vista previa, con el video en pausa) la edita en el
+lugar (`E.editar`, `empezarEdicion`/`terminarEdicion`): Enter guarda, Esc cancela, vacía la quita del subtítulo sin cortar el video. La
+palabra mantiene su inicio y fin; varias palabras se reparten el tiempo según su largo. Después, un aviso (`E.sugerencia`) ofrece
+cambiarla en todo el video (`reemplazarTodo`, una sola vez en el historial) y recordarla (acción `vocabulario`).
 
 La línea de tiempo de `ui/app.js` tiene pistas (Video con cortes y zooms, Subtítulos, Textos y Música) en el tiempo del original y
 solo mueve los bordes `i`/`f` de `cortes`, `zooms` y `textos` (`limitesBorde`, `moverBorde`: sin dar vuelta un tramo ni pisar a sus
@@ -45,9 +52,11 @@ las palabras que quedan (`tramosVoz`, `cuantoBaja`), imitando el sidechain que f
 ## Puente interfaz ↔ app
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Corta.<funcion>(json)`; en el navegador responde `simular()`.
 Acciones: `listo, config, guardarProyecto, deshacer, elegirVideo, soltarVideo, transcribir, limpiar, pedirIA, buscarShorts, crearShort,
-exportar, probarIA, descargarModelo, elegirMusica, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar`. Respuestas: `estado,
+exportar, probarIA, descargarModelo, elegirMusica, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar, vocabulario`. Respuestas: `estado,
 proyectoActualizado, progreso, limpiado, iaRespondio, shortsListos, exportarProgreso, exportado, iaProbada, modeloProgreso,
-modeloListo, musicaElegida, actualizacionRevisada, actualizacionProgreso`. `pruebas/contrato.py` revisa que cada acción exista en
+modeloListo, musicaElegida, actualizacionRevisada, actualizacionProgreso, vocabularioActualizado`. `vocabulario` (`{accion: "agregar" |
+"quitar" | "palabra" | "quitar_palabra", de?, a?, palabra?}`) corre `bin/vocabulario.py entrada` y responde `vocabularioActualizado`
+con `{ok, vocabulario}`. `pruebas/contrato.py` revisa que cada acción exista en
 `Ventana.swift` (y en Windows/Linux cuando exista) y que cada función que llama la app exista en `window.Corta`. Una acción nueva va en
 `ui/app.js`, en `Ventana.swift` y simulada en `simular()`. El video se sirve como `corta://video/<carpeta>/<archivo>` (`Medios.swift`,
 con rangos): solo el `fuente.archivo` de un proyecto o un archivo de su `musica/`, en una carpeta directa de `~/Corta` con

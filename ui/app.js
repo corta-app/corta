@@ -11,6 +11,9 @@
     limpiando: false, ultimoAhorro: null, exportar: null, bv: null, bvCerrada: false, ajustes: false, probando: {}, resultadoIA: {},
     descarga: null, actualizacion: { hay: false }, act: null, buscando: null, idioma: "es", textos: {}, soltar: false,
     lt: { zoom: 1, sel: null, ancho: 0 },  // línea de tiempo: zoom horizontal, tramo elegido ({lista, k}) y ancho visible en px
+    vocabulario: { reemplazos: [], palabras: [] },
+    editar: null,      // palabra(s) que se están corrigiendo: {desde, hasta, valor, donde: "texto" | "vista"}
+    sugerencia: null,  // después de corregir: {de, a, n, todo, recordado} («¿Cambiar en todo el video?», «Recordar»)
   };
   const ENLACES = { sitio: "https://corta-app.github.io/corta/", codigo: "https://github.com/corta-app/corta",
     comunidad: "https://github.com/corta-app/corta/discussions", guiaIA: "https://corta-app.github.io/corta/ia.html" };
@@ -152,14 +155,80 @@
     }
     return cortes;
   }
+  const MAX_LINEA = 8;  // una línea unida a mano («sigue») igual se corta a este largo
   function lineas(palabras, porLinea) {
     const grupos = []; let actual = [];
     palabras.forEach((w, k) => {
       actual.push(w);
       const sig = palabras[k + 1];
-      if (actual.length >= porLinea || /[.!?…,;:]$/.test(w.t) || (sig && sig.i - w.f > 0.6) || !sig) { grupos.push(actual); actual = []; }
+      const cortar = w.linea === "sigue" ? actual.length >= MAX_LINEA
+        : w.linea === "fin" || actual.length >= porLinea || /[.!?…,;:]$/.test(w.t) || (sig && sig.i - w.f > 0.6);
+      if (cortar || !sig) { grupos.push(actual); actual = []; }
     });
     return grupos;
+  }
+
+  // ───────────── Corregir palabras (la misma lógica que bin/vocabulario.py; casos «editar» en pruebas/casos.json) ─────────────
+  const ALNUM = /[\p{L}\p{N}]/u;
+  const normalizar = (t) => [...String(t).normalize("NFD")].filter((c) => !/\p{M}/u.test(c) && ALNUM.test(c)).join("").toLowerCase();
+  /** «¿Calumi?» → ["¿", "Calumi", "?"]: la puntuación de los bordes se conserva al corregir. */
+  function partes(t) {
+    const c = [...t]; let a = 0, b = c.length;
+    while (a < b && !ALNUM.test(c[a])) a++;
+    while (b > a && !ALNUM.test(c[b - 1])) b--;
+    return [c.slice(0, a).join(""), c.slice(a, b).join(""), c.slice(b).join("")];
+  }
+  const esMayus = (c) => c !== c.toLowerCase() && c === c.toUpperCase();
+  function conMayusculas(original, correcta) {
+    if ([...correcta].some(esMayus) || !original) return correcta;
+    if ([...original].length > 1 && original === original.toUpperCase() && original !== original.toLowerCase()) return correcta.toUpperCase();
+    if (esMayus([...original][0])) return correcta.slice(0, 1).toUpperCase() + correcta.slice(1);
+    return correcta;
+  }
+  const r3a = (n) => Math.floor(n * 1000 + 0.5) / 1000;
+  /** Reparte el tiempo i..f entre varias palabras según su largo (letras y números). La última termina justo en f. */
+  function repartir(i, f, textos) {
+    const pesos = textos.map((t) => Math.max(1, [...t].filter((c) => ALNUM.test(c)).length));
+    const total = pesos.reduce((a, b) => a + b, 0); let acumulado = 0, inicio = i;
+    return textos.map((t, k) => {
+      acumulado += pesos[k];
+      const fin = k === textos.length - 1 ? f : r3a(i + (f - i) * acumulado / total);
+      const w = { t, i: r3a(inicio), f: r3a(fin) }; inicio = fin; return w;
+    });
+  }
+  const extras = (w) => Object.fromEntries(Object.entries(w).filter(([k]) => !["t", "i", "f"].includes(k)));
+  /** Cambia las palabras desde..hasta por `texto` en el mismo tiempo. Vacío = se quitan del subtítulo (el video no se corta). */
+  function editarPalabras(palabras, desde, hasta, texto) {
+    const w = palabras; desde = Math.max(0, desde); hasta = Math.min(w.length - 1, hasta);
+    if (desde > hasta) return [...w];
+    const nuevas = String(texto).split(/\s+/).filter(Boolean);
+    if (!nuevas.length) return [...w.slice(0, desde), ...w.slice(hasta + 1)];
+    const r = repartir(w[desde].i, w[hasta].f, nuevas);
+    Object.assign(r[r.length - 1], extras(w[hasta]));
+    return [...w.slice(0, desde), ...r, ...w.slice(hasta + 1)];
+  }
+  const deClaves = (de) => String(de).split(/\s+/).map(normalizar).filter(Boolean);
+  /** Pares [{de, a}] por palabra completa, sin tildes ni mayúsculas al comparar. Devuelve [palabras nuevas, cuántas cambiaron]. */
+  function reemplazarTodo(palabras, pares) {
+    const reglas = pares.map((x) => [deClaves(x.de || ""), String(x.a || "").split(/\s+/).filter(Boolean)]).filter(([c, a]) => c.length && a.length)
+      .map((x, k) => [...x, k]).sort((x, y) => y[0].length - x[0].length || x[2] - y[2]);
+    const norm = palabras.map((w) => normalizar(w.t)), r = [];
+    let k = 0, n = 0;
+    while (k < palabras.length) {
+      const regla = reglas.find(([c]) => c.every((x, j) => norm[k + j] === x));
+      if (!regla) { r.push(palabras[k]); k++; continue; }
+      const [claves, a] = regla, grupo = palabras.slice(k, k + claves.length);
+      const [antes, primera] = partes(grupo[0].t), despues = partes(grupo[grupo.length - 1].t)[2];
+      const textos = a.map((x) => conMayusculas(primera, x));
+      textos[0] = antes + textos[0]; textos[textos.length - 1] += despues;
+      if (JSON.stringify(grupo.map((w) => w.t)) !== JSON.stringify(textos)) {
+        const nuevas = repartir(grupo[0].i, grupo[grupo.length - 1].f, textos);
+        Object.assign(nuevas[nuevas.length - 1], extras(grupo[grupo.length - 1]));
+        r.push(...nuevas); n++;
+      } else r.push(...grupo);
+      k += claves.length;
+    }
+    return [r, n];
   }
 
   // ───────────── Utilidades ─────────────
@@ -192,7 +261,7 @@
     const viejo = $("#video");
     const activo = document.activeElement?.id;
     // En el primer uso lo primero es el idioma: hasta elegirlo no se pinta nada más (ni la app detrás, ni el video).
-    raiz.innerHTML = E.bv === 0 ? dialogos() : `<div class="app">${barra()}${lateral()}${principal()}</div>${dialogos()}`;
+    raiz.innerHTML = E.bv === 0 ? dialogos() : `<div class="app">${barra()}${lateral()}${principal()}</div>${sugerenciaHTML()}${dialogos()}`;
     traducirDOM(raiz);
     if (E.bv === 0 && !document.activeElement?.closest?.(".dialogo")) $(".opcion-idioma.principal")?.focus();
     const cp = $(".cuerpo-panel"); if (cp) cp.scrollTop = scroll;
@@ -201,6 +270,7 @@
     if (nuevo && viejo && viejo.getAttribute("src") === nuevo.getAttribute("src")) nuevo.replaceWith(viejo);
     if ($("#video")) ajustarPantalla();  // el tamaño sale del proyecto, no hace falta esperar a que cargue el video
     if (activo) document.getElementById(activo)?.focus();
+    if (activo === "editar-palabra" || activo === "editar-sub") { const inp = document.getElementById(activo); inp?.setSelectionRange?.(inp.value.length, inp.value.length); }
   }
 
   function barra() {
@@ -295,19 +365,80 @@
           html += `<button class="pausa ${cortada ? "cortada" : ""}" data-pausa="${k}" title="${esc(tr(cortada ? "Volver a poner la pausa" : "Cortar la pausa"))}" data-sin-traducir>⋯ ${esc(segundos(hueco))} s</button>`;
         }
       }
+      const ed = E.editar?.donde === "texto" ? E.editar : null;
+      if (ed && k > ed.desde && k <= ed.hasta) return;
+      if (ed && k === ed.desde) {
+        html += `<input class="w-editar" id="editar-palabra" value="${esc(ed.valor)}" size="${Math.max(4, [...ed.valor].length + 2)}" maxlength="80"
+          aria-label="${esc(tr("Corregir la palabra"))}" autocomplete="off" autocapitalize="off" spellcheck="false"> `;
+        return;
+      }
       const enSel = sel && k >= sel[0] && k <= sel[1];
-      html += `<span class="w ${palabraCortada(p, w, cortes) ? "cortada" : ""} ${enSel ? "sel" : ""}" data-w="${k}">${esc(w.t)}</span> `;
+      const marca = w.linea === "fin" ? `<span class="marca-linea" title="${esc(tr("La frase se separa aquí"))}">↵</span>`
+        : w.linea === "sigue" ? `<span class="marca-linea" title="${esc(tr("La frase sigue con la siguiente"))}">⁀</span>` : "";
+      html += `<span class="w ${palabraCortada(p, w, cortes) ? "cortada" : ""} ${enSel ? "sel" : ""}" data-w="${k}">${esc(w.t)}</span>${marca} `;
     });
     const nSel = sel ? sel[1] - sel[0] + 1 : 0;
     const selCortada = sel && p.palabras.slice(sel[0], sel[1] + 1).every((w) => palabraCortada(p, w, cortes));
     return `<div class="tarjeta limpiar"><div class="txt"><b>Silencios y muletillas</b>
         <small>${E.ultimoAhorro != null ? frase("Listo: el video quedó **{s} s** más corto.", { s: esc(segundos(E.ultimoAhorro)) }) : "Saca las pausas largas y los «eh», «mmm» de una vez."}</small></div>
         <button class="boton ${E.ultimoAhorro == null ? "principal" : ""}" data-accion="limpiar" ${E.limpiando ? "disabled" : ""}>${E.limpiando ? "Limpiando…" : E.ultimoAhorro == null ? "Limpiar" : "Otra vez"}</button></div>
-      ${nSel ? `<div class="acciones-sel">${frase(nSel === 1 ? "1 palabra elegida" : "{n} palabras elegidas", { n: nSel })}
+      ${nSel && !E.editar ? `<div class="acciones-sel">${frase(nSel === 1 ? "1 palabra elegida" : "{n} palabras elegidas", { n: nSel })}
+        <button class="boton sutil" data-accion="editar-sel" title="Corregir cómo se escribe (o tócala otra vez)">✎ <span>Corregir</span></button>
+        ${nSel === 1 ? botonLinea(sel[0]) : ""}
         <button class="boton" data-accion="${selCortada ? "restaurar-sel" : "cortar-sel"}">${selCortada ? "Volver a poner" : "Cortar"}</button>
         <button class="boton sutil" data-accion="zoom-sel" title="Acercar la imagen mientras se dicen">🔍 <span>Zoom</span></button></div>`
-        : `<p class="nota" style="margin:0 0 10px">Toca una palabra para ir a ese momento. Elige varias (toca la primera y la última con Mayús) y presiona Borrar para sacarlas del video.</p>`}
+        : E.editar?.donde === "texto" ? `<p class="nota" style="margin:0 0 10px">Escribe cómo va. Enter guarda y Esc cancela; si la dejas vacía, sale del subtítulo (el video no se corta).</p>`
+        : `<p class="nota" style="margin:0 0 10px">Toca una palabra para ir a ese momento y otra vez para corregirla. Elige varias (toca la primera y la última con Mayús) y presiona Borrar para sacarlas del video.</p>`}
       <div class="transcripcion" data-sin-traducir>${html}</div>`;
+  }
+
+  /** Separar o unir la frase después de la palabra k (`linea` en la palabra: «fin» o «sigue»). */
+  function botonLinea(k) {
+    const p = P(), w = p.palabras[k];
+    if (!w || k === p.palabras.length - 1) return "";
+    if (w.linea) return `<button class="boton sutil" data-accion="linea-sel" data-valor="">${w.linea === "fin" ? "Unir de nuevo" : "Separar de nuevo"}</button>`;
+    const cortes = unir(p.cortes), grupos = lineas(p.palabras.filter((x) => !palabraCortada(p, x, cortes)), p.subtitulos.palabras_por_linea);
+    const g = grupos.find((x) => x.includes(w)), ultima = g && g[g.length - 1] === w;
+    return ultima ? `<button class="boton sutil" data-accion="linea-sel" data-valor="sigue" title="La frase sigue con la siguiente">⁀ <span>Unir</span></button>`
+      : `<button class="boton sutil" data-accion="linea-sel" data-valor="fin" title="La frase se separa aquí">↵ <span>Separar</span></button>`;
+  }
+  /** Empieza a corregir las palabras desde..hasta, en el panel de texto o sobre la vista previa. */
+  function empezarEdicion(desde, hasta, donde) {
+    const p = P(), v = $("#video");
+    if (!p?.palabras[desde]) return;
+    if (v && !v.paused) v.pause();
+    E.editar = { desde, hasta, valor: p.palabras.slice(desde, hasta + 1).map((w) => w.t).join(" "), donde };
+    E.sugerencia = null;
+    if (donde === "texto") E.pestana = "texto";
+    pintar();
+    const inp = $(donde === "texto" ? "#editar-palabra" : "#editar-sub");
+    if (inp) { inp.focus(); inp.select(); }
+  }
+  /** Guarda la corrección (mismos tiempos) y ofrece cambiarla en todo el video y recordarla para los próximos. */
+  function terminarEdicion(guardarla) {
+    const ed = E.editar, p = P();
+    if (!ed || !p) return;
+    E.editar = null;
+    const texto = guardarla ? String(ed.valor).replace(/\s+/g, " ").trim().slice(0, 80) : null;
+    const antes = p.palabras.slice(ed.desde, ed.hasta + 1).map((w) => w.t).join(" ");
+    if (texto == null || texto === antes) { pintar(); return; }
+    p.palabras = editarPalabras(p.palabras, ed.desde, ed.hasta, texto);
+    E.seleccion = null;
+    if (!texto) return guardar(p, "Quitada del subtítulo");
+    const de = partes(antes)[1], a = partes(texto)[1];
+    if (de && a && normalizar(de) && de !== a) E.sugerencia = { de, a, n: reemplazarTodo(p.palabras, [{ de, a }])[1], todo: false, recordado: false };
+    guardar(p);
+  }
+  function sugerenciaHTML() {
+    const s = E.sugerencia;
+    if (!s || !P()) return "";
+    const v = { de: esc(s.de), a: esc(s.a), n: s.n };
+    const texto = s.n && !s.todo ? (s.n === 1 ? "¿Cambiar «{de}» por «{a}» en todo el video (1 vez)?" : "¿Cambiar «{de}» por «{a}» en todo el video ({n} veces)?")
+      : s.todo ? (s.n === 1 ? "Listo: cambié «{de}» por «{a}» 1 vez más." : "Listo: cambié «{de}» por «{a}» {n} veces más.") : "Corregiste «{de}» por «{a}».";
+    return `<div class="sugerencia" role="status"><span class="txt" data-sin-traducir>${T(texto, v)}</span><span class="acciones">
+      ${s.n && !s.todo ? `<button class="boton principal chico" data-accion="sug-todo">Cambiar en todo el video</button>` : ""}
+      ${s.recordado ? `<span class="ok">✓ Lo recordaré</span>` : `<button class="boton chico" data-accion="sug-recordar" title="Corta la corregirá sola al transcribir tus próximos videos">Recordar para próximos videos</button>`}
+      <button class="icono" data-accion="sug-cerrar" title="Cerrar" aria-label="Cerrar">×</button></span></div>`;
   }
 
   /** CSS de un estilo de subtítulos. El borde se dibuja con sombras en 16 direcciones (como el contorno de ffmpeg/libass),
@@ -636,6 +767,7 @@
     return `<h2 id="t-aj">Ajustes</h2><p>Todo se procesa en tu computador. La IA usa tu propia cuenta.</p>
       <div class="seccion"><h3>Tu IA</h3>${filasIA()}</div>
       <div class="seccion"><h3>Transcripción</h3>${filasModelo()}</div>
+      <div class="seccion"><h3>Vocabulario</h3>${seccionVocabulario()}</div>
       <div class="seccion"><h3>General</h3><div class="fila"><div class="txt"><b>Idioma de la app</b></div><select data-config="idioma_ui"><option value="es" ${E.idioma === "es" ? "selected" : ""}>Español</option><option value="en" ${E.idioma === "en" ? "selected" : ""}>English</option></select></div>
         <div class="fila"><div class="txt"><b>Carpeta de tus videos</b><small data-sin-traducir>${esc(E.carpeta)}</small></div><button class="boton" data-accion="abrir-carpeta">Abrir</button></div></div>
       <div class="seccion"><h3>Acerca de Corta</h3><p style="margin:0 0 8px;color:var(--suave)">${frase("Corta {v} · Gratis y de código abierto (AGPL-3.0).", { v: esc(E.version) })}</p>
@@ -645,6 +777,16 @@
             : E.actualizacion?.hay ? `<button class="boton principal" data-accion="actualizar">Actualizar</button>` : `<button class="boton" data-accion="buscar-act" ${E.buscando === "buscando" ? "disabled" : ""}>Buscar actualizaciones</button>`}</div>
         <div class="enlaces"><a href="#" data-enlace="${ENLACES.sitio}">Sitio web</a><a href="#" data-enlace="${ENLACES.codigo}">Código</a><a href="#" data-enlace="${ENLACES.comunidad}">Comunidad</a></div></div>
       <div class="pie-dialogo"><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
+  }
+  /** Palabras que Corta corrige sola al transcribir y que le enseña al transcriptor (~/Corta/vocabulario.json). */
+  function seccionVocabulario() {
+    const v = E.vocabulario, filas = v.reemplazos.map((r, k) => `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(r.de)} <span class="flecha" aria-hidden="true">→</span> ${esc(r.a)}</b></div>
+      <button class="boton sutil chico" data-vocab-quitar="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: r.de }))}" data-sin-traducir>${esc(tr("Quitar"))}</button></div>`).join("");
+    const chips = v.palabras.map((w, k) => `<span class="chip-vocab"><span data-sin-traducir>${esc(w)}</span><button class="icono" data-vocab-quitar-palabra="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: w }))}" data-sin-traducir>×</button></span>`).join("");
+    return `<p class="nota" style="margin:0 0 6px">Corta corrige estas palabras al transcribir tus próximos videos y se las enseña al transcriptor, para que reconozca nombres y marcas.</p>
+      ${filas || chips ? "" : `<p class="nota" style="margin:0 0 6px">Todavía no hay nada. Cuando corrijas una palabra del subtítulo, toca «Recordar para próximos videos».</p>`}
+      ${filas}${chips ? `<div class="chips-vocab">${chips}</div>` : ""}
+      <div class="fila"><input class="texto" id="vocab-nueva" maxlength="60" placeholder="Un nombre o una marca" autocomplete="off"><button class="boton" data-accion="vocab-agregar">Agregar</button></div>`;
   }
   /** Paso 0 de la bienvenida: el idioma, antes que cualquier otra cosa. Cada opción va escrita en su propio idioma (no se traduce)
    *  y la del sistema (o la ya guardada) queda marcada como sugerida y con el foco. */
@@ -756,7 +898,17 @@
     if (subs) {
       subs.style.top = (p.subtitulos.posicion * 100) + "%";
       let html = "";
-      if (p.subtitulos.activos && s) {
+      const ed = E.editar?.donde === "vista" ? E.editar : null;
+      if (ed && s) {
+        // Corrigiendo sobre la vista previa: un campo en el lugar del subtítulo (se pinta una vez; lo escrito vive en E.editar).
+        const tam = s.tamano / 100 * pw;
+        const clave = `editar-${ed.desde}-${ed.hasta}-${E.sel}`;
+        if (subs.dataset.html !== clave) {
+          subs.innerHTML = `<input class="editar-sub" id="editar-sub" value="${esc(ed.valor)}" maxlength="80" autocomplete="off" autocapitalize="off" spellcheck="false"
+            aria-label="${esc(tr("Corregir la palabra"))}" style="${cssEstilo(s, escala)}font-size:${Math.max(14, tam * 0.8).toFixed(1)}px" data-sin-traducir>`;
+          subs.dataset.html = clave; subs.removeAttribute("aria-hidden");
+        }
+      } else if (p.subtitulos.activos && s) {
         const cortes = unir(p.cortes), visibles = p.palabras.filter((w) => !palabraCortada(p, w, cortes));
         const grupos = lineas(visibles, p.subtitulos.palabras_por_linea);
         const g = grupos.find((gr) => gr[0].i - 0.02 <= t && t <= gr[gr.length - 1].f + 0.25) || null;
@@ -768,11 +920,12 @@
           html = `<div style="${base}display:inline-block" data-sin-traducir>${palabras.map((w, j) => {
             const es = s.animacion === "palabra" || j === activa;
             const extra = !es || s.animacion === "ninguna" ? "" : `color:${s.color_activo};${s.animacion === "pop" || s.animacion === "palabra" ? "transform:scale(1.12);" : ""}${s.animacion === "subrayado" ? `text-decoration:underline;text-decoration-thickness:${Math.max(2, borde).toFixed(1)}px;` : ""}`;
-            return `<span style="${extra}">${esc(w.t)}</span>`;
+            // Tocar una palabra del subtítulo la corrige ahí mismo (con el video en pausa, para no perseguirla).
+            return `<span style="${extra}" data-sub-w="${p.palabras.indexOf(w)}" title="${esc(tr("Toca para corregir"))}">${esc(w.t)}</span>`;
           }).join(" ")}</div>`;
         }
       }
-      if (subs.dataset.html !== html) { subs.innerHTML = html; subs.dataset.html = html; }
+      if (!ed && subs.dataset.html !== html) { subs.innerHTML = html; subs.dataset.html = html; subs.setAttribute("aria-hidden", "true"); }
     }
     const ts = $("#texto-sobre");
     if (ts) {
@@ -821,16 +974,21 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma]");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
     if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
     if (d.ltZoom != null) return cambiarZoom(Number(d.ltZoom));
     if (d.enlace) { ev.preventDefault(); return host.enviar("abrirEnlace", { url: d.enlace }); }
-    if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; E.lt.sel = null; return pintar(); }
+    if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; E.lt.sel = null; E.editar = null; E.sugerencia = null; return pintar(); }
     if (d.pestana) { E.pestana = d.pestana; return pintar(); }
+    if (d.subW != null) return empezarEdicion(Number(d.subW), Number(d.subW), "vista");
+    if (d.vocabQuitar != null) { const r = E.vocabulario.reemplazos[Number(d.vocabQuitar)]; if (r) host.enviar("vocabulario", { accion: "quitar", de: r.de }); return; }
+    if (d.vocabQuitarPalabra != null) { const w = E.vocabulario.palabras[Number(d.vocabQuitarPalabra)]; if (w) host.enviar("vocabulario", { accion: "quitar_palabra", palabra: w }); return; }
     if (d.w != null) {
       const k = Number(d.w);
+      // Tocar otra vez la palabra elegida la corrige.
+      if (!ev.shiftKey && E.seleccion && E.seleccion[0] === k && E.seleccion[1] === k) return empezarEdicion(k, k, "texto");
       elegirPalabra(k, ev.shiftKey);
       if (v && !ev.shiftKey) v.currentTime = p.palabras[k].i;
       return pintar();
@@ -857,6 +1015,34 @@
       case "quitar-musica": p.musica = null; return guardar(p, "Música quitada");
       case "lt-quitar": if (E.lt.sel && p[E.lt.sel.lista]?.[E.lt.sel.k]) quitarBloque(E.lt.sel.lista, E.lt.sel.k); return;
       case "cortar-sel": return cortarSeleccion();
+      case "editar-sel": if (E.seleccion) empezarEdicion(E.seleccion[0], E.seleccion[1], "texto"); return;
+      case "linea-sel": {
+        const w = E.seleccion && p.palabras[E.seleccion[0]];
+        if (!w) return;
+        if (d.valor) w.linea = d.valor; else delete w.linea;
+        return guardar(p, d.valor === "fin" ? "Frase separada" : d.valor === "sigue" ? "Frases unidas" : "Como antes");
+      }
+      case "sug-todo": {
+        const sg = E.sugerencia; if (!sg) return;
+        const [nuevas, n] = reemplazarTodo(p.palabras, [{ de: sg.de, a: sg.a }]);
+        p.palabras = nuevas; sg.todo = true; sg.n = n;
+        if (sg.recordado) E.sugerencia = null;
+        return guardar(p);
+      }
+      case "sug-recordar": {
+        const sg = E.sugerencia; if (!sg) return;
+        host.enviar("vocabulario", { accion: "agregar", de: sg.de, a: sg.a });
+        sg.recordado = true;
+        if (sg.todo || !sg.n) { E.sugerencia = null; toast("Lo recordaré en tus próximos videos"); }
+        return pintar();
+      }
+      case "sug-cerrar": E.sugerencia = null; return pintar();
+      case "vocab-agregar": {
+        const inp = $("#vocab-nueva"), t = (inp?.value || "").trim();
+        if (!t) return inp?.focus();
+        host.enviar("vocabulario", { accion: "palabra", palabra: t.slice(0, 60) });
+        inp.value = ""; return;
+      }
       case "restaurar-sel": return restaurarSeleccion();
       case "zoom-sel": { const [a, b] = E.seleccion; p.zooms.push({ i: p.palabras[a].i, f: p.palabras[b].f, escala: 1.25 }); E.seleccion = null; return guardar(p, "Zoom agregado"); }
       case "limpiar": E.limpiando = true; host.enviar("limpiar", { carpeta: E.sel, silencio: 0.5, muletillas: true }); return pintar();
@@ -888,6 +1074,16 @@
     if (ds.subPosicion != null) { p.subtitulos.posicion = Number(ev.target.value); return actualizarCapas(); }
     if (ds.musicaVolumen != null && p.musica) { p.musica.volumen = Math.round(Number(ev.target.value) * 100) / 100; const o = $("#musica-vol"); if (o) o.textContent = Math.round(p.musica.volumen * 100) + " %"; return; }
     if (ev.target.id === "pedido-ia") E.ia.texto = ev.target.value;
+    if ((ev.target.id === "editar-palabra" || ev.target.id === "editar-sub") && E.editar) {
+      E.editar.valor = ev.target.value;
+      if (ev.target.id === "editar-palabra") ev.target.size = Math.max(4, [...ev.target.value].length + 2);
+    }
+  });
+  // Salir del campo (tocar en otro lado) guarda la corrección; si el campo desapareció porque se repintó, no.
+  document.addEventListener("focusout", (ev) => {
+    if ((ev.target.id === "editar-palabra" || ev.target.id === "editar-sub") && E.editar && ev.target.isConnected) {
+      setTimeout(() => { if (E.editar && !document.activeElement?.matches?.("#editar-palabra, #editar-sub")) terminarEdicion(true); }, 0);
+    }
   });
   document.addEventListener("change", async (ev) => {
     const ds = ev.target.dataset || {}, p = P();
@@ -904,10 +1100,17 @@
   document.addEventListener("keydown", (ev) => {
     const escribiendo = ev.target.closest?.("input, textarea, select, [contenteditable]");
     if (E.bv !== null) return;  // con la bienvenida abierta, los atajos del editor no corren detrás
-    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.seleccion = null; E.lt.sel = null; return pintar(); }
+    if (ev.target.id === "editar-palabra" || ev.target.id === "editar-sub") {
+      if (ev.key === "Enter") { ev.preventDefault(); terminarEdicion(true); }
+      else if (ev.key === "Escape") { ev.preventDefault(); terminarEdicion(false); }
+      return;
+    }
+    if (ev.target.id === "vocab-nueva" && ev.key === "Enter") { ev.preventDefault(); return $("[data-accion=vocab-agregar]")?.click(); }
+    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.seleccion = null; E.lt.sel = null; E.sugerencia = null; return pintar(); }
     if (teclaLinea(ev)) return;
     if (escribiendo) { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey) && ev.target.id === "pedido-ia") $("[data-accion=pedir-ia]")?.click(); return; }
     if ((ev.key === "Backspace" || ev.key === "Delete") && E.seleccion) { ev.preventDefault(); return cortarSeleccion(); }
+    if (ev.key === "Enter" && E.seleccion && P()) { ev.preventDefault(); return empezarEdicion(E.seleccion[0], E.seleccion[1], "texto"); }
     if (ev.key === " " && P()) { ev.preventDefault(); return $("[data-accion=play]")?.click(); }
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "z" && P()) { ev.preventDefault(); host.enviar("deshacer", { carpeta: E.sel }); }
   });
@@ -1003,6 +1206,7 @@
   window.Corta = {
     async estado(e) {
       Object.assign(E, { proyectos: e.proyectos || [], estilos: e.estilos || [], config: e.config || {}, ias: e.ias || [], modelos: e.modelos || { lista: [] },
+        vocabulario: e.vocabulario || { reemplazos: [], palabras: [] },
         version: e.version || "", carpeta: e.carpeta || "", progreso: e.progreso || {}, actualizacion: e.actualizacion || { hay: false } });
       if (e.seleccionar) E.sel = e.seleccionar;
       if (E.sel && !E.proyectos.some((x) => x.carpeta === E.sel)) E.sel = null;
@@ -1040,9 +1244,11 @@
     /** Avance de una actualización: {paso: 1–3 o "error", texto (ya traducido por la app), pct?}. */
     actualizacionProgreso(r) { E.act = r; if (r.paso === "error") toast(r.texto || "No se pudo actualizar"); pintar(); },
     actualizacionRevisada(r) { E.buscando = r.hay ? null : r.sinConexion ? "sinConexion" : "alDia"; if (r.hay) E.actualizacion = r; pintar(); },
+    /** Respuesta a `vocabulario`: {ok, vocabulario} o {ok: false, error}. */
+    vocabularioActualizado(r) { if (r.ok) E.vocabulario = r.vocabulario; else toast(r.error || "No pude guardar."); pintar(); },
     _probar(f) { f(E); pintar(); },
     _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
-      tramosVoz, cuantoBaja, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
+      tramosVoz, cuantoBaja, normalizar, partes, editarPalabras, reemplazarTodo, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
   };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
@@ -1102,6 +1308,14 @@
       case "transcribir": return toast("En la app, aquí se transcribe el video");
       case "probarIA": return luego(500, () => { DEMO.config.ia = d.id; A.iaProbada({ id: d.id, ok: true }); });
       case "descargarModelo": { let p = 0; const iv = setInterval(() => { p += 0.25; A.modeloProgreso({ id: d.id, pct: Math.min(p, 1) }); if (p >= 1) { clearInterval(iv); A.modeloListo({ id: d.id, ok: true }); } }, 300); return; }
+      case "vocabulario": return luego(150, () => {  // en la app queda en ~/Corta/vocabulario.json (bin/vocabulario.py)
+        const v = DEMO.vocabulario ||= { formato: 1, reemplazos: [], palabras: [] }, clave = (t) => String(t).split(/\s+/).map(normalizar).filter(Boolean).join(" ");
+        if (d.accion === "agregar") { v.reemplazos = [{ de: d.de, a: d.a }, ...v.reemplazos.filter((r) => clave(r.de) !== clave(d.de))]; }
+        if (d.accion === "quitar") v.reemplazos = v.reemplazos.filter((r) => clave(r.de) !== clave(d.de));
+        if (d.accion === "palabra") v.palabras = [d.palabra, ...v.palabras.filter((x) => normalizar(x) !== normalizar(d.palabra))];
+        if (d.accion === "quitar_palabra") v.palabras = v.palabras.filter((x) => normalizar(x) !== normalizar(d.palabra));
+        A.vocabularioActualizado({ ok: true, vocabulario: clonar(v) });
+      });
       case "abrirEnlace": return window.open(d.url, "_blank", "noopener");
       case "abrirCarpeta": return toast("En la app, aquí se abre la carpeta");
       case "buscarActualizacion": return luego(500, () => A.actualizacionRevisada({ hay: false }));

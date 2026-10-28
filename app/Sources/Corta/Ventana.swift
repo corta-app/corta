@@ -187,7 +187,10 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
         Procesador.correrJSON("importar.py", ["transcribir", carpeta]) { r in
             Ventana.shared.terminar(carpeta)
             if r["ok"] as? Bool == true, let p = r["proyecto"] {
-                Ventana.shared.llamar("proyectoActualizado", ["carpeta": carpeta, "proyecto": p, "aviso": Idioma.t("Transcripción lista")])
+                let n = (r["corregidas"] as? NSNumber)?.intValue ?? 0
+                let aviso = n > 0 ? Idioma.t("Transcripción lista. Corregí {n} palabras con tu vocabulario.").replacingOccurrences(of: "{n}", with: String(n))
+                    : Idioma.t("Transcripción lista")
+                Ventana.shared.llamar("proyectoActualizado", ["carpeta": carpeta, "proyecto": p, "aviso": aviso])
             } else {
                 Ventana.shared.enviarEstado(aviso: Idioma.t(r["error"] as? String ?? "No pude transcribir."))
             }
@@ -331,6 +334,19 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
                             listo()
                         }
                     }
+                }
+            }
+        case "vocabulario":
+            // Recordar o quitar palabras del vocabulario (~/Corta/vocabulario.json). El texto va en el archivo de entrada.
+            let texto = { (k: String) in String((d[k] as? String ?? "").prefix(60)) }
+            let accion = d["accion"] as? String ?? ""
+            guard ["agregar", "quitar", "palabra", "quitar_palabra"].contains(accion) else { return }
+            EnOrden.agregar { listo in
+                Procesador.conEntrada("vocabulario.py", "entrada", ["accion": accion, "de": texto("de"), "a": texto("a"), "palabra": texto("palabra")]) { r in
+                    var x = r
+                    if r["ok"] as? Bool != true { x["error"] = Idioma.t(r["error"] as? String ?? "No pude guardar.") }
+                    Ventana.shared.llamar("vocabularioActualizado", x)
+                    listo()
                 }
             }
         case "abrirEnlace":

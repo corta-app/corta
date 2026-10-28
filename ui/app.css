@@ -158,14 +158,27 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .limpiar .txt > b { display: block; }
 .limpiar .txt small { color: var(--suave); }
 .ahorro { color: var(--acento); font-weight: 700; }
-.acciones-sel { position: sticky; top: -16px; z-index: 2; display: flex; gap: 8px; align-items: center; background: var(--panel); padding: 8px 0 10px; margin-top: -4px; }
-.acciones-sel span { color: var(--suave); font-size: 12.5px; flex: 1; }
+.acciones-sel { position: sticky; top: -16px; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; background: var(--panel); padding: 8px 0 10px; margin-top: -4px; }
+.acciones-sel > span { color: var(--suave); font-size: 12.5px; flex: 1 1 auto; }
 .transcripcion { line-height: 2; font-size: 15px; user-select: none; }
 .transcripcion .w { border-radius: 5px; padding: 2px 2px; cursor: pointer; }
 .transcripcion .w:hover { background: var(--panel2); }
 .transcripcion .w.activa { background: var(--acento); color: var(--sobre-acento); }
 .transcripcion .w.sel { background: var(--acento-suave); box-shadow: 0 0 0 1px var(--acento); }
 .transcripcion .w.cortada { color: var(--suave); text-decoration: line-through; text-decoration-color: var(--rojo); opacity: .55; }
+.transcripcion .w-editar { font: inherit; font-size: 15px; line-height: 1.4; padding: 1px 5px; margin: 0 1px; border-radius: 6px; border: 0; outline: 2px solid var(--acento); background: var(--fondo); color: var(--texto); width: auto; max-width: 100%; }
+.transcripcion .marca-linea { color: var(--acento); font-size: 12px; margin-left: 1px; vertical-align: 2px; }
+.subs [data-sub-w] { pointer-events: auto; cursor: text; }
+.subs .editar-sub { text-transform: none !important; pointer-events: auto; width: 100%; text-align: center; background: rgba(0, 0, 0, .55); border: 0; outline: 2px solid var(--acento); border-radius: 10px; padding: 6px 10px; line-height: 1.2; }
+.sugerencia { position: fixed; left: 50%; bottom: 72px; transform: translateX(-50%); z-index: 15; width: max-content; max-width: min(640px, calc(100vw - 32px));
+  display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; padding: 10px 10px 10px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--linea); box-shadow: 0 16px 50px rgba(0, 0, 0, .45); }
+.sugerencia .txt { flex: 1 1 220px; line-height: 1.4; }
+.sugerencia .acciones { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+.fila input.texto { flex: 1; min-width: 0; width: auto; }
+.chips-vocab { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+.chip-vocab { display: inline-flex; align-items: center; gap: 2px; padding: 2px 2px 2px 10px; border: 1px solid var(--linea); border-radius: 99px; font-size: 13px; }
+.chip-vocab .icono { width: 24px; height: 24px; font-size: 14px; }
+.flecha { color: var(--suave); font-weight: 400; margin: 0 4px; }
 .transcripcion .pausa { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 99px; background: var(--panel2); color: var(--suave); line-height: 18px; margin: 0 3px; cursor: pointer; vertical-align: 1px; border: 0; }
 .transcripcion .pausa.cortada { background: var(--rojo-suave); color: var(--rojo); text-decoration: line-through; }
 .galeria { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

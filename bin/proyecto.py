@@ -144,8 +144,11 @@ def validar(p):
         if tramo(t, "textos") and not (isinstance(t.get("texto"), str) and 0 < len(t["texto"]) <= 80):
             e.append("textos: texto de 1 a 80 caracteres.")
     for w in p.get("palabras", []):
-        if not (isinstance(w, dict) and isinstance(w.get("t"), str) and tramo(w, "palabras")):
-            e.append("palabras: cada una necesita t, i y f.")
+        if not (isinstance(w, dict) and isinstance(w.get("t"), str) and 0 < len(w["t"]) <= 80 and tramo(w, "palabras")):
+            e.append("palabras: cada una necesita t (1 a 80 caracteres), i y f.")
+            break
+        if w.get("linea") not in (None, "fin", "sigue"):
+            e.append("palabras: linea debe ser «fin» o «sigue».")
             break
     s = p.get("subtitulos") or {}
     if not re.fullmatch(r"[a-z0-9-]{2,40}", str(s.get("estilo", ""))):

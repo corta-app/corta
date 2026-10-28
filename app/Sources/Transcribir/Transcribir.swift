@@ -5,7 +5,7 @@ import whisper
 /// Basado en el de Graba y Minuta. Acepta las mismas opciones que `whisper-cli` que usa bin/importar.py, así en Windows y Linux
 /// se usa el whisper-cli oficial sin cambiar nada más:
 ///   corta-transcribir -m <modelo> -l <idioma|auto> -t <hilos> -f <audio.wav> -ml 1 -sow -oj -of <salida sin .json> [-np]
-///                     [-sns] [-mc <n>] [--prompt <texto>] [--vad -vm <modelo_vad>]
+///                     [-sns] [-mc <n>] [--prompt <texto> | --prompt-archivo <ruta>] [--vad -vm <modelo_vad>]
 /// `-ml 1 -sow` (lo que usa Corta): un segmento por palabra, con tiempos por token (`token_timestamps`), igual que whisper-cli.
 /// Escribe <salida>.json con {"transcription": [{"offsets": {"from": ms, "to": ms}, "text": "..."}]}.
 @main
@@ -26,6 +26,10 @@ struct Transcribir {
             case "-ml": maxLargo = Int32(siguiente()) ?? 0
             case "-sow": porPalabra = true
             case "--prompt": prompt = siguiente()
+            // El vocabulario de la persona llega en un archivo (nunca su texto como argumento): bin/importar.py lo escribe.
+            case "--prompt-archivo":
+                let ruta = siguiente()
+                if let texto = try? String(contentsOfFile: ruta, encoding: .utf8) { prompt = String(texto.prefix(1000)) }
             case "-vm": modeloVAD = siguiente()
             case "--vad": vad = true
             case "-sns": sinNoHabla = true
