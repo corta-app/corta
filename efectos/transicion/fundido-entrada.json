@@ -1,0 +1,25 @@
+{
+ "formato": 1,
+ "id": "fundido-entrada",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Fundido de entrada",
+  "en": "Fade in"
+ },
+ "descripcion": {
+  "es": "Aparece desde negro.",
+  "en": "Fades in from black."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "fade in",
+  "inicio"
+ ],
+ "pasos": [
+  {
+   "tipo": "fundido",
+   "entrada": 0.8,
+   "color": "negro"
+  }
+ ]
+}

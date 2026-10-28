@@ -1,0 +1,24 @@
+{
+ "formato": 1,
+ "id": "vineta",
+ "categoria": "filtro",
+ "nombre": {
+  "es": "Viñeta",
+  "en": "Vignette"
+ },
+ "descripcion": {
+  "es": "Bordes más oscuros que llevan la mirada al centro.",
+  "en": "Darker edges that pull the eye to the center."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "bordes",
+  "edges"
+ ],
+ "pasos": [
+  {
+   "tipo": "vineta",
+   "fuerza": 0.6
+  }
+ ]
+}

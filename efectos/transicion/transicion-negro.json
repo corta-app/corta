@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "transicion-negro",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Fundido entre cortes",
+  "en": "Dip between cuts"
+ },
+ "descripcion": {
+  "es": "Un pestañeo a negro en cada corte, para que no salte.",
+  "en": "A quick dip to black at every cut, so it doesn't jump."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "corte",
+  "cut",
+  "transición"
+ ],
+ "pasos": [
+  {
+   "tipo": "transicion",
+   "duracion": 0.4,
+   "color": "negro"
+  }
+ ]
+}

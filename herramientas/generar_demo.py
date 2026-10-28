@@ -21,6 +21,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
+import efectos  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
 
@@ -169,6 +170,16 @@ def musica_demo(salida, segundos=8.0):
                         "-map_metadata", "-1", salida], check=True)
 
 
+def catalogo_demo():
+    """Los efectos de la comunidad que muestra la vista previa: los del catálogo si está al lado (../corta-catalogo), si no los de antes."""
+    indice = os.path.join(RAIZ, "..", "corta-catalogo", "efectos", "index.json")
+    if os.path.exists(indice):
+        with open(indice, encoding="utf-8") as f:
+            return efectos.validar_indice(json.load(f))
+    with open(os.path.join(RAIZ, "ui", "demo.json"), encoding="utf-8") as f:
+        return json.load(f).get("catalogo", [])
+
+
 def main():
     if "--solo-musica" in sys.argv:
         musica_demo(os.path.join(RAIZ, "ui", "demo", "musica-demo.mp3"))
@@ -189,7 +200,8 @@ def main():
                     {"id": "gemini", "nombre": "Gemini", "instalada": False}],
             "modelos": {"recomendado": "turbo", "lista": [{"id": "turbo", "nombre": "Preciso", "detalle": "Mejor para cualquier idioma. 574 MB.", "mb": 574, "listo": True},
                                                           {"id": "small", "nombre": "Rápido", "detalle": "Más liviano, un poco menos preciso. 190 MB.", "mb": 190, "listo": False}]},
-            "estilos": list(estilos.values()),
+            "estilos": list(estilos.values()), "efectos": list(efectos.disponibles().values()), "catalogo": catalogo_demo(),
+            "vocabulario": {"formato": 1, "reemplazos": [], "palabras": []},
             "proyectos": [{"carpeta": "~/Corta/2026-10-25 Ahorra una hora editando", "proyecto": p},
                           {"carpeta": "~/Corta/2026-10-24 Mi rutina de mañana", "proyecto": {**p, "titulo": "Mi rutina de mañana", "palabras": [], "creado": "2026-10-24T09:10:00"}}]}
     with open(os.path.join(RAIZ, "ui", "demo.json"), "w", encoding="utf-8") as f:

@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "vivido",
+ "categoria": "filtro",
+ "nombre": {
+  "es": "Vívido",
+  "en": "Vivid"
+ },
+ "descripcion": {
+  "es": "Colores más intensos para que resalte en el feed.",
+  "en": "Punchier colors to stand out in the feed."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "saturado",
+  "pop",
+  "intenso"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "contraste": 1.1,
+   "saturacion": 1.5
+  }
+ ]
+}

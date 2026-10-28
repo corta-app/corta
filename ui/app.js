@@ -14,9 +14,13 @@
     vocabulario: { reemplazos: [], palabras: [] },
     editar: null,      // palabra(s) que se están corrigiendo: {desde, hasta, valor, donde: "texto" | "vista"}
     sugerencia: null,  // después de corregir: {de, a, n, todo, recordado} («¿Cambiar en todo el video?», «Recordar»)
+    efectos: [],       // los que se pueden usar: incluidos y descargados (bin/efectos.py)
+    fx: { categoria: "todos", busqueda: "" },
+    catalogo: null,    // efectos de la comunidad: {estado: "cargando" | "listo" | "error", efectos, error, categoria, busqueda, bajando: {id: true}}
   };
   const ENLACES = { sitio: "https://corta-app.github.io/corta/", codigo: "https://github.com/corta-app/corta",
-    comunidad: "https://github.com/corta-app/corta/discussions", guiaIA: "https://corta-app.github.io/corta/ia.html" };
+    comunidad: "https://github.com/corta-app/corta/discussions", guiaIA: "https://corta-app.github.io/corta/ia.html",
+    catalogo: "https://github.com/corta-app/corta-catalogo#readme" };
   const LIENZOS = { "9:16": [1080, 1920], "1:1": [1080, 1080], "4:5": [1080, 1350], "16:9": [1920, 1080] };
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -231,6 +235,72 @@
     return [r, n];
   }
 
+  // ───────────── Efectos: tiempos (la misma lógica que bin/efectos.py; casos «efectos» en pruebas/casos.json) ─────────────
+  const r4a = (n) => Math.floor(n * 10000 + 0.5) / 10000;
+  const alcanceEf = (p, ap) => ("i" in ap ? [ap.i, ap.f] : [0, p.fuente.duracion]);
+  /** Los pedazos del tramo i..f (segundos del original) que quedan, en segundos del video exportado. */
+  function intervalosSalida(p, i, f) {
+    const r = []; let acumulado = 0;
+    for (const t of conservados(p)) {
+      const a = Math.max(t.i, i), b = Math.min(t.f, f);
+      if (b - a >= 0.02) r.push([r3a(acumulado + a - t.i), r3a(acumulado + b - t.i)]);
+      acumulado += t.f - t.i;
+    }
+    return r;
+  }
+  /** Dónde se juntan dos pedazos del tramo en el video exportado (ahí van las transiciones). */
+  function uniones(p, i, f) {
+    const r = []; let acumulado = 0, anterior = false;
+    for (const t of conservados(p)) {
+      const dentro = Math.min(t.f, f) - Math.max(t.i, i) >= 0.02;
+      if (dentro && anterior) r.push(r3a(acumulado));
+      anterior = dentro; acumulado += t.f - t.i;
+    }
+    return r;
+  }
+  function segmentosZoom(paso, a, b) {
+    const d = paso.desde, h = paso.hasta, curva = paso.curva || "lineal";
+    if (curva === "golpe") { const g = r3a(a + Math.min(0.15, (b - a) / 2)); return [[a, d, g, h], [g, h, b, h]]; }
+    if (curva === "suave") {
+      const s = (x) => x * x * (3 - 2 * x);
+      return Array.from({ length: 8 }, (_, k) => [r3a(a + (b - a) * k / 8), r4a(d + (h - d) * s(k / 8)), r3a(a + (b - a) * (k + 1) / 8), r4a(d + (h - d) * s((k + 1) / 8))]);
+    }
+    return [[a, d, b, h]];
+  }
+  function segmentosCapa(paso, a, b, juntas, pedazos) {
+    if (paso.tipo === "tinte") return pedazos.map(([x, y]) => [x, paso.fuerza, y, paso.fuerza]);
+    if (paso.tipo === "fundido") {
+      const r = [];
+      if ((paso.entrada || 0) > 0) r.push([a, 1, r3a(Math.min(b, a + paso.entrada)), 0]);
+      if ((paso.salida || 0) > 0) r.push([r3a(Math.max(a, b - paso.salida)), 0, b, 1]);
+      return r;
+    }
+    if (paso.tipo === "transicion") { const m = paso.duracion / 2; return juntas.flatMap((j) => [[r3a(j - m), 0, j, 1], [j, 1, r3a(j + m), 0]]); }
+    return [];
+  }
+  function valorEn(segmentos, t, neutro) {
+    for (const [t0, v0, t1, v1] of segmentos) if (t0 <= t && t < t1) return t1 > t0 ? r4a(v0 + (v1 - v0) * (t - t0) / (t1 - t0)) : v0;
+    return neutro;
+  }
+  // Rangos de cada campo (los mismos de bin/efecto_formato.py): la vista previa nunca usa un número fuera de ellos.
+  const RANGOS_FX = { brillo: [0.5, 1.5], contraste: [0.5, 2], saturacion: [0, 2], tono: [-180, 180], sepia: [0, 1], grises: [0, 1], fuerza: [0, 1],
+    radio: [0.5, 20], desde: [1, 1.6], hasta: [1, 1.6], entrada: [0, 3], salida: [0, 3], duracion: [0.1, 1.5] };
+  const numFx = (paso, k, def) => { const v = Number(paso[k]); const [lo, hi] = RANGOS_FX[k]; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def; };
+  const COLORES_FX = { negro: "0,0,0", blanco: "255,255,255" };
+  const rgbFx = (paso) => (paso.tipo === "tinte" && /^#[0-9a-fA-F]{6}$/.test(paso.color || "") ? [1, 3, 5].map((x) => parseInt(paso.color.slice(x, x + 2), 16)).join(",") : COLORES_FX[paso.color] || COLORES_FX.negro);
+  /** Un paso «color» como filtros de CSS, en el orden que también usa ffmpeg (bin/efectos.py, matriz_color). */
+  function cssColor(paso) {
+    const f = [];
+    if ("brillo" in paso) f.push(`brightness(${numFx(paso, "brillo", 1)})`);
+    if ("contraste" in paso) f.push(`contrast(${numFx(paso, "contraste", 1)})`);
+    if ("saturacion" in paso) f.push(`saturate(${numFx(paso, "saturacion", 1)})`);
+    if ("tono" in paso) f.push(`hue-rotate(${numFx(paso, "tono", 0)}deg)`);
+    if ("sepia" in paso) f.push(`sepia(${numFx(paso, "sepia", 0)})`);
+    if ("grises" in paso) f.push(`grayscale(${numFx(paso, "grises", 0)})`);
+    return f.join(" ");
+  }
+  const vinetaCSS = (fuerza) => `radial-gradient(ellipse at center, rgba(0,0,0,0) 40%, rgba(0,0,0,${(0.85 * fuerza).toFixed(3)}) 100%)`;
+
   // ───────────── Quitar un cambio de la IA (cambios_ia, lo anota bin/editar_ia.py) ─────────────
   const leerCampo = (p, campo) => campo.split(".").reduce((v, k) => (v && typeof v === "object" ? v[k] : undefined), p);
   function ponerCampo(p, campo, valor) {
@@ -285,17 +355,18 @@
   const estilo = () => E.estilos.find((s) => s.id === P()?.subtitulos.estilo) || E.estilos[0];
   const nombreIA = () => E.ias.find((i) => i.id === E.config.ia)?.nombre || tr("tu IA");
   let avisosPendientes = [];  // avisos que llegan mientras la persona elige el idioma: se muestran después, ya traducidos
-  function toast(texto) {
+  /** Aviso breve. `traducido`: el texto ya viene en el idioma de la interfaz (armado con Tp). */
+  function toast(texto, traducido = false) {
     if (E.bv === 0) { avisosPendientes.push(texto); return; }
-    const t = $("#toast"); t.textContent = tr(texto); t.classList.add("visible");
+    const t = $("#toast"); t.textContent = traducido ? texto : tr(texto); t.classList.add("visible");
     clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("visible"), 2200);
   }
   let guardarLuego = null;  // al mover un borde con el teclado se guarda una vez, al soltar las flechas
   /** Guarda el proyecto (la app lo valida y deja respaldo para deshacer). */
-  function guardar(p, aviso) {
+  function guardar(p, aviso, traducido = false) {
     clearTimeout(guardarLuego);
     host.enviar("guardarProyecto", { carpeta: E.sel, proyecto: p });
-    if (aviso) toast(aviso);
+    if (aviso) toast(aviso, traducido);
     pintar();
   }
 
@@ -317,6 +388,7 @@
     if ($("#video")) ajustarPantalla();  // el tamaño sale del proyecto, no hace falta esperar a que cargue el video
     if (activo) document.getElementById(activo)?.focus();
     ajustarEtiquetas();
+    pintarMuestras();
     if (activo === "editar-palabra" || activo === "editar-sub") { const inp = document.getElementById(activo); inp?.setSelectionRange?.(inp.value.length, inp.value.length); }
   }
 
@@ -374,6 +446,7 @@
     return `<div class="escenario" id="escenario"><div class="pantalla" id="pantalla">
         ${p.relleno === "desenfoque" ? `<canvas id="fondo-borroso" aria-hidden="true"></canvas>` : ""}
         <div class="capa-zoom" id="capa-zoom"><video id="video" src="${esc(fuenteVideo())}" playsinline preload="auto"></video></div>
+        <div class="capas-fx" id="capas-fx" aria-hidden="true"></div>
         <div class="subs" id="subs" aria-hidden="true"></div><div class="texto-sobre" id="texto-sobre" aria-hidden="true"></div></div></div>
       <div class="reproductor"><button class="play" data-accion="play" aria-label="Reproducir" id="boton-play">▶</button>
         <span class="tiempo" id="reloj" data-sin-traducir>${T("**{a}** de {b}", { a: "0:00", b: esc(reloj(duracionFinal(p))) })}</span>
@@ -389,9 +462,9 @@
     return `corta://video/${encodeURIComponent(x.carpeta + "/" + archivo)}`;
   }
 
-  const PESTANAS = [["texto", "Texto"], ["subtitulos", "Subtítulos"], ["musica", "Música"], ["ia", "IA"], ["shorts", "Shorts"]];
+  const PESTANAS = [["texto", "Texto"], ["subtitulos", "Subtítulos"], ["efectos", "Efectos"], ["musica", "Música"], ["ia", "IA"], ["shorts", "Shorts"]];
   function panel() {
-    const cuerpo = { texto: panelTexto, subtitulos: panelSubtitulos, musica: panelMusica, ia: panelIA, shorts: panelShorts }[E.pestana]();
+    const cuerpo = { texto: panelTexto, subtitulos: panelSubtitulos, efectos: panelEfectos, musica: panelMusica, ia: panelIA, shorts: panelShorts }[E.pestana]();
     return `<div class="pestanas" role="tablist">${PESTANAS.map(([id, n]) => `<button class="pestana" role="tab" data-pestana="${id}" aria-selected="${E.pestana === id}">${n}</button>`).join("")}</div>
       <div class="cuerpo-panel">${cuerpo}</div>`;
   }
@@ -433,7 +506,8 @@
         <button class="boton sutil" data-accion="editar-sel" title="Corregir cómo se escribe (o tócala otra vez)">✎ <span>Corregir</span></button>
         ${nSel === 1 ? botonLinea(sel[0]) : ""}
         <button class="boton" data-accion="${selCortada ? "restaurar-sel" : "cortar-sel"}">${selCortada ? "Volver a poner" : "Cortar"}</button>
-        <button class="boton sutil" data-accion="zoom-sel" title="Acercar la imagen mientras se dicen">🔍 <span>Zoom</span></button></div>`
+        <button class="boton sutil" data-accion="zoom-sel" title="Acercar la imagen mientras se dicen">🔍 <span>Zoom</span></button>
+        <button class="boton sutil" data-pestana="efectos" title="Un filtro o un efecto solo mientras se dicen">✨ <span>Efecto</span></button></div>`
         : E.editar?.donde === "texto" ? `<p class="nota" style="margin:0 0 10px">Escribe cómo va. Enter guarda y Esc cancela; si la dejas vacía, sale del subtítulo (el video no se corta).</p>`
         : `<p class="nota" style="margin:0 0 10px">Toca una palabra para ir a ese momento y otra vez para corregirla. Elige varias (toca la primera y la última con Mayús) y presiona Borrar para sacarlas del video.</p>`}
       <div class="transcripcion" data-sin-traducir>${html}</div>`;
@@ -511,6 +585,107 @@
       <p class="nota">¿Quieres otro estilo? Los estilos son archivos simples que cualquiera puede crear y compartir con la comunidad.</p>`;
   }
 
+  // ───────────── Efectos: incluidos, descargados y de la comunidad (solo datos; bin/efectos.py los exporta) ─────────────
+  const CATEGORIAS_FX = [["todos", "Todos"], ["filtro", "Filtros"], ["color", "Color"], ["movimiento", "Movimiento"], ["transicion", "Transiciones"]];
+  const nombreFx = (ef) => (ef?.nombre?.[E.idioma] || ef?.nombre?.es || "");
+  const descripcionFx = (ef) => (ef?.descripcion?.[E.idioma] || ef?.descripcion?.es || "");
+  const efectoPorId = (id) => E.efectos.find((x) => x.id === id);
+  function coincideFx(ef, categoria, busqueda) {
+    if (categoria !== "todos" && ef.categoria !== categoria) return false;
+    const q = String(busqueda || "").split(/\s+/).map(normalizar).filter(Boolean);
+    if (!q.length) return true;
+    const texto = normalizar([...Object.values(ef.nombre || {}), ...Object.values(ef.descripcion || {}), ...(ef.etiquetas || []), ef.autor || ""].join(" "));
+    return q.every((x) => texto.includes(x));
+  }
+  /** A qué se aplica un efecto: las palabras elegidas, el tramo elegido en la línea de tiempo o (null) todo el video. */
+  function destinoEfecto() {
+    const p = P();
+    if (E.seleccion && p.palabras[E.seleccion[0]]) {
+      const [a, b] = E.seleccion, texto = p.palabras.slice(a, b + 1).map((w) => w.t).join(" ");
+      return { i: r3(p.palabras[a].i), f: r3(p.palabras[b].f), texto: texto.length > 40 ? texto.slice(0, 39) + "…" : texto };
+    }
+    const s = E.lt.sel;
+    if (s?.lista === "tramos") { const t = tramosEdicion(p)[s.k]; if (t) return { i: r3(t.i), f: r3(t.f) }; }
+    return null;
+  }
+  const mismoAlcance = (ap, d) => (d ? ap.i === d.i && ap.f === d.f : !("i" in ap));
+  /** Muestra de un efecto: un cuadro del video con los mismos filtros de CSS que la vista previa (o un degradado sin video). */
+  function muestraFx(ef, alto = 0) {
+    const filtro = [], capas = [];
+    let clase = "";
+    for (const paso of ef.pasos || []) {
+      if (paso.tipo === "color") filtro.push(cssColor(paso));
+      else if (paso.tipo === "desenfoque") filtro.push(`blur(${(numFx(paso, "radio", 4) / 6).toFixed(2)}px)`);
+      else if (paso.tipo === "vineta") capas.push(`<i style="background:${vinetaCSS(numFx(paso, "fuerza", 0.5))}"></i>`);
+      else if (paso.tipo === "tinte") capas.push(`<i style="background:rgb(${rgbFx(paso)});opacity:${numFx(paso, "fuerza", 0.1)}"></i>`);
+      else if (paso.tipo === "zoom") clase = paso.curva === "golpe" ? "anim-golpe" : numFx(paso, "hasta", 1) >= numFx(paso, "desde", 1) ? "anim-acercar" : "anim-alejar";
+      else capas.push(`<i class="anim-capa" style="background:rgb(${rgbFx(paso)})"></i>`);
+    }
+    return `<span class="muestra-fx ${clase}"${alto ? ` style="height:${alto}px"` : ""}><canvas data-muestra width="96" height="128" style="filter:${filtro.join(" ") || "none"}"></canvas>${capas.join("")}</span>`;
+  }
+  /** Copia el cuadro actual del video a cada muestra (con el recorte del lienzo, como «cover»). */
+  function pintarMuestras() {
+    const v = $("#video");
+    if (!v || v.readyState < 2 || !v.videoWidth) return;
+    for (const c of document.querySelectorAll("canvas[data-muestra]")) {
+      const ctx = c.getContext("2d"), s = Math.max(c.width / v.videoWidth, c.height / v.videoHeight);
+      const w = c.width / s, h = c.height / s;
+      try { ctx.drawImage(v, (v.videoWidth - w) / 2, (v.videoHeight - h) / 2, w, h, 0, 0, c.width, c.height); c.classList.add("con-video"); } catch {}
+    }
+  }
+  function panelEfectos() {
+    const p = P(), d = destinoEfecto(), aplicados = p.efectos || [];
+    const destino = d ? `<div class="tarjeta fx-destino"><div class="txt"><b>${frase("Al tramo de {a} a {b}", { a: esc(relojFino(d.i)), b: esc(relojFino(d.f)) })}</b>
+        ${d.texto ? `<small data-sin-traducir>«${esc(d.texto)}»</small>` : ""}</div><button class="boton sutil chico" data-accion="fx-todo">Todo el video</button></div>`
+      : `<p class="nota" style="margin:0 0 10px">Se aplica a todo el video. Para un solo momento, elige palabras en Texto o un tramo en la línea de tiempo.</p>`;
+    const filas = aplicados.map((ap, k) => {
+      const ef = efectoPorId(ap.efecto), nombre = ef ? nombreFx(ef) : ap.efecto;
+      const donde = "i" in ap ? T("{a} a {b}", { a: esc(relojFino(ap.i)), b: esc(relojFino(ap.f)) }) : esc(tr("Todo el video"));
+      return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(nombre)}</b><small data-sin-traducir>${donde}</small></div>
+        <button class="boton sutil chico" data-quitar-fx="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: nombre }))}" data-sin-traducir>${esc(tr("Quitar"))}</button></div>`;
+    }).join("");
+    const lista = E.efectos.filter((ef) => coincideFx(ef, E.fx.categoria, E.fx.busqueda));
+    const tarjetas = lista.map((ef) => `<button class="fx" data-fx="${esc(ef.id)}" aria-pressed="${aplicados.some((ap) => ap.efecto === ef.id && mismoAlcance(ap, d))}" title="${esc(descripcionFx(ef))}" data-sin-traducir>
+      ${muestraFx(ef)}<span class="nombre">${esc(nombreFx(ef))}</span></button>`).join("");
+    return `${destino}${filas ? `<div class="tarjeta"><h3>En este video</h3>${filas}</div>` : ""}
+      <div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_FX.map(([id, n]) => `<button class="chip" data-fx-cat="${id}" aria-pressed="${E.fx.categoria === id}">${n}</button>`).join("")}</div>
+      <input class="texto buscar-fx" id="buscar-fx" type="search" placeholder="Buscar efectos" value="${esc(E.fx.busqueda)}" autocomplete="off">
+      ${tarjetas ? `<div class="galeria-fx">${tarjetas}</div>` : `<p class="nota">No hay efectos con eso. Prueba en la comunidad.</p>`}
+      <div class="tarjeta comunidad"><div class="txt"><b>Más efectos de la comunidad</b><small>Gratis y hechos por personas como tú. Son solo datos: Corta los revisa antes de usarlos.</small></div>
+        <button class="boton" data-accion="explorar-fx">Explorar</button></div>`;
+  }
+  function aplicarEfecto(id) {
+    const p = P(), ef = efectoPorId(id);
+    if (!p || !ef) return;
+    const d = destinoEfecto();
+    p.efectos ||= [];
+    const k = p.efectos.findIndex((ap) => ap.efecto === id && mismoAlcance(ap, d));
+    if (k >= 0) { p.efectos.splice(k, 1); return guardar(p, Tp("Quité «{x}»", { x: nombreFx(ef) }), true); }
+    p.efectos.push({ efecto: id, pasos: clonarJSON(ef.pasos), ...(d ? { i: d.i, f: d.f } : {}) });
+    guardar(p, Tp(d ? "«{x}» en el tramo elegido" : "«{x}» en todo el video", { x: nombreFx(ef) }), true);
+  }
+  function dialogoCatalogo() {
+    const c = E.catalogo;
+    let cuerpo;
+    if (c.estado === "cargando") cuerpo = `<p class="nota">Buscando efectos…</p><div class="barra-prog indef"><i></i></div>`;
+    else if (c.estado === "error") cuerpo = `<p class="error-txt" data-sin-traducir>${esc(c.error || tr("No pude conectarme. Revisa tu conexión."))}</p><div class="pie-dialogo"><button class="boton" data-accion="explorar-fx">Reintentar</button></div>`;
+    else {
+      const lista = c.efectos.filter((ef) => coincideFx(ef, c.categoria, c.busqueda));
+      cuerpo = `<div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_FX.map(([id, n]) => `<button class="chip" data-cat-cat="${id}" aria-pressed="${c.categoria === id}">${n}</button>`).join("")}</div>
+        <input class="texto buscar-fx" id="buscar-cat" type="search" placeholder="Buscar efectos" value="${esc(c.busqueda)}" autocomplete="off">
+        <div class="lista-cat">${lista.map((ef) => {
+          const propio = efectoPorId(ef.id), bajando = c.bajando[ef.id];
+          const accion = propio ? `<span class="ok">${propio.origen === "incluido" ? esc(tr("Incluido")) : esc(tr("✓ Descargado"))}</span>`
+            : `<button class="boton chico" data-bajar-fx="${esc(ef.id)}" ${bajando ? "disabled" : ""}>${esc(tr(bajando ? "Descargando…" : "Descargar"))}</button>`;
+          return `<div class="item-cat" data-sin-traducir>${muestraFx(ef, 72)}<div class="txt"><b>${esc(nombreFx(ef))}</b><small>${esc(descripcionFx(ef))}</small>
+            ${ef.autor ? `<small class="autor">${esc(Tp("por {x}", { x: ef.autor }))}</small>` : ""}</div>${accion}</div>`;
+        }).join("") || `<p class="nota" data-sin-traducir>${esc(tr("No hay efectos con eso."))}</p>`}</div>`;
+    }
+    return `<h2 id="t-cat">Efectos de la comunidad</h2><p>Gratis y abiertos. Cualquiera puede crear uno sin programar y compartirlo.</p>
+      ${cuerpo}
+      <div class="pie-dialogo"><button class="boton izq" data-enlace="${ENLACES.catalogo}">Crear el tuyo</button><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
+  }
+
   /** Música de fondo: el proyecto guarda {archivo, volumen} y render.py la baja sola cuando hay voz (sidechain). */
   function panelMusica() {
     const p = P(), m = p.musica;
@@ -535,7 +710,7 @@
       ${!fuenteMusica(p) ? `<p class="nota">Esta música está fuera de la carpeta del proyecto: no suena en la vista previa, pero sí al exportar. Elígela de nuevo para traerla a la carpeta.</p>` : ""}</div>${derechos}`;
   }
 
-  const EJEMPLOS_IA = ["Saca la parte donde me equivoco", "Pon zoom cuando digo algo importante", "Pon un título grande al inicio", "Subtítulos de una palabra a la vez", "Hazlo cuadrado para Instagram"];
+  const EJEMPLOS_IA = ["Saca la parte donde me equivoco", "Pon zoom cuando digo algo importante", "Pon un título grande al inicio", "Ponle un filtro cálido", "Subtítulos de una palabra a la vez", "Hazlo cuadrado para Instagram"];
   /** Qué dice el botón de un cambio de la IA: lo que agregó, contado («Quitar estos 6 zooms»), o «Quitar este cambio». */
   function etiquetaQuitar(c) {
     const a = c.agregados || {}, listas = Object.keys(a).filter((k) => a[k]?.length);
@@ -591,12 +766,45 @@
   const ZOOMS_LT = [1, 1.5, 2, 3, 4, 6, 8, 12, 16, 24, 32];
   const zoomMax = (dur) => Math.max(1, dur / 2);  // con el zoom máximo se ven unos 2 segundos
   const NOMBRES_BORDE = { cortes: ["Inicio del corte {n}", "Fin del corte {n}"], zooms: ["Inicio del zoom {n}", "Fin del zoom {n}"],
-    textos: ["Inicio del texto {n}", "Fin del texto {n}"] };
+    textos: ["Inicio del texto {n}", "Fin del texto {n}"], efectos: ["Inicio del efecto {n}", "Fin del efecto {n}"] };
   const MOTIVOS = { silencio: "Silencio", muletilla: "Muletilla", manual: "Corte manual", ia: "Corte de la IA", fuera: "Fuera del Short" };
   const relojFino = (s) => {
     s = Math.max(0, s || 0); const m = Math.floor(s / 60), x = (s - m * 60).toFixed(1).padStart(4, "0");
     return `${m}:${E.idioma === "es" ? x.replace(".", ",") : x}`;
   };
+  /** Los tramos que quedan, partidos donde la persona dividió (`divisiones`): se eligen en la pista de video para borrarlos,
+   *  recortarlos o ponerles un efecto. Solo en la interfaz: al exportar, las divisiones no cambian nada. */
+  function tramosEdicion(p) {
+    const div = [...new Set(p.divisiones || [])].sort((a, b) => a - b), r = [];
+    for (const t of conservados(p)) {
+      let a = t.i;
+      for (const d of div) if (d > a + MIN_TRAMO && d < t.f - MIN_TRAMO) { r.push({ i: a, f: r3(d) }); a = r3(d); }
+      r.push({ i: a, f: t.f });
+    }
+    return r;
+  }
+  /** Dónde se puede dividir: el cabezal dentro de un tramo que queda, lejos de sus bordes. Devuelve el índice del tramo o -1. */
+  function tramoParaDividir(p, t) {
+    return tramosEdicion(p).findIndex((x) => x.i + MIN_TRAMO < t && t < x.f - MIN_TRAMO);
+  }
+  function dividir() {
+    const p = P(), t = r3($("#video")?.currentTime || 0);
+    if (!p || tramoParaDividir(p, t) < 0) return toast("Pon el cabezal dentro del video para dividir");
+    p.divisiones = [...new Set([...(p.divisiones || []), t])].sort((a, b) => a - b);
+    E.lt.sel = { lista: "tramos", k: tramosEdicion(p).findIndex((x) => x.i === t) };
+    guardar(p, "Dividido");
+  }
+  /** Lo que hacen los botones de un tramo elegido: borrarlo o recortarlo hasta el cabezal (todo como cortes «manual»). */
+  function editarTramo(accion) {
+    const p = P(), s = E.lt.sel, tr_ = s?.lista === "tramos" && tramosEdicion(p)[s.k], t = r3($("#video")?.currentTime || 0);
+    if (!tr_) return;
+    if (accion === "borrar") p.cortes.push({ i: tr_.i, f: tr_.f, motivo: "manual" });
+    else if (accion === "inicio" && t > tr_.i + MIN_TRAMO && t < tr_.f) p.cortes.push({ i: tr_.i, f: t, motivo: "manual" });
+    else if (accion === "fin" && t < tr_.f - MIN_TRAMO && t > tr_.i) p.cortes.push({ i: t, f: tr_.f, motivo: "manual" });
+    else return toast("Pon el cabezal dentro del tramo");
+    E.lt.sel = null;
+    guardar(p, accion === "borrar" ? "Tramo borrado" : "Recortado");
+  }
   /** Hasta dónde se puede mover un borde: sin dar vuelta el tramo (mínimo 0,05 s), sin salir del video y sin pisar a sus vecinos. */
   function limitesBorde(lista, k, borde, dur) {
     const t = lista[k];
@@ -654,6 +862,10 @@
       return `<i style="height:${habla ? 30 + ((k * 37) % 50) : 4}%"></i>`;
     }).join("");
     const cortes = p.cortes.map((c, k) => bloque("cortes", k, c, "b-corte", "", MOTIVOS[c.motivo] || "")).join("");
+    const tramosLt = tramosEdicion(p).map((x, k) => `<div class="bloque b-tramo ${sel?.lista === "tramos" && sel.k === k ? "sel" : ""}" data-lt="tramos" data-k="${k}" style="${pos(x)}"></div>`).join("");
+    const efs = p.efectos || [], globales = efs.filter((ap) => !("i" in ap)).map((ap) => nombreFx(efectoPorId(ap.efecto)) || ap.efecto);
+    const efectosLt = (globales.length ? `<button class="lt-global-fx" data-pestana="efectos" data-sin-traducir>✨ ${esc(globales.join(" · "))}</button>` : "")
+      + efs.map((ap, k) => ("i" in ap ? bloque("efectos", k, ap, "b-efecto", "", "", "✨ " + (nombreFx(efectoPorId(ap.efecto)) || ap.efecto)) : "")).join("");
     const zooms = p.zooms.map((z, k) => bloque("zooms", k, z, "b-zoom", esc(`🔍 ${z.escala}×`))).join("");
     const textos = p.textos.map((x, k) => bloque("textos", k, x, "b-texto", "", "", x.texto)).join("");
     const cortados = unir(p.cortes);
@@ -674,16 +886,18 @@
     const niveles = ZOOMS_LT.filter((z) => z <= zoomMax(dur));
     return `<div class="lt" id="lt">
       <div class="lt-herr"><div class="lt-info" id="lt-sel">${infoSel()}</div>
+        <button class="boton sutil chico" data-accion="dividir" title="Divide el video en el cabezal (⌘B)">✂ <span>Dividir</span></button>
         <div class="lt-zoom" role="group" aria-label="Zoom de la línea de tiempo">
           <button class="icono" data-lt-zoom="-1" title="Alejar" aria-label="Alejar" ${E.lt.zoom <= 1 ? "disabled" : ""}>−</button>
           <span class="num" data-sin-traducir>${esc(String(E.lt.zoom).replace(".", E.idioma === "es" ? "," : "."))}×</span>
           <button class="icono" data-lt-zoom="1" title="Acercar" aria-label="Acercar" ${E.lt.zoom >= niveles[niveles.length - 1] ? "disabled" : ""}>＋</button>
           <button class="icono" data-lt-zoom="0" title="Ver todo" aria-label="Ver todo" ${E.lt.zoom <= 1 ? "disabled" : ""}>⤢</button></div></div>
-      <div class="lt-cuerpo"><div class="lt-nombres" aria-hidden="true"><span></span><span>Video</span><span>Subtítulos</span><span>Textos</span><span>Música</span></div>
+      <div class="lt-cuerpo"><div class="lt-nombres" aria-hidden="true"><span></span><span>Video</span><span>Efectos</span><span>Subtítulos</span><span>Textos</span><span>Música</span></div>
         <div class="lt-vista" id="lt-vista"><div class="lt-contenido" id="lt-contenido" style="width:${E.lt.zoom * 100}%">
           <div class="lt-regla" id="linea" role="slider" tabindex="0" aria-label="Línea de tiempo" aria-valuemin="0" aria-valuemax="${Math.round(dur)}" aria-valuenow="0">
             <span id="lt-marcas">${marcasRegla()}</span></div>
-          <div class="pista pista-video" role="group" aria-label="Video"><div class="fila-zoom">${zooms}</div><div class="fila-cortes"><div class="onda">${onda}</div>${cortes}</div></div>
+          <div class="pista pista-video" role="group" aria-label="Video"><div class="fila-zoom">${zooms}</div><div class="fila-cortes"><div class="onda">${onda}</div>${tramosLt}${cortes}</div></div>
+          <div class="pista pista-efectos" role="group" aria-label="Efectos">${efectosLt || `<span class="lt-vacia">Sin efectos</span>`}</div>
           <div class="pista pista-subtitulos ${p.subtitulos.activos ? "" : "apagada"}" role="group" aria-label="Subtítulos"${p.subtitulos.activos ? "" : ` title="Subtítulos apagados"`}>
             ${subs || `<span class="lt-vacia">Sin transcripción</span>`}</div>
           <div class="pista pista-textos" role="group" aria-label="Textos">${textos || `<span class="lt-vacia">Sin textos</span>`}</div>
@@ -711,10 +925,15 @@
     }
   }
   function infoSel() {
-    const p = P(), s = E.lt.sel, o = s && p?.[s.lista]?.[s.k];
-    if (!o) return `<span class="nota">Arrastra los bordes de un tramo para ajustarlo. Con el teclado, usa las flechas.</span>`;
+    const p = P(), s = E.lt.sel, o = s && (s.lista === "tramos" ? tramosEdicion(p)[s.k] : p?.[s.lista]?.[s.k]);
+    if (!o || !("i" in o)) return `<span class="nota">Toca un tramo del video para borrarlo, recortarlo o ponerle un efecto. Arrastra los bordes para ajustarlos.</span>`;
     const v = { a: esc(relojFino(o.i)), b: esc(relojFino(o.f)) };
-    const txt = { cortes: "Corte de {a} a {b}", zooms: "Zoom de {a} a {b}", textos: "Texto de {a} a {b}" }[s.lista];
+    if (s.lista === "tramos") {
+      return `${frase("Tramo de {a} a {b}", v, "b")}<span class="herr-tramo"><button class="boton sutil chico" data-tramo="inicio" title="Recorta desde el inicio del tramo hasta el cabezal">⇤ <span>Recortar</span></button>
+        <button class="boton sutil chico" data-tramo="fin" title="Recorta desde el cabezal hasta el final del tramo"><span>Recortar</span> ⇥</button>
+        <button class="boton sutil chico" data-pestana="efectos">✨ <span>Efecto</span></button><button class="boton chico peligro" data-tramo="borrar">Borrar</button></span>`;
+    }
+    const txt = { cortes: "Corte de {a} a {b}", zooms: "Zoom de {a} a {b}", textos: "Texto de {a} a {b}", efectos: "Efecto de {a} a {b}" }[s.lista];
     return `${frase(txt, v, "b")}<button class="boton sutil chico" data-accion="lt-quitar">${s.lista === "cortes" ? "Volver a poner" : "Quitar"}</button>`;
   }
   function pintarInfo() { const el = $("#lt-sel"); if (el) { el.innerHTML = infoSel(); traducirDOM(el); } }
@@ -743,7 +962,7 @@
     const p = P();
     p[lista].splice(k, 1);
     E.lt.sel = null;
-    guardar(p, { cortes: "Corte quitado", zooms: "Zoom quitado", textos: "Texto quitado" }[lista]);
+    guardar(p, { cortes: "Corte quitado", zooms: "Zoom quitado", textos: "Texto quitado", efectos: "Efecto quitado" }[lista]);
   }
   function tiempoEn(x) {
     const c = $("#lt-contenido"), p = P();
@@ -918,6 +1137,7 @@
     if (E.bv === 0) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bienvenida()}</div></div>`;
     if (E.bv !== null) return capa("t-bv", bienvenida());
     if (E.ajustes) return capa("t-aj", dialogoAjustes());
+    if (E.catalogo) return capa("t-cat", dialogoCatalogo());
     return "";
   }
 
@@ -945,6 +1165,43 @@
     if (vista && vista.clientWidth && vista.clientWidth !== E.lt.ancho) { E.lt.ancho = vista.clientWidth; const m = $("#lt-marcas"); if (m) m.innerHTML = marcasRegla(); ajustarEtiquetas(); }
     actualizarCapas();
   }
+  /** Qué efectos se ven en el segundo t del original (`te`: el mismo momento en el video exportado). */
+  let fxCache = null;
+  function infoEfectos(p) {
+    const k = JSON.stringify([p.efectos, p.cortes, p.fuente.duracion]);
+    if (fxCache?.p === p && fxCache.k === k) return fxCache.v;
+    const v = (p.efectos || []).map((ap) => {
+      const [i, f] = alcanceEf(p, ap), pedazos = intervalosSalida(p, i, f);
+      if (!pedazos.length || !Array.isArray(ap.pasos)) return null;
+      const a = pedazos[0][0], b = pedazos[pedazos.length - 1][1], juntas = uniones(p, i, f);
+      return { pedazos, pasos: ap.pasos.map((paso) => ({ paso, segs: paso.tipo === "zoom" ? segmentosZoom({ ...paso, desde: numFx(paso, "desde", 1), hasta: numFx(paso, "hasta", 1) }, a, b) : segmentosCapa(paso, a, b, juntas, pedazos) })) };
+    }).filter(Boolean);
+    fxCache = { p, k, v };
+    return v;
+  }
+  function efectosEn(p, t, te, escala) {
+    const r = { filtro: "", capas: "", zoom: 1 };
+    if (te == null || !p.efectos?.length) return r;
+    const filtro = [], capas = [], W = LIENZOS[p.lienzo][0];
+    for (const ef of infoEfectos(p)) {
+      const dentro = ef.pedazos.some(([a, b]) => a <= te && te <= b);
+      for (const { paso, segs } of ef.pasos) {
+        if (paso.tipo === "zoom") { r.zoom *= valorEn(segs, te, 1); continue; }
+        if (["tinte", "fundido", "transicion"].includes(paso.tipo)) {
+          const a = valorEn(segs, te, 0);
+          if (a > 0.001) capas.push(`<i style="background:rgb(${rgbFx(paso)});opacity:${a.toFixed(3)}"></i>`);
+          continue;
+        }
+        if (!dentro) continue;
+        if (paso.tipo === "color") filtro.push(cssColor(paso));
+        else if (paso.tipo === "desenfoque") filtro.push(`blur(${(numFx(paso, "radio", 4) * W / 1080 * escala).toFixed(2)}px)`);
+        else if (paso.tipo === "vineta") capas.push(`<i style="background:${vinetaCSS(numFx(paso, "fuerza", 0.5))}"></i>`);
+      }
+    }
+    r.filtro = filtro.join(" ");
+    r.capas = capas.join("");
+    return r;
+  }
   let tramosCache = null, tramosDe = null;
   function tramos() { const p = P(); if (tramosDe !== p || !tramosCache || tramosCache.k !== JSON.stringify(p.cortes)) { tramosCache = { k: JSON.stringify(p.cortes), t: conservados(p) }; tramosDe = p; } return tramosCache.t; }
   function actualizarCapas() {
@@ -971,9 +1228,18 @@
       const ahora = $("#musica-ahora"), txt = tr(gananciaMusica < 0.6 ? "La música baja: estás hablando" : "Volumen normal");
       if (ahora && ahora.textContent !== txt) ahora.textContent = txt;
     }
+    // Efectos (la misma lógica de tiempos que bin/efectos.py): filtros de CSS, capas de color y zoom animado
+    const fx = efectosEn(p, t, salida, escala);
     // Zoom
     const z = (p.zooms || []).find((x) => x.i <= t && t <= x.f);
-    const capa = $("#capa-zoom"); if (capa) capa.style.transform = z ? `scale(${z.escala})` : "none";
+    const capa = $("#capa-zoom");
+    if (capa) {
+      const esc_ = (z ? z.escala : 1) * fx.zoom;
+      capa.style.transform = esc_ !== 1 ? `scale(${esc_.toFixed(4)})` : "none";
+      capa.style.transition = fx.zoom !== 1 ? "none" : "";
+      if (capa.dataset.filtro !== fx.filtro) { capa.style.filter = fx.filtro; capa.dataset.filtro = fx.filtro; }
+    }
+    const cf = $("#capas-fx"); if (cf && cf.dataset.html !== fx.capas) { cf.innerHTML = fx.capas; cf.dataset.html = fx.capas; }
     // Fondo borroso
     const c = $("#fondo-borroso"); if (c && v.readyState >= 2) { try { c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); } catch {} }
     // Palabra activa en el panel de texto
@@ -1042,6 +1308,9 @@
     requestAnimationFrame(bucle);
   }
   window.addEventListener("resize", () => ajustarPantalla());
+  // Las muestras de los efectos usan el cuadro del video: se vuelven a copiar cuando hay un cuadro nuevo en pausa.
+  document.addEventListener("seeked", (ev) => { if (ev.target.id === "video") pintarMuestras(); }, true);
+  document.addEventListener("loadeddata", (ev) => { if (ev.target.id === "video") pintarMuestras(); }, true);
 
   // ───────────── Eventos ─────────────
   function elegirPalabra(k, extender) {
@@ -1061,7 +1330,7 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia]");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
     if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
@@ -1070,11 +1339,18 @@
     if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; E.lt.sel = null; E.editar = null; E.sugerencia = null; return pintar(); }
     if (d.pestana) { E.pestana = d.pestana; return pintar(); }
     if (d.subW != null) return empezarEdicion(Number(d.subW), Number(d.subW), "vista");
+    if (d.fx) return aplicarEfecto(d.fx);
+    if (d.fxCat) { E.fx.categoria = d.fxCat; return pintar(); }
+    if (d.catCat && E.catalogo) { E.catalogo.categoria = d.catCat; return pintar(); }
+    if (d.bajarFx && E.catalogo) { E.catalogo.bajando[d.bajarFx] = true; host.enviar("descargarEfecto", { id: d.bajarFx }); return pintar(); }
+    if (d.quitarFx != null) { const ap = p.efectos?.[Number(d.quitarFx)]; if (ap) { p.efectos.splice(Number(d.quitarFx), 1); E.lt.sel = null; guardar(p, "Efecto quitado"); } return; }
+    if (d.tramo) return editarTramo(d.tramo);
     if (d.quitarIa) {
       const r = quitarCambioIA(p, d.quitarIa);
       if (!r) return;
       E.lt.sel = null;
-      return guardar(p, r.conservados ? Tp(r.conservados === 1 ? "Listo. Dejé 1 cosa que cambiaste a mano." : "Listo. Dejé {n} cosas que cambiaste a mano.", { n: r.conservados }) : "Cambio quitado");
+      return r.conservados ? guardar(p, Tp(r.conservados === 1 ? "Listo. Dejé 1 cosa que cambiaste a mano." : "Listo. Dejé {n} cosas que cambiaste a mano.", { n: r.conservados }), true)
+        : guardar(p, "Cambio quitado");
     }
     if (d.vocabQuitar != null) { const r = E.vocabulario.reemplazos[Number(d.vocabQuitar)]; if (r) host.enviar("vocabulario", { accion: "quitar", de: r.de }); return; }
     if (d.vocabQuitarPalabra != null) { const w = E.vocabulario.palabras[Number(d.vocabQuitarPalabra)]; if (w) host.enviar("vocabulario", { accion: "quitar_palabra", palabra: w }); return; }
@@ -1107,6 +1383,9 @@
       case "elegir-musica": if (v) v.pause(); return host.enviar("elegirMusica", { carpeta: E.sel });
       case "quitar-musica": p.musica = null; return guardar(p, "Música quitada");
       case "lt-quitar": if (E.lt.sel && p[E.lt.sel.lista]?.[E.lt.sel.k]) quitarBloque(E.lt.sel.lista, E.lt.sel.k); return;
+      case "dividir": return dividir();
+      case "fx-todo": E.seleccion = null; if (E.lt.sel?.lista === "tramos") E.lt.sel = null; return pintar();
+      case "explorar-fx": E.catalogo = { estado: "cargando", efectos: [], categoria: E.catalogo?.categoria || "todos", busqueda: E.catalogo?.busqueda || "", bajando: {} }; host.enviar("catalogoEfectos"); return pintar();
       case "cortar-sel": return cortarSeleccion();
       case "editar-sel": if (E.seleccion) empezarEdicion(E.seleccion[0], E.seleccion[1], "texto"); return;
       case "linea-sel": {
@@ -1153,7 +1432,7 @@
       case "exportar-ya": E.exportar = { paso: "exportando", pct: 0 }; host.enviar("exportar", { carpeta: E.sel }); return pintar();
       case "mostrar-exportado": return host.enviar("abrirCarpeta", { ruta: E.exportar?.archivo || E.sel });
       case "ajustes": E.ajustes = true; return pintar();
-      case "cerrar": if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; return pintar();
+      case "cerrar": if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; return pintar();
       case "abrir-carpeta": return host.enviar("abrirCarpeta", {});
       case "actualizar": E.act = { paso: 1, texto: tr("Preparando…") }; host.enviar("actualizar"); return pintar();
       case "buscar-act": E.buscando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
@@ -1167,6 +1446,11 @@
     if (ds.subPosicion != null) { p.subtitulos.posicion = Number(ev.target.value); return actualizarCapas(); }
     if (ds.musicaVolumen != null && p.musica) { p.musica.volumen = Math.round(Number(ev.target.value) * 100) / 100; const o = $("#musica-vol"); if (o) o.textContent = Math.round(p.musica.volumen * 100) + " %"; return; }
     if (ev.target.id === "pedido-ia") E.ia.texto = ev.target.value;
+    if (ev.target.id === "buscar-fx" || (ev.target.id === "buscar-cat" && E.catalogo)) {
+      // Se repinta al escribir: el foco y el cursor vuelven al mismo campo (pintar() recuerda el elemento activo).
+      if (ev.target.id === "buscar-fx") E.fx.busqueda = ev.target.value; else E.catalogo.busqueda = ev.target.value;
+      const pos = ev.target.selectionStart; pintar(); const c = document.getElementById(ev.target.id); c?.setSelectionRange?.(pos, pos);
+    }
     if ((ev.target.id === "editar-palabra" || ev.target.id === "editar-sub") && E.editar) {
       E.editar.valor = ev.target.value;
       if (ev.target.id === "editar-palabra") ev.target.size = Math.max(4, [...ev.target.value].length + 2);
@@ -1199,13 +1483,14 @@
       return;
     }
     if (ev.target.id === "vocab-nueva" && ev.key === "Enter") { ev.preventDefault(); return $("[data-accion=vocab-agregar]")?.click(); }
-    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.seleccion = null; E.lt.sel = null; E.sugerencia = null; return pintar(); }
+    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; E.seleccion = null; E.lt.sel = null; E.sugerencia = null; return pintar(); }
     if (teclaLinea(ev)) return;
     if (escribiendo) { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey) && ev.target.id === "pedido-ia") $("[data-accion=pedir-ia]")?.click(); return; }
     if ((ev.key === "Backspace" || ev.key === "Delete") && E.seleccion) { ev.preventDefault(); return cortarSeleccion(); }
     if (ev.key === "Enter" && E.seleccion && P()) { ev.preventDefault(); return empezarEdicion(E.seleccion[0], E.seleccion[1], "texto"); }
     if (ev.key === " " && P()) { ev.preventDefault(); return $("[data-accion=play]")?.click(); }
     if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "z" && P()) { ev.preventDefault(); host.enviar("deshacer", { carpeta: E.sel }); }
+    if ((ev.metaKey || ev.ctrlKey) && ev.key.toLowerCase() === "b" && P()) { ev.preventDefault(); dividir(); }
   });
   // Línea de tiempo: arrastrar bordes (mouse, toque o lápiz con los mismos eventos de puntero), mover el cabezal y teclado.
   let arrastre = null;
@@ -1223,7 +1508,11 @@
       return seleccionar(lista, k);
     }
     const bl = ev.target.closest(".bloque[data-lt]");
-    if (bl) { seleccionar(bl.dataset.lt, Number(bl.dataset.k)); return irA(tiempoEn(ev.clientX)); }
+    if (bl) {
+      seleccionar(bl.dataset.lt, Number(bl.dataset.k)); irA(tiempoEn(ev.clientX));
+      if (bl.dataset.lt === "tramos" && E.pestana === "efectos") { E.seleccion = null; pintar(); }  // el panel muestra a qué se aplica
+      return;
+    }
     if (ev.target.closest("button")) return;
     if (E.lt.sel) seleccionar(null);
     // Arrastrar en la regla (o en una pista con el mouse) mueve el cabezal; con el dedo, las pistas se desplazan.
@@ -1299,7 +1588,7 @@
   window.Corta = {
     async estado(e) {
       Object.assign(E, { proyectos: e.proyectos || [], estilos: e.estilos || [], config: e.config || {}, ias: e.ias || [], modelos: e.modelos || { lista: [] },
-        vocabulario: e.vocabulario || { reemplazos: [], palabras: [] },
+        vocabulario: e.vocabulario || { reemplazos: [], palabras: [] }, efectos: e.efectos || [],
         version: e.version || "", carpeta: e.carpeta || "", progreso: e.progreso || {}, actualizacion: e.actualizacion || { hay: false } });
       if (e.seleccionar) E.sel = e.seleccionar;
       if (E.sel && !E.proyectos.some((x) => x.carpeta === E.sel)) E.sel = null;
@@ -1339,11 +1628,24 @@
     /** Avance de una actualización: {paso: 1–3 o "error", texto (ya traducido por la app), pct?}. */
     actualizacionProgreso(r) { E.act = r; if (r.paso === "error") toast(r.texto || "No se pudo actualizar"); pintar(); },
     actualizacionRevisada(r) { E.buscando = r.hay ? null : r.sinConexion ? "sinConexion" : "alDia"; if (r.hay) E.actualizacion = r; pintar(); },
+    /** Respuesta a `catalogoEfectos`: {ok, efectos} (ya validados por bin/efectos.py) o {ok: false, error}. */
+    catalogoListo(r) {
+      if (!E.catalogo) return;
+      Object.assign(E.catalogo, r.ok ? { estado: "listo", efectos: r.efectos || [] } : { estado: "error", error: r.error });
+      pintar();
+    },
+    /** Respuesta a `descargarEfecto`: {ok, efecto} o {ok: false, id, error}. */
+    efectoDescargado(r) {
+      if (E.catalogo) delete E.catalogo.bajando[r.ok ? r.efecto.id : r.id];
+      if (r.ok) { E.efectos = [...E.efectos.filter((x) => x.id !== r.efecto.id), r.efecto]; toast(Tp("«{x}» quedó en tus efectos", { x: nombreFx(r.efecto) }), true); }
+      else toast(r.error || "No pude descargarlo");
+      pintar();
+    },
     /** Respuesta a `vocabulario`: {ok, vocabulario} o {ok: false, error}. */
     vocabularioActualizado(r) { if (r.ok) E.vocabulario = r.vocabulario; else toast(r.error || "No pude guardar."); pintar(); },
     _probar(f) { f(E); pintar(); },
     _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
-      tramosVoz, cuantoBaja, textoQueCabe, normalizar, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
+      tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, segmentosZoom, segmentosCapa, valorEn, cssColor, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
   };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
@@ -1377,10 +1679,14 @@
         else if (/t[ií]tulo|title/.test(t)) { p.textos.push({ i: p.palabras[idx("hola")].i, f: p.palabras[idx("ana")].f + 1.2, texto: tr("Edita en 1 minuto"), y: 0.16, origen }); resumen = tr("Agregué el título «Edita en 1 minuto» al inicio."); }
         else if (/una palabra|one word/.test(t)) { p.subtitulos.estilo = "palabra"; p.subtitulos.palabras_por_linea = 1; resumen = tr("Cambié los subtítulos a una palabra a la vez."); }
         else if (/cuadrad|square|instagram/.test(t)) { p.lienzo = "1:1"; resumen = tr("Lo dejé cuadrado (1:1) para Instagram."); }
+        else if (/filtro|c[aá]lido|warm|filter/.test(t)) {
+          const ef = (DEMO.efectos || []).find((x) => x.id === "calido");
+          if (ef) { (p.efectos ||= []).push({ efecto: "calido", pasos: clonar(ef.pasos), origen }); resumen = tr("Le puse el filtro «Cálido» a todo el video."); }
+        }
         else if (/equivoc|mistake|corta|cut/.test(t)) { cortarPalabras(p, idx("mmm"), idx("cómo"), "ia"); p.cortes[p.cortes.length - 1].origen = origen; resumen = tr("Corté «Mmm… te muestro cómo», que sobraba."); }
         // Igual que bin/editar_ia.py: lo agregado lleva `origen` y queda anotado en cambios_ia para poder quitarlo.
         const agregados = {};
-        for (const l of ["zooms", "textos", "cortes"]) { const s = p[l].filter((o) => o.origen === origen); if (s.length) agregados[l] = clonar(s); }
+        for (const l of ["zooms", "textos", "cortes", "efectos"]) { const s = (p[l] || []).filter((o) => o.origen === origen); if (s.length) agregados[l] = clonar(s); }
         const ajustes = ["lienzo", "subtitulos.estilo", "subtitulos.activos", "subtitulos.palabras_por_linea"].filter((c) => !igualJSON(leerCampo(antes, c), leerCampo(p, c)))
           .map((c) => ({ campo: c, antes: leerCampo(antes, c), despues: leerCampo(p, c) }));
         if (!Object.keys(agregados).length && !ajustes.length) return A.iaRespondio({ ok: true, aplicadas: 0, resumen, proyecto: clonar(p) });
@@ -1420,6 +1726,14 @@
         if (d.accion === "palabra") v.palabras = [d.palabra, ...v.palabras.filter((x) => normalizar(x) !== normalizar(d.palabra))];
         if (d.accion === "quitar_palabra") v.palabras = v.palabras.filter((x) => normalizar(x) !== normalizar(d.palabra));
         A.vocabularioActualizado({ ok: true, vocabulario: clonar(v) });
+      });
+      case "catalogoEfectos": return luego(500, () => A.catalogoListo({ ok: true, efectos: clonar(DEMO.catalogo || []) }));
+      case "descargarEfecto": return luego(600, () => {  // en la app: Swift lo baja de raw.githubusercontent.com y bin/efectos.py lo valida
+        const ef = (DEMO.catalogo || []).find((x) => x.id === d.id);
+        if (!ef) return A.efectoDescargado({ ok: false, id: d.id, error: tr("Ese efecto no es válido.") });
+        const efecto = { ...Object.fromEntries(Object.entries(ef).filter(([k]) => !["archivo", "sha256", "bytes"].includes(k))), origen: "descargado" };
+        DEMO.efectos = [...(DEMO.efectos || []).filter((x) => x.id !== d.id), efecto];
+        A.efectoDescargado({ ok: true, efecto: clonar(efecto) });
       });
       case "abrirEnlace": return window.open(d.url, "_blank", "noopener");
       case "abrirCarpeta": return toast("En la app, aquí se abre la carpeta");

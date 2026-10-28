@@ -1,0 +1,32 @@
+{
+ "formato": 1,
+ "id": "vintage",
+ "categoria": "filtro",
+ "nombre": {
+  "es": "Vintage",
+  "en": "Vintage"
+ },
+ "descripcion": {
+  "es": "Colores gastados y bordes oscuros, como una foto antigua.",
+  "en": "Faded colors and dark edges, like an old photo."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "retro",
+  "antiguo",
+  "old"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "brillo": 1.05,
+   "contraste": 0.9,
+   "saturacion": 0.85,
+   "sepia": 0.45
+  },
+  {
+   "tipo": "vineta",
+   "fuerza": 0.5
+  }
+ ]
+}

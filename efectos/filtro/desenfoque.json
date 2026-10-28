@@ -1,0 +1,25 @@
+{
+ "formato": 1,
+ "id": "desenfoque",
+ "categoria": "filtro",
+ "nombre": {
+  "es": "Desenfoque",
+  "en": "Blur"
+ },
+ "descripcion": {
+  "es": "Todo suave, para tapar algo o de fondo para un texto.",
+  "en": "Everything soft, to hide something or behind a title."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "borroso",
+  "blur",
+  "tapar"
+ ],
+ "pasos": [
+  {
+   "tipo": "desenfoque",
+   "radio": 8
+  }
+ ]
+}

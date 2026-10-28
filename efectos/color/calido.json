@@ -1,0 +1,31 @@
+{
+ "formato": 1,
+ "id": "calido",
+ "categoria": "color",
+ "nombre": {
+  "es": "Cálido",
+  "en": "Warm"
+ },
+ "descripcion": {
+  "es": "Tonos dorados, como al atardecer.",
+  "en": "Golden tones, like a sunset."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "atardecer",
+  "sunset",
+  "dorado"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "saturacion": 1.15,
+   "sepia": 0.12
+  },
+  {
+   "tipo": "tinte",
+   "color": "#FF8A2A",
+   "fuerza": 0.1
+  }
+ ]
+}

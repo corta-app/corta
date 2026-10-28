@@ -19,6 +19,7 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import efectos  # noqa: E402
 import ia  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
@@ -55,7 +56,9 @@ OPERACIONES = """- {"op": "cortar", "desde": N, "hasta": M}             saca las
 - {"op": "estilo", "id": "<id>"}                        cambia el estilo de los subtítulos
 - {"op": "subtitulos", "activos": true|false, "palabras_por_linea": 1-6}
 - {"op": "lienzo", "valor": "9:16"|"1:1"|"4:5"|"16:9"}
-- {"op": "musica", "volumen": 0-0.5}                    (solo si ya hay música elegida)"""
+- {"op": "musica", "volumen": 0-0.5}                    (solo si ya hay música elegida)
+- {"op": "efecto", "id": "<id>", "desde": N, "hasta": M}  un efecto o filtro mientras se dicen esas palabras
+                                                       (sin desde/hasta: a todo el video)"""
 
 
 def transcripcion_numerada(p):
@@ -80,6 +83,7 @@ Operaciones posibles (N y M son números de palabra de la transcripción de abaj
 {OPERACIONES}
 
 Estilos de subtítulos disponibles: {", ".join(f"{s['id']} ({s['nombre']})" for s in estilos.values())}.
+Efectos disponibles: {", ".join(f"{e['id']} ({e['nombre']['es']}, {e['categoria']})" for e in efectos.disponibles().values())}.
 Estado actual: lienzo {p['lienzo']}, subtítulos {"activos" if p['subtitulos']['activos'] else "apagados"} con estilo {p['subtitulos']['estilo']},
 {len(p['zooms'])} zooms, {len(p['textos'])} textos, música {"sí" if p.get('musica') else "no"}.
 
@@ -123,7 +127,7 @@ def aplicar(p, operaciones, estilos, origen=None):
 
     for o in operaciones if isinstance(operaciones, list) else []:
         tipo = o.get("op") if isinstance(o, dict) else None
-        r = rango(o) if tipo in ("cortar", "restaurar", "zoom", "texto", "corregir") else None
+        r = rango(o) if tipo in ("cortar", "restaurar", "zoom", "texto", "corregir", "efecto") else None
         if tipo == "cortar" and r:
             proyecto.cortar_palabras(q, r[0], r[1], "ia")
             marca(q["cortes"][-1])
@@ -144,6 +148,12 @@ def aplicar(p, operaciones, estilos, origen=None):
             q["lienzo"] = o["valor"]
         elif tipo == "musica" and q.get("musica") and isinstance(o.get("volumen"), (int, float)) and 0 <= o["volumen"] <= 0.5:
             q["musica"]["volumen"] = round(float(o["volumen"]), 2)
+        elif tipo == "efecto" and isinstance(o.get("id"), str) and o["id"] in (lib := efectos.disponibles()) \
+                and (r or ("desde" not in o and "hasta" not in o)):
+            ap = {"efecto": o["id"], "pasos": copy.deepcopy(lib[o["id"]]["pasos"])}
+            if r:
+                ap.update(i=w[r[0]]["i"], f=w[r[1]]["f"])
+            q.setdefault("efectos", []).append(marca(ap))
         elif tipo == "corregir" and r and isinstance(o.get("texto"), str) and 0 < len(o["texto"].strip()) <= 80 \
                 and not any(a <= r[1] and r[0] <= b for a, b, _ in correcciones):
             correcciones.append((r[0], r[1], o["texto"].strip()))  # al final, de atrás para adelante (los números no se corren)
@@ -158,7 +168,7 @@ def aplicar(p, operaciones, estilos, origen=None):
         cambios_palabras.insert(0, {"antes": antes, "despues": q["palabras"][a:a + len(texto.split())]})
     if origen and hechas:
         agregados = {}
-        for lista in ("zooms", "textos", "cortes"):
+        for lista in ("zooms", "textos", "cortes", "efectos"):
             suyos = [o for o in q.get(lista, []) if o.get("origen") == origen]
             if suyos:
                 agregados[lista] = copy.deepcopy(suyos)
@@ -264,6 +274,7 @@ def crear_short(carpeta, desde, hasta, titulo):
         q["cortes"].append({"i": round(hasta, 3), "f": dur, "motivo": "fuera"})
     q["zooms"] = [z for z in q["zooms"] if z["f"] > desde and z["i"] < hasta]
     q["textos"] = [t for t in q["textos"] if t["f"] > desde and t["i"] < hasta]
+    q["efectos"] = [x for x in q.get("efectos", []) if "i" not in x or (x["f"] > desde and x["i"] < hasta)]
     q["lienzo"] = "9:16"
     q["cambios_ia"] = []  # los cambios de la IA se quitan en el video donde se hicieron
     if problemas := proyecto.validar(q):  # antes de crear la carpeta y enlazar el video

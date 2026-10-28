@@ -1,0 +1,27 @@
+{
+ "formato": 1,
+ "id": "zoom-golpe",
+ "categoria": "movimiento",
+ "nombre": {
+  "es": "Zoom de golpe",
+  "en": "Punch zoom"
+ },
+ "descripcion": {
+  "es": "Se acerca de golpe para marcar una palabra.",
+  "en": "Punches in to stress a word."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "golpe",
+  "punch",
+  "énfasis"
+ ],
+ "pasos": [
+  {
+   "tipo": "zoom",
+   "desde": 1,
+   "hasta": 1.25,
+   "curva": "golpe"
+  }
+ ]
+}

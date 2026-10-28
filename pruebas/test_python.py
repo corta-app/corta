@@ -28,6 +28,8 @@ os.environ["PATH"] = BIN_FALSO + os.pathsep + os.environ["PATH"]
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 
 import editar_ia  # noqa: E402
+import efecto_formato  # noqa: E402
+import efectos  # noqa: E402
 import importar  # noqa: E402
 import limpiar  # noqa: E402
 import proyecto  # noqa: E402
@@ -315,6 +317,154 @@ class IA(unittest.TestCase):
                                    {"text": " [música]", "offsets": {"from": 500, "to": 900}}, {"text": " Ana", "offsets": {"from": 1000, "to": 1300}}]}
         self.assertEqual(importar.palabras_de_whisper(datos), [{"t": "Hola,", "i": 0.0, "f": 0.42}, {"t": "Ana", "i": 1.0, "f": 1.3}])
         self.assertEqual(importar.palabras_de_whisper({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
+
+
+class Efectos(unittest.TestCase):
+    """Efectos como datos: formato estricto, tiempos compartidos con la interfaz y exportación con la lista blanca de filtros."""
+
+    def test_incluidos_validos(self):
+        todos = efectos.disponibles()
+        self.assertGreaterEqual(len(todos), 12)
+        self.assertEqual({e["categoria"] for e in todos.values()}, set(efecto_formato.CATEGORIAS))
+        for e in todos.values():
+            self.assertTrue(e["nombre"].get("en"), f"{e['id']}: falta el nombre en inglés")
+
+    def test_rechaza_lo_raro(self):
+        bueno = {"formato": 1, "id": "calido", "categoria": "color", "nombre": {"es": "Cálido"}, "pasos": [{"tipo": "color", "sepia": 0.2}]}
+        self.assertEqual(efecto_formato.validar_efecto(bueno, "efectos/color/calido.json"), [])
+        malos = [
+            {**bueno, "css": "filter: url(javascript:alert(1))"},
+            {**bueno, "pasos": [{"tipo": "ffmpeg", "filtro": "movie=/etc/passwd"}]},
+            {**bueno, "pasos": [{"tipo": "color", "sepia": 0.2, "extra": "drawtext=text=hola"}]},
+            {**bueno, "pasos": [{"tipo": "color", "saturacion": 9}]},
+            {**bueno, "pasos": [{"tipo": "color", "brillo": "1;rm"}]},
+            {**bueno, "pasos": [{"tipo": "color", "brillo": True}]},
+            {**bueno, "pasos": [{"tipo": "color", "brillo": float("nan")}]},
+            {**bueno, "pasos": [{"tipo": "tinte", "color": "red", "fuerza": 0.1}]},
+            {**bueno, "pasos": [{"tipo": "zoom", "desde": 1, "hasta": 3}]},
+            {**bueno, "pasos": [{"tipo": "fundido", "color": "negro"}]},
+            {**bueno, "pasos": [{"tipo": "color"}]},
+            {**bueno, "pasos": [{"tipo": "color", "sepia": 0.1}] * 5},
+            {**bueno, "nombre": {"es": "<img src=x onerror=alert(1)>"}},
+            {**bueno, "nombre": {"en": "Warm"}},
+            {**bueno, "id": "../calido"},
+            {**bueno, "categoria": "sonido"},
+            {**bueno, "autor": "a\u2028b"},
+        ]
+        for m in malos:
+            self.assertTrue(efecto_formato.validar_efecto(m), m)
+        self.assertTrue(efecto_formato.validar_efecto(bueno, "efectos/color/otro.json"), "el archivo se llama <id>.json")
+
+    def test_casos(self):
+        c = CASOS["efectos"]
+        p = c["proyecto"]
+        for x in c["intervalos"]:
+            self.assertEqual(efectos.intervalos_salida(p, x["i"], x["f"]), x["esperado"], x)
+            self.assertEqual(efectos.uniones(p, x["i"], x["f"]), x["uniones"], x)
+        for x in c["zoom"]:
+            self.assertEqual(efectos.segmentos_zoom(x["paso"], x["a"], x["b"]), x["esperado"])
+            self.assertEqual([[t, efectos.valor_en(x["esperado"], t, 1)] for t, _ in x["valores"]], x["valores"])
+        for x in c["capa"]:
+            self.assertEqual(efectos.segmentos_capa(x["paso"], x["a"], x["b"], x["juntas"], x["pedazos"]), x["esperado"])
+            self.assertEqual([[t, efectos.valor_en(x["esperado"], t, 0)] for t, _ in x["valores"]], x["valores"])
+
+    def test_color_igual_que_css(self):
+        # Los filtros de color en ffmpeg dan los mismos colores que los filtros de CSS de la vista previa (casos «efectos.color»,
+        # que la prueba de la interfaz compara con lo que dibuja Chromium).
+        for x in CASOS["efectos"]["color"]:
+            cadena = ",".join(efectos.filtros_color(x["paso"]))
+            for entrada, esperado in zip(x["entrada"], x["esperado"]):
+                color = "0x" + "".join(f"{v:02X}" for v in entrada)
+                r = subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"color=c={color}:s=8x8:d=0.04,format=rgb24",
+                                    "-vf", cadena + ",format=rgb24", "-frames:v", "1", "-f", "rawvideo", "-"], capture_output=True)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                salida = list(r.stdout[:3])
+                self.assertTrue(all(abs(a - b) <= 3 for a, b in zip(salida, esperado)), f"{x['paso']} {entrada}: ffmpeg {salida}, CSS {esperado}")
+
+    def test_cadena_solo_lista_blanca(self):
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 9, "ancho": 640, "alto": 360})
+        p["cortes"] = [{"i": 2, "f": 3, "motivo": "manual"}]
+        todos = efectos.disponibles()
+        p["efectos"] = [{"efecto": k, "pasos": todos[k]["pasos"]} for k in todos] + [{"efecto": "calido", "pasos": todos["calido"]["pasos"], "i": 1, "f": 5}]
+        self.assertEqual(proyecto.validar(p), [])
+        partes, salida = efectos.cadena(p, 1080, 1920)
+        import re
+        permitidos = {"colorchannelmixer", "lutrgb", "gblur", "perspective", "color", "format", "geq", "scale", "setsar", "overlay"}
+        for parte in partes:
+            sin_comillas = re.sub(r"'[^']*'", "''", parte)
+            for filtro in re.split(r"[,;]", re.sub(r"\[[^\]]*\]", "", sin_comillas)):
+                self.assertIn(filtro.split("=")[0], permitidos, parte)
+            for expr in re.findall(r"'([^']*)'", parte):
+                self.assertRegex(expr, r"^[0-9A-Za-z_.+\-*/(),]*$", "en las expresiones solo números, variables y funciones")
+        self.assertTrue(salida.startswith("[fx"))
+        p["efectos"] = [{"efecto": "x", "pasos": [{"tipo": "color", "brillo": "1:enable=0"}]}]
+        self.assertTrue(proyecto.validar(p), "un proyecto con pasos inválidos no se guarda")
+        self.assertEqual(efectos.cadena(p, 1080, 1920)[0], [], "y si llega igual, no se exporta")
+
+    def test_exportar_con_efectos(self):
+        carpeta = proyecto_de_prueba()
+        p = proyecto.cargar(carpeta)
+        todos = efectos.disponibles()
+        p["cortes"] = [{"i": 2, "f": 3, "motivo": "manual"}]
+        p["efectos"] = [{"efecto": "blanco-y-negro", "pasos": todos["blanco-y-negro"]["pasos"]},
+                        {"efecto": "zoom-golpe", "pasos": todos["zoom-golpe"]["pasos"], "i": 4, "f": 6},
+                        {"efecto": "transicion-negro", "pasos": todos["transicion-negro"]["pasos"]},
+                        {"efecto": "vineta", "pasos": todos["vineta"]["pasos"], "i": 6, "f": 8}]
+        proyecto.guardar(carpeta, p)
+        r = correr("render.py", carpeta)
+        self.assertTrue(r["ok"], r)
+        info = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "json", r["archivo"]],
+                                         capture_output=True, text=True).stdout)
+        self.assertAlmostEqual(float(info["format"]["duration"]), proyecto.duracion_final(p), delta=0.25)
+        # Blanco y negro en todo el video: un cuadro exportado no tiene color (U y V en el gris).
+        cuadro = subprocess.run(["ffmpeg", "-v", "error", "-ss", "1", "-i", r["archivo"], "-frames:v", "1", "-vf", "scale=64:112,format=rgb24",
+                                 "-f", "rawvideo", "-"], capture_output=True).stdout
+        self.assertTrue(cuadro)
+        self.assertLess(max(max(cuadro[k:k + 3]) - min(cuadro[k:k + 3]) for k in range(0, len(cuadro), 3)), 24)
+
+    def test_catalogo(self):
+        bueno = {"formato": 1, "id": "neon", "categoria": "filtro", "nombre": {"es": "Neón"}, "pasos": [{"tipo": "color", "tono": 40}]}
+        crudo = json.dumps(bueno).encode()
+        import hashlib
+        huella = hashlib.sha256(crudo).hexdigest()
+        entrada = {**bueno, "archivo": "efectos/filtro/neon.json", "sha256": huella, "bytes": len(crudo)}
+        indice = {"formato": 1, "efectos": [entrada, {**entrada, "id": "otro"}, {**entrada, "archivo": "../../x.json"}, {**entrada, "sha256": "x"}, "raro",
+                                            {**entrada, "id": "neon2", "archivo": "efectos/filtro/neon2.json", "pasos": [{"tipo": "color", "codigo": 1}]}]}
+        self.assertEqual([e["id"] for e in efectos.validar_indice(indice)], ["neon"], "solo las entradas válidas, una vez")
+        archivo = os.path.join(TMP, "efecto.json")
+        with open(archivo, "wb") as f:
+            f.write(crudo)
+        r = con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", "sha256": huella})
+        self.assertTrue(r["ok"], r)
+        self.assertIn("neon", efectos.disponibles())
+        self.assertEqual(efectos.disponibles()["neon"]["origen"], "descargado")
+        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", "sha256": "0" * 64})["ok"], "huella distinta")
+        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otro"})["ok"], "otro id")
+        with open(archivo, "w") as f:
+            json.dump({**bueno, "id": "malo", "pasos": [{"tipo": "color", "brillo": 9}]}, f)
+        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "malo"})["ok"])
+        os.remove(os.path.join(efectos.DESCARGADOS, "neon.json"))
+
+    def test_mismo_formato_que_el_catalogo(self):
+        # El catálogo de la comunidad usa este mismo archivo para validar: si está al lado (../corta-catalogo), tienen que ser iguales.
+        otro = os.path.join(RAIZ, "..", "corta-catalogo", "herramientas", "efecto_formato.py")
+        if not os.path.exists(otro):
+            self.skipTest("corta-catalogo no está al lado")
+        with open(otro, encoding="utf-8") as a, open(os.path.join(RAIZ, "bin", "efecto_formato.py"), encoding="utf-8") as b:
+            self.assertEqual(a.read(), b.read(), "bin/efecto_formato.py y el del catálogo deben ser iguales")
+
+    def test_ia_pone_efectos_y_divisiones_validas(self):
+        p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 9, "ancho": 640, "alto": 360})
+        p["palabras"] = json.loads(json.dumps(PALABRAS))
+        q, hechas, _ = editar_ia.aplicar(p, [{"op": "efecto", "id": "calido"}, {"op": "efecto", "id": "noir", "desde": 1, "hasta": 2},
+                                              {"op": "efecto", "id": "no-existe"}, {"op": "efecto", "id": "calido", "desde": 1}], subtitulos.estilos(), "ia-1")
+        self.assertEqual(len(hechas), 2)
+        self.assertEqual([("i" in x, x["origen"]) for x in q["efectos"]], [(False, "ia-1"), (True, "ia-1")])
+        self.assertEqual(q["cambios_ia"][-1]["agregados"]["efectos"], q["efectos"])
+        q["divisiones"] = [1.5, 4]
+        self.assertEqual(proyecto.validar(q), [])
+        q["divisiones"] = [99]
+        self.assertTrue(proyecto.validar(q))
 
 
 class Vocabulario(unittest.TestCase):

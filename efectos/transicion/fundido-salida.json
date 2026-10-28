@@ -1,0 +1,25 @@
+{
+ "formato": 1,
+ "id": "fundido-salida",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Fundido de salida",
+  "en": "Fade out"
+ },
+ "descripcion": {
+  "es": "Se va a negro al terminar.",
+  "en": "Fades to black at the end."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "fade out",
+  "final"
+ ],
+ "pasos": [
+  {
+   "tipo": "fundido",
+   "salida": 1,
+   "color": "negro"
+  }
+ ]
+}

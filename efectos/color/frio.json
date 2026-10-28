@@ -1,0 +1,31 @@
+{
+ "formato": 1,
+ "id": "frio",
+ "categoria": "color",
+ "nombre": {
+  "es": "Frío",
+  "en": "Cool"
+ },
+ "descripcion": {
+  "es": "Tonos azules y limpios.",
+  "en": "Clean, bluish tones."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "azul",
+  "blue",
+  "invierno"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "contraste": 1.05,
+   "saturacion": 0.9
+  },
+  {
+   "tipo": "tinte",
+   "color": "#2A6CFF",
+   "fuerza": 0.1
+  }
+ ]
+}

@@ -1,0 +1,27 @@
+{
+ "formato": 1,
+ "id": "zoom-lento",
+ "categoria": "movimiento",
+ "nombre": {
+  "es": "Zoom lento",
+  "en": "Slow zoom"
+ },
+ "descripcion": {
+  "es": "Se acerca de a poco mientras hablas.",
+  "en": "Slowly moves in while you talk."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "acercar",
+  "zoom in",
+  "ken burns"
+ ],
+ "pasos": [
+  {
+   "tipo": "zoom",
+   "desde": 1,
+   "hasta": 1.15,
+   "curva": "suave"
+  }
+ ]
+}

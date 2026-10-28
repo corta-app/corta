@@ -1,0 +1,31 @@
+{
+ "formato": 1,
+ "id": "noir",
+ "categoria": "filtro",
+ "nombre": {
+  "es": "Noir",
+  "en": "Noir"
+ },
+ "descripcion": {
+  "es": "Blanco y negro duro, de película policial.",
+  "en": "Hard black and white, like a crime film."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "cine",
+  "film",
+  "drama"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "brillo": 0.92,
+   "contraste": 1.45,
+   "grises": 1
+  },
+  {
+   "tipo": "vineta",
+   "fuerza": 0.7
+  }
+ ]
+}

@@ -5,6 +5,8 @@ Corta es gratis y abierta, y la hacemos entre todos. Hay lugar para cualquiera, 
 ## Sin programar
 - **Crea un estilo de subtítulos:** es un archivo JSON corto (formato en [`estilos/README.md`](estilos/README.md)). Pruébalo y
   compártelo con una captura.
+- **Crea un efecto o un filtro:** también es un JSON corto (formato en [`efectos/README.md`](efectos/README.md)). Se comparte en el
+  [catálogo de la comunidad](https://github.com/corta-app/corta-catalogo) y cualquiera lo descarga gratis desde la app.
 - **Pruébala con tus videos** y cuéntanos qué tal: los issues con la etiqueta [`probar`](https://github.com/corta-app/corta/labels/probar)
   piden justo eso.
 - **Conversa:** dudas, ideas o lo que publicaste editado con Corta → [Discussions](https://github.com/corta-app/corta/discussions).
@@ -29,6 +31,7 @@ Todo entra por pull request y lo junta alguien que mantiene el proyecto: nadie p
   aporte, GitHub espera a que aprobemos correr las pruebas (es normal).
 - **Código:** que no cambie el formato del proyecto, que la lógica compartida cambie en Python y JS a la vez, que los textos tengan
   traducción y que no agregue dependencias ni conexiones a internet nuevas sin conversarlo.
+- **Efectos** (en el catálogo): que pasen la validación, que el nombre y la descripción digan lo que hacen y que se vean bien.
 - **Estilos:** que sean válidos, que la fuente sea libre y venga incluida, y que se vean bien en la vista previa y exportados.
 - **Traducciones:** que una persona que hable el idioma revise el texto.
 
@@ -44,7 +47,8 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
 ---
 
 ## Contributing (English)
-- **No code needed:** create a caption style (a short JSON file), try Corta with your videos (label `probar`), chat in
+- **No code needed:** create a caption style or an effect (short JSON files; effects are shared in the
+  [community catalog](https://github.com/corta-app/corta-catalogo)), try Corta with your videos (label `probar`), chat in
   [Discussions](https://github.com/corta-app/corta/discussions), report bugs or ideas, and help with translations.
 - **Code (with or without AI):** read [`AGENTS.md`](AGENTS.md), fork, branch, run `bash pruebas/correr.sh` and open a pull request.
   Code and comments are in Spanish; UI text needs its English entry in `ui/idiomas/en.json`; never commit real videos or personal data.

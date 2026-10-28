@@ -24,6 +24,9 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 - **Vertical primero:** 9:16, 1:1, 4:5 o 16:9, con encuadre ajustable o fondo borroso para videos horizontales.
 - **Dile a tu IA lo que quieres:** «pon zoom cuando digo el precio», «saca la parte donde me equivoco», «pon un título al inicio».
 - **Shorts desde un video largo:** tu IA elige los mejores momentos de una clase, un podcast o un live, y cada uno queda como un video nuevo.
+- **Cortes, efectos y filtros:** divide en el cabezal, borra o recorta un tramo, y ponle a todo el video o a un momento un filtro
+  (blanco y negro, cálido, vintage…), un zoom o una transición. Los efectos son archivos simples: la comunidad crea más en el
+  [catálogo](https://github.com/corta-app/corta-catalogo) y los descargas gratis desde la app, ordenados por categoría.
 - **Música de fondo que baja sola cuando hablas**, y una **línea de tiempo con pistas** (video, subtítulos, textos y música) donde
   arrastras los bordes con el mouse, el dedo o el teclado.
 
@@ -71,6 +74,8 @@ Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal c
 | `cortes` | `[{i, f, motivo}]`: lo que no va. `motivo`: `silencio`, `muletilla`, `manual`, `ia` o `fuera` (fuera de un Short). |
 | `subtitulos` | `{activos, estilo, palabras_por_linea, posicion}` |
 | `zooms`, `textos` | `[{i, f, escala}]` y `[{i, f, texto, y}]` |
+| `efectos` | (opcional) `[{efecto, pasos, i?, f?, origen?}]`: los efectos aplicados, con sus pasos copiados (formato en [`efectos/README.md`](efectos/README.md)). Sin `i`/`f`, a todo el video. |
+| `divisiones` | (opcional) `[segundos]`: dónde dividiste el video en la línea de tiempo (para elegir tramos; al exportar no cambian nada). |
 | `cambios_ia` | (opcional) Lo que hizo tu IA, para quitar justo ese cambio aunque hayas seguido editando: `[{id, estado: "aplicado" \| "quitado", pedido, resumen, fecha, agregados: {zooms, textos, cortes}, ajustes?: [{campo, antes, despues}], restaurados?: {antes, despues}, palabras?: [{antes, despues}], conservados?}]` (los últimos 20). Lo que agregó la IA lleva `"origen": "<id>"`. |
 | `musica` | `null` o `{archivo, volumen}`: `archivo` relativo a la carpeta del proyecto (la app copia la canción a `musica/`) o una ruta absoluta; `volumen` de 0 a 1. La música baja sola cuando hablas. |
 
@@ -84,6 +89,12 @@ Todos los tiempos están en segundos **del video original**: los cortes dicen qu
 Al transcribir un video nuevo, cada reemplazo se aplica por palabra completa (sin mirar tildes ni mayúsculas; `de` puede tener varias
 palabras, como «ca lumi») y las palabras propias se le pasan al transcriptor como vocabulario, para que reconozca mejor nombres y
 marcas. Lo ves y lo borras en Ajustes → Vocabulario.
+
+### Efectos
+Los efectos son JSON de solo datos (formato en [`efectos/README.md`](efectos/README.md)). Vienen algunos incluidos (`efectos/`) y los
+que descargas del [catálogo de la comunidad](https://github.com/corta-app/corta-catalogo) quedan en `~/Corta/.corta/efectos/`. La
+app solo descarga desde `raw.githubusercontent.com/corta-app/corta-catalogo`, compara la huella SHA-256 del índice y valida cada
+efecto con el mismo formato que el catálogo antes de guardarlo.
 
 ## Desarrollo
 Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`). La app de Mac está en
@@ -109,7 +120,10 @@ the video by editing its text; it removes silences and filler words in one click
 landscape footage to vertical, and lets your own AI (Claude Code, Codex or Gemini, with your account) apply edits from plain requests
 or pick the best moments of a long video as new Shorts. Add background music that ducks itself under your voice and fine-tune cuts,
 zooms and text on a multi-track timeline. Videos never leave your computer, there's no watermark, and the project is a
-plain open JSON file. Caption styles are data-only files anyone can create. Spanish-first, English included. Licensed under AGPL-3.0.
+plain open JSON file. Caption styles are data-only files anyone can create. Fix any caption word in place (Corta remembers your
+brand names for future videos), split and trim segments, and add filters, zooms and transitions to the whole video or one moment;
+the community shares more effects in the [catalog](https://github.com/corta-app/corta-catalogo), downloadable for free from the app.
+Spanish-first, English included. Licensed under AGPL-3.0.
 
 **Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256). Until a release is
 published, build it from source: `git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`

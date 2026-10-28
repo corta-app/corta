@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "destello",
+ "categoria": "transicion",
+ "nombre": {
+  "es": "Destello",
+  "en": "Flash"
+ },
+ "descripcion": {
+  "es": "Un destello blanco en cada corte.",
+  "en": "A white flash at every cut."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "flash",
+  "blanco",
+  "white"
+ ],
+ "pasos": [
+  {
+   "tipo": "transicion",
+   "duracion": 0.3,
+   "color": "blanco"
+  }
+ ]
+}

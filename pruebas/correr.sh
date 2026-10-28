@@ -4,7 +4,7 @@
 set -e
 cd "$(dirname "$0")/.."
 echo "Sintaxis"; node --check ui/app.js; python3 -m py_compile bin/*.py pruebas/*.py ejemplos/*.py
-python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('estilos/*.json') + ['ui/demo.json', 'pruebas/casos.json']]"
+python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('estilos/*.json') + glob.glob('efectos/*/*.json') + ['ui/demo.json', 'pruebas/casos.json']]"
 for f in build.sh herramientas/*.sh pruebas/*.sh; do bash -n "$f"; done
 echo "Privacidad"; bash herramientas/revisar_privacidad.sh --generico
 echo "Contrato"; python3 pruebas/contrato.py

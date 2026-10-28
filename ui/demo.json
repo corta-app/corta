@@ -396,5 +396,687 @@
     "creado": "2026-10-24T09:10:00"
    }
   }
- ]
+ ],
+ "efectos": [
+  {
+   "formato": 1,
+   "id": "calido",
+   "categoria": "color",
+   "nombre": {
+    "es": "Cálido",
+    "en": "Warm"
+   },
+   "descripcion": {
+    "es": "Tonos dorados, como al atardecer.",
+    "en": "Golden tones, like a sunset."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "atardecer",
+    "sunset",
+    "dorado"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "saturacion": 1.15,
+     "sepia": 0.12
+    },
+    {
+     "tipo": "tinte",
+     "color": "#FF8A2A",
+     "fuerza": 0.1
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "contraste",
+   "categoria": "color",
+   "nombre": {
+    "es": "Más contraste",
+    "en": "More contrast"
+   },
+   "descripcion": {
+    "es": "Negros más negros y blancos más blancos.",
+    "en": "Deeper blacks and brighter whites."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "contraste",
+    "contrast",
+    "nítido"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "contraste": 1.3,
+     "saturacion": 1.1
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "frio",
+   "categoria": "color",
+   "nombre": {
+    "es": "Frío",
+    "en": "Cool"
+   },
+   "descripcion": {
+    "es": "Tonos azules y limpios.",
+    "en": "Clean, bluish tones."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "azul",
+    "blue",
+    "invierno"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "contraste": 1.05,
+     "saturacion": 0.9
+    },
+    {
+     "tipo": "tinte",
+     "color": "#2A6CFF",
+     "fuerza": 0.1
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "luminoso",
+   "categoria": "color",
+   "nombre": {
+    "es": "Luminoso",
+    "en": "Bright"
+   },
+   "descripcion": {
+    "es": "Más luz para un video que quedó oscuro.",
+    "en": "More light for a video that came out dark."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "luz",
+    "light",
+    "claro"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "brillo": 1.15,
+     "contraste": 0.95
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "blanco-y-negro",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Blanco y negro",
+    "en": "Black & white"
+   },
+   "descripcion": {
+    "es": "Clásico y con un poco más de contraste.",
+    "en": "Classic, with a bit more contrast."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "byn",
+    "bw",
+    "clásico",
+    "classic"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "contraste": 1.1,
+     "grises": 1
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "desenfoque",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Desenfoque",
+    "en": "Blur"
+   },
+   "descripcion": {
+    "es": "Todo suave, para tapar algo o de fondo para un texto.",
+    "en": "Everything soft, to hide something or behind a title."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "borroso",
+    "blur",
+    "tapar"
+   ],
+   "pasos": [
+    {
+     "tipo": "desenfoque",
+     "radio": 8
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "noir",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Noir",
+    "en": "Noir"
+   },
+   "descripcion": {
+    "es": "Blanco y negro duro, de película policial.",
+    "en": "Hard black and white, like a crime film."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cine",
+    "film",
+    "drama"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "brillo": 0.92,
+     "contraste": 1.45,
+     "grises": 1
+    },
+    {
+     "tipo": "vineta",
+     "fuerza": 0.7
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "vineta",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Viñeta",
+    "en": "Vignette"
+   },
+   "descripcion": {
+    "es": "Bordes más oscuros que llevan la mirada al centro.",
+    "en": "Darker edges that pull the eye to the center."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "bordes",
+    "edges"
+   ],
+   "pasos": [
+    {
+     "tipo": "vineta",
+     "fuerza": 0.6
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "vintage",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Vintage",
+    "en": "Vintage"
+   },
+   "descripcion": {
+    "es": "Colores gastados y bordes oscuros, como una foto antigua.",
+    "en": "Faded colors and dark edges, like an old photo."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "retro",
+    "antiguo",
+    "old"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "brillo": 1.05,
+     "contraste": 0.9,
+     "saturacion": 0.85,
+     "sepia": 0.45
+    },
+    {
+     "tipo": "vineta",
+     "fuerza": 0.5
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "vivido",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Vívido",
+    "en": "Vivid"
+   },
+   "descripcion": {
+    "es": "Colores más intensos para que resalte en el feed.",
+    "en": "Punchier colors to stand out in the feed."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "saturado",
+    "pop",
+    "intenso"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "contraste": 1.1,
+     "saturacion": 1.5
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "alejar",
+   "categoria": "movimiento",
+   "nombre": {
+    "es": "Alejar",
+    "en": "Zoom out"
+   },
+   "descripcion": {
+    "es": "Empieza de cerca y se aleja suave.",
+    "en": "Starts close and gently pulls back."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "alejar",
+    "zoom out"
+   ],
+   "pasos": [
+    {
+     "tipo": "zoom",
+     "desde": 1.2,
+     "hasta": 1,
+     "curva": "suave"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "zoom-golpe",
+   "categoria": "movimiento",
+   "nombre": {
+    "es": "Zoom de golpe",
+    "en": "Punch zoom"
+   },
+   "descripcion": {
+    "es": "Se acerca de golpe para marcar una palabra.",
+    "en": "Punches in to stress a word."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "golpe",
+    "punch",
+    "énfasis"
+   ],
+   "pasos": [
+    {
+     "tipo": "zoom",
+     "desde": 1,
+     "hasta": 1.25,
+     "curva": "golpe"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "zoom-lento",
+   "categoria": "movimiento",
+   "nombre": {
+    "es": "Zoom lento",
+    "en": "Slow zoom"
+   },
+   "descripcion": {
+    "es": "Se acerca de a poco mientras hablas.",
+    "en": "Slowly moves in while you talk."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "acercar",
+    "zoom in",
+    "ken burns"
+   ],
+   "pasos": [
+    {
+     "tipo": "zoom",
+     "desde": 1,
+     "hasta": 1.15,
+     "curva": "suave"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "destello",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Destello",
+    "en": "Flash"
+   },
+   "descripcion": {
+    "es": "Un destello blanco en cada corte.",
+    "en": "A white flash at every cut."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "flash",
+    "blanco",
+    "white"
+   ],
+   "pasos": [
+    {
+     "tipo": "transicion",
+     "duracion": 0.3,
+     "color": "blanco"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "fundido-entrada",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Fundido de entrada",
+    "en": "Fade in"
+   },
+   "descripcion": {
+    "es": "Aparece desde negro.",
+    "en": "Fades in from black."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "fade in",
+    "inicio"
+   ],
+   "pasos": [
+    {
+     "tipo": "fundido",
+     "entrada": 0.8,
+     "color": "negro"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "fundido-salida",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Fundido de salida",
+    "en": "Fade out"
+   },
+   "descripcion": {
+    "es": "Se va a negro al terminar.",
+    "en": "Fades to black at the end."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "fade out",
+    "final"
+   ],
+   "pasos": [
+    {
+     "tipo": "fundido",
+     "salida": 1,
+     "color": "negro"
+    }
+   ],
+   "origen": "incluido"
+  },
+  {
+   "formato": 1,
+   "id": "transicion-negro",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Fundido entre cortes",
+    "en": "Dip between cuts"
+   },
+   "descripcion": {
+    "es": "Un pestañeo a negro en cada corte, para que no salte.",
+    "en": "A quick dip to black at every cut, so it doesn't jump."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "corte",
+    "cut",
+    "transición"
+   ],
+   "pasos": [
+    {
+     "tipo": "transicion",
+     "duracion": 0.4,
+     "color": "negro"
+    }
+   ],
+   "origen": "incluido"
+  }
+ ],
+ "catalogo": [
+  {
+   "formato": 1,
+   "id": "pastel",
+   "categoria": "color",
+   "nombre": {
+    "es": "Pastel",
+    "en": "Pastel"
+   },
+   "descripcion": {
+    "es": "Suave y claro, con poco contraste.",
+    "en": "Soft and light, with low contrast."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "suave",
+    "soft",
+    "claro"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "brillo": 1.08,
+     "contraste": 0.85,
+     "saturacion": 0.8
+    }
+   ],
+   "archivo": "efectos/color/pastel.json",
+   "sha256": "814626004de8971a4d6cb961e08f0d9056066f8823b3d126e4d884c5f192cf84",
+   "bytes": 399
+  },
+  {
+   "formato": 1,
+   "id": "verano",
+   "categoria": "color",
+   "nombre": {
+    "es": "Verano",
+    "en": "Summer"
+   },
+   "descripcion": {
+    "es": "Luz amarilla y colores vivos.",
+    "en": "Yellow light and lively colors."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "sol",
+    "sun",
+    "playa",
+    "beach"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "brillo": 1.06,
+     "saturacion": 1.3
+    },
+    {
+     "tipo": "tinte",
+     "color": "#FFD34D",
+     "fuerza": 0.08
+    }
+   ],
+   "archivo": "efectos/color/verano.json",
+   "sha256": "922d826c822a81a8561b2f38df8ec3839e8d6165f47b873e624a9b214e0a0d30",
+   "bytes": 447
+  },
+  {
+   "formato": 1,
+   "id": "neon",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Neón",
+    "en": "Neon"
+   },
+   "descripcion": {
+    "es": "Colores eléctricos, como de noche en la ciudad.",
+    "en": "Electric colors, like the city at night."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "noche",
+    "night",
+    "ciudad",
+    "city"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "contraste": 1.15,
+     "saturacion": 1.6,
+     "tono": 40
+    },
+    {
+     "tipo": "vineta",
+     "fuerza": 0.4
+    }
+   ],
+   "archivo": "efectos/filtro/neon.json",
+   "sha256": "cc0153c882cd18b8f8ef5c5afc837558cef433a25b9936e9aaaeef0b598840ed",
+   "bytes": 470
+  },
+  {
+   "formato": 1,
+   "id": "pelicula",
+   "categoria": "filtro",
+   "nombre": {
+    "es": "Película antigua",
+    "en": "Old film"
+   },
+   "descripcion": {
+    "es": "Sepia, poco contraste y bordes muy oscuros.",
+    "en": "Sepia, low contrast and very dark edges."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "cine",
+    "film",
+    "retro"
+   ],
+   "pasos": [
+    {
+     "tipo": "color",
+     "contraste": 0.85,
+     "sepia": 0.6,
+     "grises": 0.2
+    },
+    {
+     "tipo": "vineta",
+     "fuerza": 0.8
+    }
+   ],
+   "archivo": "efectos/filtro/pelicula.json",
+   "sha256": "0327745992b41cfe2465bd15463f0caa7ee6f989dcda14c920e709a93b92c802",
+   "bytes": 470
+  },
+  {
+   "formato": 1,
+   "id": "zoom-dramatico",
+   "categoria": "movimiento",
+   "nombre": {
+    "es": "Zoom dramático",
+    "en": "Dramatic zoom"
+   },
+   "descripcion": {
+    "es": "Se acerca mucho durante el tramo, para un momento de tensión.",
+    "en": "Moves in a lot during the segment, for a tense moment."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "drama",
+    "tensión",
+    "tension"
+   ],
+   "pasos": [
+    {
+     "tipo": "zoom",
+     "desde": 1,
+     "hasta": 1.5,
+     "curva": "lineal"
+    }
+   ],
+   "archivo": "efectos/movimiento/zoom-dramatico.json",
+   "sha256": "bb7f8011fe65a4becff13d88667c96c58f3bc327144b98b15d3df2067d65ac3a",
+   "bytes": 472
+  },
+  {
+   "formato": 1,
+   "id": "fundido-blanco",
+   "categoria": "transicion",
+   "nombre": {
+    "es": "Fundido a blanco",
+    "en": "Fade to white"
+   },
+   "descripcion": {
+    "es": "Entra y sale desde blanco, como un recuerdo.",
+    "en": "Fades in and out from white, like a memory."
+   },
+   "autor": "Corta",
+   "etiquetas": [
+    "recuerdo",
+    "memory",
+    "sueño",
+    "dream"
+   ],
+   "pasos": [
+    {
+     "tipo": "fundido",
+     "entrada": 0.6,
+     "salida": 0.6,
+     "color": "blanco"
+    }
+   ],
+   "archivo": "efectos/transicion/fundido-blanco.json",
+   "sha256": "6544ebbefb85c9631468bb70a4ed0aee2403154889b1697d9c688dfcf5a1d4b9",
+   "bytes": 463
+  }
+ ],
+ "vocabulario": {
+  "formato": 1,
+  "reemplazos": [],
+  "palabras": []
+ }
 }

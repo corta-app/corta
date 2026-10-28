@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "contraste",
+ "categoria": "color",
+ "nombre": {
+  "es": "Más contraste",
+  "en": "More contrast"
+ },
+ "descripcion": {
+  "es": "Negros más negros y blancos más blancos.",
+  "en": "Deeper blacks and brighter whites."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "contraste",
+  "contrast",
+  "nítido"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "contraste": 1.3,
+   "saturacion": 1.1
+  }
+ ]
+}

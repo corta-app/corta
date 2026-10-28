@@ -19,6 +19,8 @@ import shutil
 import tempfile
 import time
 
+import efecto_formato
+
 BASE = os.environ.get("CORTA_CARPETA") or os.path.join(os.path.expanduser("~"), "Corta")
 INTERNO = os.path.join(BASE, ".corta")
 RECURSOS = os.environ.get("CORTA_RECURSOS") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -159,7 +161,23 @@ def validar(p):
         e.append("subtitulos.palabras_por_linea debe estar entre 1 y 8.")
     if not (isinstance(s.get("posicion"), (int, float)) and 0.1 <= s["posicion"] <= 0.95):
         e.append("subtitulos.posicion debe estar entre 0.1 y 0.95.")
-    for lista in ("cortes", "zooms", "textos"):
+    efectos = p.get("efectos", [])
+    if not isinstance(efectos, list) or len(efectos) > 40:
+        e.append("efectos: lista de hasta 40.")
+        efectos = []
+    for x in efectos:
+        if not (isinstance(x, dict) and isinstance(x.get("efecto"), str) and efecto_formato.ID.fullmatch(x["efecto"])):
+            e.append("efectos: cada uno necesita el id del efecto.")
+            continue
+        if extra := set(x) - {"efecto", "pasos", "i", "f", "origen"}:
+            e.append("efectos: campos desconocidos: " + ", ".join(sorted(map(str, extra))) + ".")
+        if ("i" in x or "f" in x) and not tramo(x, "efectos"):
+            continue
+        e += [f"efectos: {m}" for m in efecto_formato.validar_pasos(x.get("pasos"))]
+    div = p.get("divisiones", [])
+    if not (isinstance(div, list) and len(div) <= 500 and all(isinstance(t, (int, float)) and not isinstance(t, bool) and 0 < t < dur for t in div)):
+        e.append("divisiones: lista de segundos dentro del video.")
+    for lista in ("cortes", "zooms", "textos", "efectos"):
         if any(isinstance(o, dict) and "origen" in o and not (isinstance(o["origen"], str) and ORIGEN.fullmatch(o["origen"]))
                for o in p.get(lista, [])):
             e.append(f"{lista}: origen debe ser el id de un cambio de la IA.")

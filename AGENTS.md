@@ -22,10 +22,11 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 
 | Ruta | Qué es |
 |---|---|
-| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + encuadre + zoom, concat, subtítulos, música con sidechain), `importar.py` (copiar el video, ffprobe, transcribir con `whisper-cli -ml 1 -sow -oj`), `musica.py` (copia la canción elegida a `musica/` del proyecto, sin pisar copias anteriores, y la deja en `musica`), `editar_ia.py` (pedidos, Shorts y crear un Short; `entrada <entrada.json>` para lo que manda la app), `ia.py` (la IA del usuario, sin herramientas), `estado.py` (proyectos, estilos, config y vocabulario para la app), `guardar.py` (guardar y deshacer lo que manda la interfaz, por archivo de entrada), `vocabulario.py` (corregir palabras sin perder tiempos y el vocabulario de `~/Corta/vocabulario.json`, que `importar.py` aplica al transcribir y le pasa al transcriptor en un archivo, `--prompt-archivo`). El último argumento de cada script es la ruta del JSON de salida. |
-| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode). `Sources/Corta/`: `CortaApp.swift` (arranque y menús), `Ventana.swift` (WKWebView + puente: un `case` por acción; trabajos largos y su avance), `Medios.swift` (`corta://`), `Servicios.swift` (rutas, config, idioma, IA, modelos con huella, `Procesador`, `EnOrden`), `Actualizaciones.swift`. `Sources/Transcribir/` es `corta-transcribir` (whisper.cpp oficial con Metal, mismas opciones que `whisper-cli`). `Corta.icns` sale de `herramientas/generar_icono.mjs`. |
+| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + encuadre + zoom, concat, subtítulos, música con sidechain), `importar.py` (copiar el video, ffprobe, transcribir con `whisper-cli -ml 1 -sow -oj`), `musica.py` (copia la canción elegida a `musica/` del proyecto, sin pisar copias anteriores, y la deja en `musica`), `editar_ia.py` (pedidos, Shorts y crear un Short; `entrada <entrada.json>` para lo que manda la app), `ia.py` (la IA del usuario, sin herramientas), `estado.py` (proyectos, estilos, config y vocabulario para la app), `guardar.py` (guardar y deshacer lo que manda la interfaz, por archivo de entrada), `efecto_formato.py` (formato y validación de un efecto; el MISMO archivo que `corta-catalogo/herramientas/`), `efectos.py` (efectos incluidos y descargados, tiempos de un efecto en el video exportado y su cadena de ffmpeg con lista blanca; valida el índice del catálogo e instala lo que descarga la app), `vocabulario.py` (corregir palabras sin perder tiempos y el vocabulario de `~/Corta/vocabulario.json`, que `importar.py` aplica al transcribir y le pasa al transcriptor en un archivo, `--prompt-archivo`). El último argumento de cada script es la ruta del JSON de salida. |
+| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode). `Sources/Corta/`: `CortaApp.swift` (arranque y menús), `Ventana.swift` (WKWebView + puente: un `case` por acción; trabajos largos y su avance), `Medios.swift` (`corta://`), `Catalogo.swift` (efectos de la comunidad: dominio fijo, sin redirecciones, tamaño máximo y huella SHA-256), `Servicios.swift` (rutas, config, idioma, IA, modelos con huella, `Procesador`, `EnOrden`), `Actualizaciones.swift`. `Sources/Transcribir/` es `corta-transcribir` (whisper.cpp oficial con Metal, mismas opciones que `whisper-cli`). `Corta.icns` sale de `herramientas/generar_icono.mjs`. |
 | `build.sh`, `herramientas/empaquetar.sh` | Arman `dist/Corta.app` (Python portátil, ffmpeg/ffprobe y whisper.framework verificados por SHA-256, más bin/, ui/ y estilos/) + zip + `.sha256`; `build.sh` la instala en `~/Applications` y se niega si hay una exportación o transcripción en curso. |
 | `estilos/` | Estilos de subtítulos incluidos y `README.md` con el formato. |
+| `efectos/` | Efectos incluidos (`<categoria>/<id>.json`, solo datos) y `README.md` con el formato. Los de la comunidad viven en el repo `corta-app/corta-catalogo`. |
 | `ui/` | Interfaz única (`app.js`, `app.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
 | `docs/` | Página pública (GitHub Pages); `pagina.yml` publica también `ui/` en `/demo/`. |
 | `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `contrato.py` (interfaz ↔ `Ventana.swift`), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
@@ -49,6 +50,16 @@ vecinos); el formato no cambia. Los bordes se arrastran con eventos de puntero (
 teclado. En la vista previa la música suena en el tiempo del video exportado (parte en 0 y se repite, como en `render.py`) y baja con
 las palabras que quedan (`tramosVoz`, `cuantoBaja`), imitando el sidechain que ffmpeg hace con la voz al exportar.
 
+**Efectos** (`bin/efectos.py`, formato en `efectos/README.md`): JSON de solo datos con `pasos` de tipos y rangos conocidos
+(`bin/efecto_formato.py`). Se aplican en el tiempo del video EXPORTADO, después del concat y antes de los subtítulos:
+`intervalos_salida`, `uniones`, `segmentos_zoom`, `segmentos_capa` y `valor_en` existen igual en `ui/app.js` (casos «efectos»). La vista
+previa usa filtros de CSS (`cssColor`) y ffmpeg las mismas matrices (`matriz_color`); `pruebas/casos.json` («efectos.color») compara
+lo que dibuja Chromium con lo que sale de ffmpeg. Lista blanca de filtros: `colorchannelmixer`, `lutrgb`, `gblur`, `perspective`,
+`color`, `format`, `geq`, `scale`, `setsar`, `overlay` (la prueba `Efectos.test_cadena_solo_lista_blanca` lo revisa). Nada del JSON
+llega como texto a ffmpeg: solo números formateados por el código. En el proyecto, `efectos` guarda los pasos copiados.
+**Cortes en la línea de tiempo:** `divisiones` (solo para elegir tramos; `tramosEdicion`), «Dividir» (⌘B) en el cabezal, y un tramo
+elegido se borra o se recorta hasta el cabezal como un corte `manual` de siempre; también recibe un efecto.
+
 **Cambios de la IA:** `editar_ia.aplicar` marca lo que agrega con `origen: <id>` (`ia-<base36>`) y anota el cambio en `cambios_ia`
 (qué agregó, qué ajustes cambió con su valor anterior, cortes que volvió a poner y palabras corregidas). Cada tarjeta de la pestaña IA
 sale de ahí y «Quitar estos N zooms» llama `quitarCambioIA` (solo en `ui/app.js`): quita lo que sigue tal como lo dejó la IA,
@@ -58,9 +69,12 @@ El resultado se guarda como cualquier edición (y se puede deshacer).
 ## Puente interfaz ↔ app
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Corta.<funcion>(json)`; en el navegador responde `simular()`.
 Acciones: `listo, config, guardarProyecto, deshacer, elegirVideo, soltarVideo, transcribir, limpiar, pedirIA, buscarShorts, crearShort,
-exportar, probarIA, descargarModelo, elegirMusica, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar, vocabulario`. Respuestas: `estado,
+exportar, probarIA, descargarModelo, elegirMusica, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar, vocabulario, catalogoEfectos, descargarEfecto`. Respuestas: `estado,
 proyectoActualizado, progreso, limpiado, iaRespondio, shortsListos, exportarProgreso, exportado, iaProbada, modeloProgreso,
-modeloListo, musicaElegida, actualizacionRevisada, actualizacionProgreso, vocabularioActualizado`. `vocabulario` (`{accion: "agregar" |
+modeloListo, musicaElegida, actualizacionRevisada, actualizacionProgreso, vocabularioActualizado, catalogoListo, efectoDescargado`. `catalogoEfectos` baja
+`efectos/index.json` del catálogo y responde `catalogoListo` con lo que validó `bin/efectos.py indice`; `descargarEfecto` (`{id}`) busca
+ese id en el último índice validado, baja el archivo, compara tamaño y SHA-256 y `bin/efectos.py entrada` (`instalar`) lo valida y lo deja en
+`~/Corta/.corta/efectos/`; responde `efectoDescargado` con `{ok, efecto}` o `{ok: false, id, error}`. `vocabulario` (`{accion: "agregar" |
 "quitar" | "palabra" | "quitar_palabra", de?, a?, palabra?}`) corre `bin/vocabulario.py entrada` y responde `vocabularioActualizado`
 con `{ok, vocabulario}`. `pruebas/contrato.py` revisa que cada acción exista en
 `Ventana.swift` (y en Windows/Linux cuando exista) y que cada función que llama la app exista en `window.Corta`. Una acción nueva va en
@@ -113,7 +127,8 @@ transcriptor. Quien ya hizo la bienvenida no la repite; el idioma se cambia en A
 ## Revisar aportes
 Todo entra por pull request y lo junta quien mantiene el proyecto, solo con su aprobación. Leer todo el diff antes de correr nada
 (alerta roja: workflows, scripts de instalación, red nueva, dependencias nuevas, binarios, cambios en cómo se arma el comando de
-ffmpeg o de la IA). Estilos nuevos: válidos, con fuente libre incluida y una captura. Detalle en `CONTRIBUTING.md`.
+ffmpeg o de la IA). Estilos nuevos: válidos, con fuente libre incluida y una captura. Efectos: se aportan en `corta-catalogo` (si
+cambia el formato, `bin/efecto_formato.py` cambia igual en los dos repos y la app sube su validación antes que el catálogo). Detalle en `CONTRIBUTING.md`.
 
 **Seguridad** ([SECURITY.md](SECURITY.md)): las fallas se reportan en privado. Las actions van fijadas por SHA completo con su versión en un
 comentario (Dependabot las sube), con `permissions` mínimos, `persist-credentials: false`, nunca `pull_request_target` ni

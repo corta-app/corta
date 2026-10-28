@@ -1,4 +1,4 @@
-"""Exportar: aplica cortes, encuadre, zooms, subtítulos, textos y música con ffmpeg. Solo biblioteca estándar.
+"""Exportar: aplica cortes, encuadre, zooms, efectos (bin/efectos.py), subtítulos, textos y música con ffmpeg. Solo biblioteca estándar.
 
   render.py <carpeta> <salida.json>          deja exportado-<lienzo>.mp4 en la carpeta
 
@@ -14,6 +14,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import efectos  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
 
@@ -81,7 +82,7 @@ def grafo(p, con_audio, ruta_ass, con_musica):
         if pz["escala"] > 1:
             zw, zh = par(W * pz["escala"]), par(H * pz["escala"])
             v += f",scale={zw}:{zh},crop={W}:{H}"
-        partes.append(v + f",setsar=1[v{k}]")
+        partes.append(v + f",setsar=1,format=yuv420p[v{k}]")
         if con_audio:
             partes.append(f"[0:a]atrim=start={pz['i']}:end={pz['f']},asetpts=PTS-STARTPTS,aresample=48000[a{k}]")
         else:
@@ -91,9 +92,12 @@ def grafo(p, con_audio, ruta_ass, con_musica):
     if not n:
         raise ValueError("No queda nada del video: quita algunos cortes.")
     partes.append("".join(etiquetas) + f"concat=n={n}:v=1:a=1[vc][ac]")
+    # Efectos y filtros (solo datos validados → lista blanca de filtros), antes de los subtítulos: nunca se desenfocan ni se mueven.
+    fx, video = efectos.cadena(p, W, H, "[vc]")
+    partes += fx
     ass = ruta_ass.replace("\\", "/").replace(":", r"\:").replace("'", r"\'")
     dir_fuentes = FUENTES.replace("\\", "/").replace(":", r"\:")
-    partes.append(f"[vc]ass='{ass}':fontsdir='{dir_fuentes}'[vs]")
+    partes.append(f"{video}ass='{ass}':fontsdir='{dir_fuentes}'[vs]")
     if con_musica:
         vol = p["musica"].get("volumen", 0.15)
         # La música baja sola cuando hay voz (sidechain), para que nunca tape lo que se dice.

@@ -336,6 +336,15 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
                     }
                 }
             }
+        case "catalogoEfectos":
+            // Efectos de la comunidad: el índice se baja de un dominio fijo y lo valida bin/efectos.py (Catalogo.swift).
+            Catalogo.listar { Ventana.shared.llamar("catalogoListo", $0) }
+        case "descargarEfecto":
+            let id = d["id"] as? String ?? ""
+            guard id.range(of: "^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$", options: .regularExpression) != nil else {
+                return llamar("efectoDescargado", ["ok": false, "id": "", "error": Idioma.t("Ese efecto no es válido.")])
+            }
+            Catalogo.descargar(id) { Ventana.shared.llamar("efectoDescargado", $0) }
         case "vocabulario":
             // Recordar o quitar palabras del vocabulario (~/Corta/vocabulario.json). El texto va en el archivo de entrada.
             let texto = { (k: String) in String((d[k] as? String ?? "").prefix(60)) }

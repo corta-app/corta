@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "luminoso",
+ "categoria": "color",
+ "nombre": {
+  "es": "Luminoso",
+  "en": "Bright"
+ },
+ "descripcion": {
+  "es": "Más luz para un video que quedó oscuro.",
+  "en": "More light for a video that came out dark."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "luz",
+  "light",
+  "claro"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "brillo": 1.15,
+   "contraste": 0.95
+  }
+ ]
+}

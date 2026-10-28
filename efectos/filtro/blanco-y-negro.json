@@ -1,0 +1,27 @@
+{
+ "formato": 1,
+ "id": "blanco-y-negro",
+ "categoria": "filtro",
+ "nombre": {
+  "es": "Blanco y negro",
+  "en": "Black & white"
+ },
+ "descripcion": {
+  "es": "Clásico y con un poco más de contraste.",
+  "en": "Classic, with a bit more contrast."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "byn",
+  "bw",
+  "clásico",
+  "classic"
+ ],
+ "pasos": [
+  {
+   "tipo": "color",
+   "contraste": 1.1,
+   "grises": 1
+  }
+ ]
+}

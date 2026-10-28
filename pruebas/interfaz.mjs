@@ -56,7 +56,15 @@ const VISTAS = [
   ["shorts-buscando", "E=>{E.buscandoShorts=true}"],
   ["shorts-lista", "E=>{E.buscandoShorts=false;E.shorts={lista:[{i:4,f:28,duracion:24,titulo:'Ahorra una hora',gancho:'¿Sabías…?',por_que:'Pregunta directa.'}]}}"],
   ["shorts-error", "E=>{E.shorts={error:'x'}}"],
-  ["musica", "E=>{E.shorts=null;E.pestana='musica'}"],
+  ["efectos", "E=>{E.shorts=null;E.pestana='efectos'}"],
+  ["efectos-aplicados", "E=>{const p=E.proyectos[0].proyecto;p.efectos=[{efecto:'vintage',pasos:[{tipo:'color',sepia:0.4}]},{efecto:'zoom-golpe',pasos:[{tipo:'zoom',desde:1,hasta:1.25,curva:'golpe'}],i:5,f:8},{efecto:'borrado',pasos:[{tipo:'vineta',fuerza:0.5}],i:9,f:12}];p.divisiones=[10];E.seleccion=[4,8]}"],
+  ["efectos-tramo", "E=>{E.seleccion=null;E.lt.sel={lista:'tramos',k:1};E.fx={categoria:'movimiento',busqueda:''}}"],
+  ["efectos-buscar-nada", "E=>{E.lt.sel={lista:'efectos',k:1};E.fx={categoria:'todos',busqueda:'zzz'}}"],
+  ["catalogo-cargando", "E=>{E.fx={categoria:'todos',busqueda:''};E.catalogo={estado:'cargando',efectos:[],categoria:'todos',busqueda:'',bajando:{}}}"],
+  ["catalogo-error", "E=>{E.catalogo={estado:'error',efectos:[],categoria:'todos',busqueda:'',bajando:{}}}"],
+  ["catalogo", "E=>{E.catalogo={estado:'listo',efectos:[{id:'neon',categoria:'filtro',nombre:{es:'Neón',en:'Neon'},descripcion:{es:'Colores eléctricos.',en:'Electric colors.'},autor:'Corta',pasos:[{tipo:'color',tono:40}]},{id:'vintage',categoria:'filtro',nombre:{es:'Vintage'},pasos:[{tipo:'color',sepia:0.4}]},{id:'zoom-x',categoria:'movimiento',nombre:{es:'Zoom'},pasos:[{tipo:'zoom',desde:1,hasta:1.2}]}],categoria:'todos',busqueda:'',bajando:{'zoom-x':true}}}"],
+  ["catalogo-filtro-vacio", "E=>{E.catalogo.categoria='transicion'}"],
+  ["musica", "E=>{E.catalogo=null;const p=E.proyectos[0].proyecto;p.efectos=[];p.divisiones=[];E.lt.sel=null;E.pestana='musica'}"],
   ["musica-elegida", "E=>{E.proyectos[0].proyecto.musica={archivo:'demo/musica-demo.mp3',volumen:0.15}}"],
   ["linea-pistas", "E=>{const p=E.proyectos[0].proyecto;p.cortes=[{i:0,f:1.1,motivo:'silencio'},{i:3.3,f:4.6,motivo:'muletilla'},{i:9.5,f:10.4,motivo:'manual'},{i:20,f:21,motivo:'ia'},{i:28,f:30.24,motivo:'fuera'}];p.zooms=[{i:5.2,f:7.4,escala:1.25}];p.textos=[{i:1.2,f:4,texto:'Edita en 1 minuto',y:0.16}];E.lt.sel={lista:'textos',k:0}}"],
   ["linea-zoom", "E=>{E.lt.zoom=4;E.lt.sel={lista:'zooms',k:0}}"],
@@ -103,6 +111,29 @@ navegador.newPage = async (opciones) => {
     for (const x of ed.reemplazar) { const r = P.reemplazarTodo(ed.palabras, x.pares); if (!igual(r, [x.esperado, x.n])) m.push("reemplazarTodo " + JSON.stringify(r)); }
     for (const [t, n] of ed.normalizar) if (P.normalizar(t) !== n) m.push("normalizar " + t);
     { const r = P.lineas(ed.lineas.palabras, ed.lineas.por_linea).map((g) => g.map((w) => w.t)); if (!igual(r, ed.lineas.esperado)) m.push("lineas con «linea» " + JSON.stringify(r)); }
+    const fx = c.efectos, pf = { ...fx.proyecto };
+    for (const x of fx.intervalos) {
+      if (!igual(P.intervalosSalida(pf, x.i, x.f), x.esperado)) m.push("intervalosSalida " + JSON.stringify(P.intervalosSalida(pf, x.i, x.f)));
+      if (!igual(P.uniones(pf, x.i, x.f), x.uniones)) m.push("uniones " + JSON.stringify(P.uniones(pf, x.i, x.f)));
+    }
+    for (const x of fx.zoom) {
+      if (!igual(P.segmentosZoom(x.paso, x.a, x.b), x.esperado)) m.push("segmentosZoom " + JSON.stringify(P.segmentosZoom(x.paso, x.a, x.b)));
+      for (const [t, v] of x.valores) if (P.valorEn(x.esperado, t, 1) !== v) m.push(`valorEn zoom ${t}: ${P.valorEn(x.esperado, t, 1)}`);
+    }
+    for (const x of fx.capa) {
+      if (!igual(P.segmentosCapa(x.paso, x.a, x.b, x.juntas, x.pedazos), x.esperado)) m.push("segmentosCapa " + JSON.stringify(P.segmentosCapa(x.paso, x.a, x.b, x.juntas, x.pedazos)));
+      for (const [t, v] of x.valores) if (P.valorEn(x.esperado, t, 0) !== v) m.push(`valorEn capa ${t}: ${P.valorEn(x.esperado, t, 0)}`);
+    }
+    // Lo que ves es lo que exportas: los filtros de color de CSS (como los dibuja este navegador) dan los mismos colores que ffmpeg
+    for (const x of fx.color) {
+      const origen = document.createElement("canvas"); origen.width = 3; origen.height = 1;
+      const o = origen.getContext("2d");
+      x.entrada.forEach(([r, g, b], k) => { o.fillStyle = `rgb(${r},${g},${b})`; o.fillRect(k, 0, 1, 1); });
+      const destino = document.createElement("canvas"); destino.width = 3; destino.height = 1;
+      const d = destino.getContext("2d", { willReadFrequently: true }); d.filter = P.cssColor(x.paso); d.drawImage(origen, 0, 0);
+      const px = d.getImageData(0, 0, 3, 1).data;
+      x.esperado.forEach((e, k) => { const v = [px[k * 4], px[k * 4 + 1], px[k * 4 + 2]]; if (e.some((n, j) => Math.abs(n - v[j]) > 3)) m.push(`color ${JSON.stringify(x.paso)} ${x.entrada[k]}: CSS ${v}, ffmpeg ${e}`); });
+    }
     return m;
   }, casos);
   malos.forEach((x) => falla("lógica distinta a Python: " + x));
@@ -340,6 +371,82 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   const rotas = etiquetas.filter((t) => t && !/^\S{2,}/.test(t.replace("…", "")));
   if (rotas.length) falla("la pista de subtítulos muestra pedazos ilegibles: " + rotas.join(" | "));
   else console.log(`  ✓ Pista de subtítulos legible (${etiquetas.filter(Boolean).length} de ${etiquetas.length} frases caben)`);
+  await p.close();
+}
+
+// 11) Cortes y efectos: dividir, ponerle un efecto a un tramo, borrarlo, la vista previa y el catálogo de la comunidad
+{
+  const p = await navegador.newPage({ viewport: { width: 1360, height: 860 } });
+  p.on("pageerror", (e) => falla("error de JavaScript (cortes y efectos): " + e.message));
+  await p.goto(BASE + "?idioma=es"); await p.waitForSelector(".app");
+  const proyecto = () => p.evaluate(() => { let r; window.Corta._probar((E) => { r = JSON.parse(JSON.stringify(E.proyectos[0].proyecto)); }); return r; });
+  const ir = (t) => p.evaluate((x) => { document.querySelector("#video").currentTime = x; }, t);
+  // Dividir en el cabezal (botón y ⌘B) y elegir el tramo
+  await ir(10); await p.waitForTimeout(150);
+  // El Chromium de Playwright en GitHub no trae H.264: sin video no hay cabezal que mover; se prueba lo demás.
+  const conVideo = await p.evaluate(() => Math.abs(document.querySelector("#video").currentTime - 10) < 0.1 && document.querySelector("#video").readyState >= 1);
+  if (conVideo) {
+    await p.click('[data-accion="dividir"]');
+    await ir(20); await p.waitForTimeout(150);
+    await p.keyboard.press("Control+b");
+  } else {
+    console.log("  - Dividir: este Chromium no reproduce H.264, las divisiones se ponen a mano");
+    await p.evaluate(() => window.Corta._probar((E) => { E.proyectos[0].proyecto.divisiones = [10, 20]; }));
+  }
+  let q = await proyecto();
+  const div = q.divisiones || [];
+  if (div.length !== 2 || Math.abs(div[0] - 10) > 0.05 || Math.abs(div[1] - 20) > 0.05) falla("dividir no dejó las divisiones: " + JSON.stringify(div));
+  else console.log("  ✓ Dividir en el cabezal (botón y ⌘B)");
+  // Un efecto solo en el tramo del medio
+  await p.click('.b-tramo[data-k="1"]');
+  await p.click('#lt-sel [data-pestana="efectos"]');
+  if (!(await p.textContent(".fx-destino").catch(() => "")).includes("0:10,0 a 0:20,0")) falla("el panel de efectos no dice a qué tramo se aplica");
+  await p.click('[data-fx="blanco-y-negro"]');
+  q = await proyecto();
+  const ap = q.efectos?.[0];
+  if (!ap || ap.efecto !== "blanco-y-negro" || Math.abs(ap.i - 10) > 0.05 || Math.abs(ap.f - 20) > 0.05 || !Array.isArray(ap.pasos)) falla("el efecto no quedó en el tramo: " + JSON.stringify(q.efectos));
+  // Vista previa: dentro del tramo el video lleva el filtro de CSS; fuera, no
+  await ir(15); await p.waitForTimeout(150);
+  const dentro = await p.evaluate(() => document.querySelector("#capa-zoom").style.filter);
+  await ir(5); await p.waitForTimeout(150);
+  const fuera = await p.evaluate(() => document.querySelector("#capa-zoom").style.filter);
+  if (!conVideo) console.log("  - Vista previa de efectos: sin H.264 no se prueba");
+  else if (!/grayscale\(1\)/.test(dentro) || fuera) falla(`la vista previa no aplica el efecto solo en su tramo: «${dentro}» / «${fuera}»`);
+  else console.log("  ✓ Efecto en un tramo: se guarda con sus pasos y la vista previa lo muestra solo ahí");
+  // Fundido de entrada a todo el video: capa negra que se va
+  await p.click('[data-accion="fx-todo"]');
+  await p.click('[data-fx="fundido-entrada"]');
+  await ir(0.05); await p.waitForTimeout(150);
+  const capa = await p.evaluate(() => Number(document.querySelector("#capas-fx i")?.style.opacity || 0));
+  if (conVideo && !(capa > 0.8)) falla("el fundido de entrada no se ve en la vista previa: " + capa);
+  // Quitar el efecto del panel y borrar el tramo (queda como corte manual)
+  await p.click('[data-quitar-fx="1"]');
+  q = await proyecto();
+  if (q.efectos.length !== 1) falla("quitar el efecto no lo quitó");
+  await p.click('.b-tramo[data-k="1"]');
+  await p.click('[data-tramo="borrar"]');
+  q = await proyecto();
+  if (!q.cortes.some((c) => c.motivo === "manual" && Math.abs(c.i - 10) < 0.05 && Math.abs(c.f - 20) < 0.05)) falla("borrar el tramo no lo cortó: " + JSON.stringify(q.cortes));
+  else console.log("  ✓ Borrar un tramo lo deja como corte (se puede volver a poner) y el fundido se ve en la vista previa");
+  // Recortar el inicio de un tramo hasta el cabezal
+  await p.click('.b-tramo[data-k="0"]');
+  await ir(3); await p.waitForTimeout(100);
+  await p.click('[data-tramo="inicio"]');
+  q = await proyecto();
+  if (conVideo && !q.cortes.some((c) => c.i === 0 && Math.abs(c.f - 3) < 0.05)) falla("recortar el inicio no cortó hasta el cabezal: " + JSON.stringify(q.cortes));
+  // Catálogo de la comunidad (simulado): abrir, buscar, descargar y usar
+  await p.click('[data-accion="explorar-fx"]');
+  await p.waitForSelector("[data-bajar-fx]", { timeout: 3000 });
+  await p.fill("#buscar-cat", "noche");
+  const encontrados = await p.$$eval("[data-bajar-fx]", (els) => els.map((e) => e.dataset.bajarFx));
+  if (encontrados.join() !== "neon") falla("buscar en el catálogo: " + encontrados.join());
+  await p.click('[data-bajar-fx="neon"]');
+  await p.waitForFunction(() => { let r; window.Corta._probar((E) => { r = E.efectos.some((x) => x.id === "neon" && x.origen === "descargado"); }); return r; }, null, { timeout: 3000 })
+    .then(() => console.log("  ✓ Catálogo: buscar y descargar un efecto lo deja listo para usar"))
+    .catch(() => falla("descargar del catálogo no dejó el efecto disponible"));
+  await p.keyboard.press("Escape");
+  await p.click('[data-fx-cat="filtro"]');
+  if (!(await p.$('[data-fx="neon"]'))) falla("el efecto descargado no aparece en su categoría");
   await p.close();
 }
 

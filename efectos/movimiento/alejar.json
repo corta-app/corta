@@ -1,0 +1,26 @@
+{
+ "formato": 1,
+ "id": "alejar",
+ "categoria": "movimiento",
+ "nombre": {
+  "es": "Alejar",
+  "en": "Zoom out"
+ },
+ "descripcion": {
+  "es": "Empieza de cerca y se aleja suave.",
+  "en": "Starts close and gently pulls back."
+ },
+ "autor": "Corta",
+ "etiquetas": [
+  "alejar",
+  "zoom out"
+ ],
+ "pasos": [
+  {
+   "tipo": "zoom",
+   "desde": 1.2,
+   "hasta": 1,
+   "curva": "suave"
+  }
+ ]
+}
