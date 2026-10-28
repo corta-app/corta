@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-opdszSigM7V+HdHZ449n+756KAzlIQY+lIDwc0946NQ='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'sha256-eM6V+o60xkxbkZ+aqkT/GtKiY5yO519EwSRZNGDhV3E='; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; media-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; upgrade-insecure-requests">
 <title>Corta — editor de video gratis para Shorts, Reels y TikTok con subtítulos automáticos | Alternativa abierta a CapCut</title>
 <meta name="description" content="Editor de video gratis y de código abierto: editas el texto y se edita el video. Subtítulos animados automáticos, quita silencios y muletillas, formato vertical y tu propia IA para sacar Shorts de un video largo. Sin marca de agua y todo en tu computador.">
 <link rel="canonical" href="https://corta-app.github.io/corta/">
@@ -18,7 +18,11 @@
 <meta property="og:description" content="Subtítulos animados, sin silencios ni muletillas y tu propia IA. Para Shorts, Reels y TikTok. Gratis, abierto y sin marca de agua.">
 <meta property="og:image" content="https://corta-app.github.io/corta/img/compartir.png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Corta: el editor y las plantillas, con un video de mentira">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Corta — editas el texto, se edita el video">
+<meta name="twitter:description" content="Subtítulos animados, sin silencios ni muletillas, efectos, plantillas y tu propia IA. Para Shorts, Reels y TikTok. Gratis, abierto y sin marca de agua.">
+<meta name="twitter:image" content="https://corta-app.github.io/corta/img/compartir.png">
 <script type="application/ld+json">
 {
  "@context": "https://schema.org",
@@ -30,7 +34,7 @@
    "image": "https://corta-app.github.io/corta/img/compartir.png",
    "description": "Editor de video para Shorts, Reels y TikTok que transcribe en tu computador para editar por texto, agrega subtítulos animados, quita silencios y muletillas y usa tu propia IA para editar y sacar Shorts de videos largos.",
    "applicationCategory": "MultimediaApplication",
-   "operatingSystem": "macOS, Windows, Linux",
+   "operatingSystem": "macOS 15",
    "license": "https://www.gnu.org/licenses/agpl-3.0.html",
    "isAccessibleForFree": true,
    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
@@ -40,7 +44,8 @@
   {
    "@type": "FAQPage",
    "mainEntity": [
-    { "@type": "Question", "name": "¿Corta es una alternativa gratis a CapCut?", "acceptedAnswer": { "@type": "Answer", "text": "Para lo que más se usa en Shorts, Reels y TikTok (subtítulos animados, cortar silencios, formato vertical) sí: es gratis, de código abierto y sin marca de agua. CapCut tiene muchos más efectos, plantillas y una app de celular; Corta recién parte y se enfoca en editar rápido por texto." } },
+    { "@type": "Question", "name": "¿Corta es una alternativa gratis a CapCut?", "acceptedAnswer": { "@type": "Answer", "text": "Para lo que más se usa en Shorts, Reels y TikTok (subtítulos animados, cortar silencios, formato vertical) sí: es gratis, de código abierto y sin marca de agua. CapCut tiene muchos más efectos y una app de celular; Corta trae efectos, transiciones y plantillas, la comunidad suma más en su catálogo, y se enfoca en editar rápido por texto." } },
+    { "@type": "Question", "name": "¿Puedo deshacer lo que hizo la IA?", "acceptedAnswer": { "@type": "Answer", "text": "Sí. Cada cambio de la IA queda anotado y «Quitar» deshace justo ese cambio, aunque hayas seguido editando. Lo que tocaste a mano después se conserva." } },
     { "@type": "Question", "name": "¿Mis videos se suben a algún lado?", "acceptedAnswer": { "@type": "Answer", "text": "No. La transcripción y la exportación pasan en tu computador. Tu IA solo recibe el texto del video con sus tiempos, con tu propia cuenta." } },
     { "@type": "Question", "name": "¿Pone marca de agua o limita la resolución?", "acceptedAnswer": { "@type": "Answer", "text": "No. Exporta en 1080 px sin marca de agua y sin límite de duración." } },
     { "@type": "Question", "name": "¿En qué idiomas hace subtítulos?", "acceptedAnswer": { "@type": "Answer", "text": "En los que entiende whisper, el transcriptor abierto: español, inglés, portugués, francés y casi 100 idiomas más." } },
@@ -84,7 +89,7 @@
   .boton:hover { filter: brightness(1.07); }
   .aviso { color: var(--suave); font-size: 14.5px; margin-top: 14px; max-width: 60ch; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
-  .chips span { font-size: 13.5px; padding: 6px 12px; border-radius: 999px; background: var(--fondo2); border: 1px solid var(--linea); color: var(--suave); }
+  .chips > span { font-size: 13.5px; padding: 6px 12px; border-radius: 999px; background: var(--fondo2); border: 1px solid var(--linea); color: var(--suave); }
   .chips b { color: var(--texto); font-weight: 600; }
   .telefono { justify-self: center; width: min(320px, 80vw); aspect-ratio: 9 / 16; border-radius: 36px; overflow: hidden; background: #000; box-shadow: 0 40px 110px -20px rgba(0, 0, 0, .8), 0 0 0 9px #1d1f23, 0 0 0 10px #2a2c31; position: relative; }
   .telefono video { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -107,8 +112,8 @@
   .editor { margin-top: 40px; border-radius: 18px; overflow: hidden; border: 1px solid var(--linea); box-shadow: 0 40px 120px -30px rgba(0, 0, 0, .8); }
   .editor img { display: block; width: 100%; height: auto; }
   .pedidos { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 28px; }
-  .pedidos span { padding: 10px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--linea); font-size: 15px; }
-  .pedidos span::before { content: "✦ "; color: var(--acento); }
+  .pedidos > span { padding: 10px 16px; border-radius: 14px; background: var(--panel); border: 1px solid var(--linea); font-size: 15px; }
+  .pedidos > span::before { content: "✦ "; color: var(--acento); }
 
   .tabla { width: 100%; border-collapse: collapse; margin-top: 36px; font-size: 15px; }
   .tabla th, .tabla td { padding: 14px 12px; border-bottom: 1px solid var(--linea); text-align: center; }
@@ -157,11 +162,11 @@
       <a class="boton principal" href="demo/"><span data-es>Probar la vista previa</span><span data-en>Try the live preview</span> →</a>
       <a class="boton" href="https://github.com/corta-app/corta"><span data-es>Ver el código</span><span data-en>See the code</span></a>
     </div>
-    <p class="aviso"><span data-es>La app para <b id="so-es">Mac</b> llega muy pronto. La vista previa funciona en el navegador con un video de mentira. En GitHub, toca «Watch → Custom → Releases» para enterarte cuando salga.</span><span data-en>The <b id="so-en">Mac</b> app is coming very soon. The preview runs in your browser with a made-up video. On GitHub, click “Watch → Custom → Releases” to hear when it ships.</span></p>
+    <p class="aviso"><span data-es>La versión para descargar llega muy pronto: primero en <b>Mac</b> (donde ya se puede <a href="https://github.com/corta-app/corta#instalar">instalar desde el código</a>) y después en Windows y Linux. La vista previa funciona en el navegador con un video de mentira. En GitHub, toca «Watch → Custom → Releases» para enterarte cuando salga.</span><span data-en>The download is coming very soon: first for <b>Mac</b> (where you can already <a href="https://github.com/corta-app/corta#instalar">build it from source</a>), then Windows and Linux. The preview runs in your browser with a made-up video. On GitHub, click “Watch → Custom → Releases” to hear when it ships.</span></p>
     <div class="chips">
       <span>🔒 <b><span data-es>Tus videos no se suben a ningún lado</span><span data-en>Your videos are never uploaded</span></b></span>
       <span>✦ <span data-es>Con Claude, ChatGPT o Gemini</span><span data-en>With Claude, ChatGPT or Gemini</span></span>
-      <span>💻 <span data-es>Mac, Windows y Linux</span><span data-en>Mac, Windows and Linux</span></span>
+      <span>💻 <span data-es>Mac (Windows y Linux en camino)</span><span data-en>Mac (Windows and Linux coming)</span></span>
     </div>
   </div>
   <div class="telefono"><video src="img/despues.mp4" poster="img/despues.jpg" autoplay muted loop playsinline aria-label="Video vertical exportado con Corta (presentadora dibujada, datos ficticios)"></video>
@@ -189,13 +194,16 @@
     <div class="funcion"><div class="ico">📱</div><h3><span data-es>Vertical primero</span><span data-en>Vertical first</span></h3><p><span data-es>9:16, 1:1, 4:5 o 16:9, moviendo el encuadre o con fondo borroso.</span><span data-en>9:16, 1:1, 4:5 or 16:9, moving the framing or with a blurred background.</span></p></div>
     <div class="funcion"><div class="ico">🎬</div><h3><span data-es>Shorts de un video largo</span><span data-en>Shorts from a long video</span></h3><p><span data-es>Tu IA elige los mejores momentos de una clase, un podcast o un live.</span><span data-en>Your AI picks the best moments of a class, a podcast or a live stream.</span></p></div>
     <div class="funcion"><div class="ico">🔓</div><h3><span data-es>Sin marca de agua</span><span data-en>No watermark</span></h3><p><span data-es>1080 px, sin límite de duración y sin cuenta. El original nunca se toca.</span><span data-en>1080 px, no length limit and no account. The original is never touched.</span></p></div>
+    <div class="funcion"><div class="ico">✏️</div><h3><span data-es>Corrige cualquier palabra</span><span data-en>Fix any word</span></h3><p><span data-es>Tócala en el texto o sobre el video. El nombre de tu marca se cambia en todo el video y Corta lo recuerda para los próximos.</span><span data-en>Tap it in the text or on the video. Your brand name changes across the video and Corta remembers it for the next ones.</span></p></div>
+    <div class="funcion"><div class="ico">✨</div><h3><span data-es>Cortes, efectos y plantillas</span><span data-en>Cuts, effects and templates</span></h3><p><span data-es>Divide y recorta en la línea de tiempo, pon filtros, zooms y transiciones, o arma un video desde una plantilla con tus clips. La comunidad suma más.</span><span data-en>Split and trim on the timeline, add filters, zooms and transitions, or build a video from a template with your clips. The community adds more.</span></p></div>
+    <div class="funcion"><div class="ico">🎵</div><h3><span data-es>Música que baja sola</span><span data-en>Music that ducks itself</span></h3><p><span data-es>Música de fondo que baja cuando hablas, en una línea de tiempo con pistas: video, subtítulos, textos y música.</span><span data-en>Background music that ducks when you talk, on a multi-track timeline: video, captions, text and music.</span></p></div>
   </div>
 </div></section>
 
 <section id="ia"><div class="ancho">
   <span class="etiqueta"><span data-es>Tu IA</span><span data-en>Your AI</span></span>
   <h2><span data-es>Dile lo que quieres. Tu IA lo edita.</span><span data-en>Say what you want. Your AI edits it.</span></h2>
-  <p class="intro"><span data-es>Usa la IA que ya tienes (Claude, ChatGPT o Gemini), con tu cuenta. Solo ve el texto con sus tiempos, nunca el video. Responde cambios que Corta revisa antes de aplicar, y cada uno se puede deshacer.</span><span data-en>It uses the AI you already have (Claude, ChatGPT or Gemini), with your account. It only sees the text with its timing, never the video. It answers with changes Corta checks before applying, and each one can be undone.</span></p>
+  <p class="intro"><span data-es>Usa la IA que ya tienes (Claude, ChatGPT o Gemini), con tu cuenta. Solo ve el texto con sus tiempos, nunca el video. Responde cambios que Corta revisa antes de aplicar, y «Quitar» deshace cada uno aunque hayas seguido editando.</span><span data-en>It uses the AI you already have (Claude, ChatGPT or Gemini), with your account. It only sees the text with its timing, never the video. It answers with changes Corta checks before applying, and “Remove” undoes each one even after you kept editing.</span></p>
   <div class="pedidos">
     <span><span data-es>Pon zoom cuando digo el precio</span><span data-en>Zoom in when I say the price</span></span>
     <span><span data-es>Saca la parte donde me equivoco</span><span data-en>Cut the part where I mess up</span></span>
@@ -203,7 +211,7 @@
     <span><span data-es>Subtítulos de una palabra a la vez</span><span data-en>One-word-at-a-time captions</span></span>
     <span><span data-es>Saca los «o sea»</span><span data-en>Remove the “like”s</span></span>
   </div>
-  <div class="editor"><img src="img/editor.png" width="1360" height="820" alt="El editor de Corta: vista previa vertical con subtítulos y la transcripción con los silencios cortados (datos ficticios)" loading="lazy"></div>
+  <div class="editor"><img src="img/editor.png" width="1360" height="820" alt="El editor de Corta: vista previa vertical con subtítulos, la transcripción con los silencios cortados y la línea de tiempo con pistas (datos ficticios)" loading="lazy"></div>
 </div></section>
 
 <section id="comparar"><div class="ancho">
@@ -217,18 +225,19 @@
       <tr><td><span data-es>Subtítulos automáticos</span><span data-en>Automatic captions</span></td><td class="si">✓</td><td class="si">✓</td><td class="no">—</td></tr>
       <tr><td><span data-es>Tus videos no se suben</span><span data-en>Videos never uploaded</span></td><td class="si">✓</td><td class="no">—</td><td class="si">✓</td></tr>
       <tr><td><span data-es>Editar con tu IA en palabras</span><span data-en>Edit with your AI in words</span></td><td class="si">✓</td><td class="no">—</td><td class="no">—</td></tr>
-      <tr><td><span data-es>Efectos, transiciones y plantillas</span><span data-en>Effects, transitions and templates</span></td><td class="no"><span data-es>Pocos (por ahora)</span><span data-en>Few (for now)</span></td><td class="si">✓</td><td class="si">✓</td></tr>
-      <tr><td><span data-es>Línea de tiempo con varias pistas</span><span data-en>Multi-track timeline</span></td><td class="no"><span data-es>Todavía no</span><span data-en>Not yet</span></td><td class="si">✓</td><td class="si">✓</td></tr>
+      <tr><td><span data-es>Efectos, transiciones y plantillas</span><span data-en>Effects, transitions and templates</span></td><td class="medio"><span data-es>Sí, menos (la comunidad suma más)</span><span data-en>Yes, fewer (the community adds more)</span></td><td class="si">✓</td><td class="si">✓</td></tr>
+      <tr><td><span data-es>Línea de tiempo con varias pistas</span><span data-en>Multi-track timeline</span></td><td class="si">✓</td><td class="si">✓</td><td class="si">✓</td></tr>
       <tr><td><span data-es>App de celular</span><span data-en>Phone app</span></td><td class="no">—</td><td class="si">✓</td><td class="no">—</td></tr>
     </tbody></table></div>
-  <p class="nota-tabla"><span data-es>Corta recién parte: se enfoca en lo que más tiempo quita al hacer Shorts. Lo demás lo vamos sumando con la comunidad.</span><span data-en>Corta is just starting: it focuses on what takes the most time when making Shorts. The rest we'll add with the community.</span></p>
+  <p class="nota-tabla"><span data-es>Corta recién parte: se enfoca en lo que más tiempo quita al hacer Shorts. Efectos, plantillas y estilos los vamos sumando con la comunidad; la app de celular todavía no existe.</span><span data-en>Corta is just starting: it focuses on what takes the most time when making Shorts. Effects, templates and styles we keep adding with the community; there's no phone app yet.</span></p>
 </div></section>
 
 <section id="preguntas"><div class="ancho">
   <span class="etiqueta"><span data-es>Preguntas</span><span data-en>FAQ</span></span>
   <h2><span data-es>Lo que la gente pregunta.</span><span data-en>What people ask.</span></h2>
   <div class="preguntas">
-    <details class="p"><summary><span data-es>¿Es una alternativa gratis a CapCut?</span><span data-en>Is it a free CapCut alternative?</span></summary><p><span data-es>Para lo que más se usa en Shorts, Reels y TikTok (subtítulos animados, cortar silencios, formato vertical), sí: gratis, de código abierto y sin marca de agua. CapCut tiene muchos más efectos, plantillas y una app de celular; Corta recién parte y se enfoca en editar rápido por texto.</span><span data-en>For what people use most for Shorts, Reels and TikTok (animated captions, cutting silences, vertical format), yes: free, open source and no watermark. CapCut has far more effects, templates and a phone app; Corta is just starting and focuses on fast text-based editing.</span></p></details>
+    <details class="p"><summary><span data-es>¿Es una alternativa gratis a CapCut?</span><span data-en>Is it a free CapCut alternative?</span></summary><p><span data-es>Para lo que más se usa en Shorts, Reels y TikTok (subtítulos animados, cortar silencios, formato vertical), sí: gratis, de código abierto y sin marca de agua. CapCut tiene muchos más efectos y una app de celular; Corta trae efectos, transiciones y plantillas (y la comunidad suma más en su catálogo), y se enfoca en editar rápido por texto.</span><span data-en>For what people use most for Shorts, Reels and TikTok (animated captions, cutting silences, vertical format), yes: free, open source and no watermark. CapCut has far more effects and a phone app; Corta has effects, transitions and templates (and the community adds more to its catalog), and focuses on fast text-based editing.</span></p></details>
+    <details class="p"><summary><span data-es>¿Puedo deshacer lo que hizo la IA?</span><span data-en>Can I undo what the AI did?</span></summary><p><span data-es>Sí. Cada cambio de la IA queda anotado y «Quitar» deshace justo ese cambio, aunque hayas seguido editando. Lo que tocaste a mano después se conserva.</span><span data-en>Yes. Every AI change is logged and “Remove” undoes just that change, even after you kept editing. What you touched by hand afterwards stays.</span></p></details>
     <details class="p"><summary><span data-es>¿Mis videos se suben a algún lado?</span><span data-en>Are my videos uploaded anywhere?</span></summary><p><span data-es>No. La transcripción y la exportación pasan en tu computador. Tu IA solo recibe el texto del video con sus tiempos, con tu propia cuenta.</span><span data-en>No. Transcription and export happen on your computer. Your AI only receives the video's text with its timing, with your own account.</span></p></details>
     <details class="p"><summary><span data-es>¿Pone marca de agua o limita la resolución?</span><span data-en>Does it add a watermark or limit resolution?</span></summary><p><span data-es>No. Exporta en 1080 px, sin marca de agua y sin límite de duración.</span><span data-en>No. It exports at 1080 px, with no watermark and no length limit.</span></p></details>
     <details class="p"><summary><span data-es>¿En qué idiomas hace subtítulos?</span><span data-en>Which languages does it caption?</span></summary><p><span data-es>En los que entiende whisper, el transcriptor abierto: español, inglés, portugués, francés y casi 100 idiomas más.</span><span data-en>Those whisper, the open transcriber, understands: Spanish, English, Portuguese, French and almost 100 more.</span></p></details>
@@ -261,9 +270,6 @@
   const poner = (l) => { html.lang = l; boton.textContent = l === "es" ? "EN" : "ES"; document.title = TITULOS[l]; };
   poner(guardado || ((navigator.language || "es").toLowerCase().startsWith("es") ? "es" : "en"));
   boton.onclick = () => { const l = html.lang === "es" ? "en" : "es"; poner(l); try { localStorage.setItem("corta-idioma", l); } catch (e) {} };
-  const ua = navigator.userAgent;
-  const so = /Windows/i.test(ua) ? "Windows" : /Linux|X11/i.test(ua) && !/Android/i.test(ua) ? "Linux" : "Mac";
-  document.getElementById("so-es").textContent = so; document.getElementById("so-en").textContent = so;
   const tel = document.querySelector(".telefono video"), sonido = document.getElementById("sonido");
   sonido.onclick = () => { tel.muted = !tel.muted; sonido.firstChild.textContent = tel.muted ? "🔇 " : "🔊 "; if (!tel.muted) { tel.currentTime = 0; tel.play(); } };
 </script>
