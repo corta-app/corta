@@ -6,12 +6,19 @@
 Editas el texto y se edita el video. Subtítulos animados, sin silencios ni muletillas, y tu propia IA hace el trabajo pesado.<br>
 Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.</p>
 
-<p align="center"><a href="https://corta-app.github.io/corta/">Sitio</a> ·
-<a href="https://corta-app.github.io/corta/demo/">Vista previa</a> ·
+<p align="center"><a href="https://corta-app.github.io/corta/"><b>Página</b></a> ·
+<a href="https://corta-app.github.io/corta/demo/"><b>Pruébala en el navegador</b></a> ·
+<a href="#instalar">Instalar</a> ·
 <a href="https://github.com/corta-app/corta/discussions">Comunidad</a> ·
-<a href="CONTRIBUTING.md">Cómo aportar</a> ·
-<a href="SECURITY.md">Seguridad</a> ·
+<a href="#como-aportar">Cómo aportar</a> ·
 <a href="#english">English</a></p>
+
+<p align="center"><picture><source srcset="docs/img/editor.png" media="(prefers-color-scheme: dark)"><img src="docs/img/editor-claro.png" width="860" alt="El editor de Corta: el video vertical con subtítulos, la transcripción con los silencios y muletillas cortados y la línea de tiempo con pistas (video de mentira)"></picture></p>
+<p align="center">
+<picture><source srcset="docs/img/app-celular-oscuro.png" media="(prefers-color-scheme: dark)"><img src="docs/img/app-celular-claro.png" width="250" alt="El editor a ancho de celular (video de mentira)"></picture>
+<picture><source srcset="docs/img/app-plantillas-oscuro.png" media="(prefers-color-scheme: dark)"><img src="docs/img/app-plantillas-claro.png" width="250" alt="Las plantillas: eliges una, pones tus clips o fotos y se arma sola"></picture>
+</p>
+<p align="center"><sub>Video de mentira: Ana es dibujada y su voz es sintética.</sub></p>
 
 ---
 
@@ -23,6 +30,7 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
   lo cambias en todo el video de una vez y Corta lo recuerda para tus próximos videos.
 - **Vertical primero:** 9:16, 1:1, 4:5 o 16:9, con encuadre ajustable o fondo borroso para videos horizontales.
 - **Dile a tu IA lo que quieres:** «pon zoom cuando digo el precio», «saca la parte donde me equivoco», «pon un título al inicio».
+  Si no te gusta, **«Quitar»** deshace justo ese cambio de la IA, aunque hayas seguido editando.
 - **Shorts desde un video largo:** tu IA elige los mejores momentos de una clase, un podcast o un live, y cada uno queda como un video nuevo.
 - **Cortes, efectos y filtros:** divide en el cabezal, borra o recorta un tramo, y ponle a todo el video o a un momento un filtro
   (blanco y negro, cálido, vintage…), un zoom o una transición en cada corte: interferencia, destello, franjas, rebote, barrido o
@@ -34,11 +42,38 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 - **Música de fondo que baja sola cuando hablas**, y una **línea de tiempo con pistas** (video, subtítulos, textos y música) donde
   arrastras los bordes con el mouse, el dedo o el teclado.
 
+<a id="instalar"></a>
+## Instalar
+
+| | Cómo | Estado |
+|---|---|---|
+| 🌐 **Navegador** | [Vista previa con un video de mentira](https://corta-app.github.io/corta/demo/): nada que instalar. | Para mirar cómo funciona |
+| 🍎 **Mac** | [Desde el código](#instalar-en-mac) con `bash build.sh` (Apple Silicon, macOS 15). Trae todo adentro. | Funciona; aún sin versión publicada ni firma de Apple |
+| 🪟 🐧 **Windows y Linux** | La misma interfaz, en una app de escritorio. | En camino |
+
+La IA es opcional y es la tuya, con tu cuenta: Claude Code, Codex (ChatGPT) o Gemini CLI
+([cómo instalarla](https://corta-app.github.io/corta/ia.html)). Sin IA igual editas por texto, limpias silencios, pones subtítulos,
+efectos y plantillas. En GitHub, **Watch → Custom → Releases** te avisa cuando salga la primera versión para descargar.
+
 ## Tus videos son tuyos
 - Transcripción (whisper.cpp) y exportación (ffmpeg) en tu computador. **No hay servidores de Corta**, ni cuentas, ni telemetría.
 - La IA es **la tuya** (Claude Code, Codex o Gemini), con tu cuenta, y solo ve el texto con sus tiempos. Nunca el video ni el audio.
 - El video original nunca se modifica: los cambios viven en un `proyecto.json` abierto, con historial para deshacer.
 - Sin marca de agua, sin límite de resolución ni de duración.
+
+<a id="como-aportar"></a>
+## Cómo aportar
+Corta es gratis y abierta, y la hacemos entre todos. Casi nada exige programar:
+- 💬 **Crea un estilo de subtítulos, un efecto o una plantilla:** son archivos JSON cortos ([estilos](estilos/README.md),
+  [efectos](efectos/README.md), [plantillas](plantillas/README.md)) y se comparten en el
+  [catálogo de la comunidad](https://github.com/corta-app/corta-catalogo), desde donde cualquiera los descarga gratis en la app.
+  Una plantilla la puedes proponer con palabras, sin escribir el JSON.
+- 🎬 **Pruébala con tus videos:** los issues con la etiqueta [`probar`](https://github.com/corta-app/corta/labels/probar).
+- 🗣️ **Conversa** en [Discussions](https://github.com/corta-app/corta/discussions): dudas, ideas o lo que publicaste.
+- 🛠️ **Programa, con o sin IA:** [`AGENTS.md`](AGENTS.md) es la guía para personas y para cualquier IA de programación. Empieza
+  por [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md). ¿Una falla de seguridad? Avísanos en privado: [SECURITY.md](SECURITY.md).
 
 ## Estado
 Versión 0.1, recién nacida. Ya funcionan el motor (cortes, silencios, subtítulos, zooms, textos, encuadre, exportación vertical,
@@ -145,3 +180,8 @@ Spanish-first, English included. Licensed under AGPL-3.0.
 **Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256). Until a release is
 published, build it from source: `git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`
 (installs to `~/Applications/Corta.app`; your videos live in `~/Corta`). Windows and Linux are on the way.
+
+**Try it** in your browser with a made-up video: [live preview](https://corta-app.github.io/corta/demo/?idioma=en). If you don't
+like an AI edit, **Remove** undoes just that change, even after you kept editing. Caption styles, effects and templates are welcome
+in the [community catalog](https://github.com/corta-app/corta-catalogo); questions and ideas in
+[Discussions](https://github.com/corta-app/corta/discussions), in English or Spanish. See [CONTRIBUTING.md](CONTRIBUTING.md).
