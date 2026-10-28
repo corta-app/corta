@@ -49,8 +49,9 @@ const VISTAS = [
   ["vista-corrigiendo", "E=>{E.sugerencia={de:'calumi',a:'Kalumi',n:0,todo:false,recordado:true};E.seleccion=null;E.editar={desde:3,hasta:3,valor:'Ana.',donde:'vista'}}"],
   ["texto-linea", "E=>{E.editar=null;E.sugerencia=null;E.proyectos[0].proyecto.palabras[1].linea='fin';E.proyectos[0].proyecto.palabras[5].linea='sigue';E.seleccion=[1,1]}"],
   ["subtitulos", "E=>{E.pestana='subtitulos'}"],
-  ["ia", "E=>{E.pestana='ia';E.ia={texto:'',enviando:false,historial:[{pedido:'Pon zoom',ok:true,resumen:'Listo.',aplicadas:1},{pedido:'x',ok:false,error:'x'}]}}"],
-  ["ia-enviando", "E=>{E.ia.enviando=true;E.ia.texto='Pon un título'}"],
+  ["ia", "E=>{E.pestana='ia';E.ia={texto:'',enviando:false,historial:[{pedido:'Pon zoom',ok:true,resumen:'Listo.',aplicadas:1,carpeta:E.sel},{pedido:'x',ok:false,error:'x',carpeta:E.sel}]}}"],
+  ["ia-cambios", "E=>{const p=E.proyectos[0].proyecto;p.zooms=[{i:7.1,f:8.6,escala:1.3,origen:'ia-a'}];p.cambios_ia=[{id:'ia-a',estado:'aplicado',pedido:'Pon zoom',resumen:'Puse un zoom.',agregados:{zooms:[{i:7.1,f:8.6,escala:1.3,origen:'ia-a'}]}},{id:'ia-b',estado:'quitado',conservados:2,pedido:'Hazlo cuadrado',resumen:'Lo dejé cuadrado.'},{id:'ia-c',estado:'quitado',resumen:'Listo.',ajustes:[{campo:'lienzo',antes:'9:16',despues:'1:1'}]},{id:'ia-d',estado:'aplicado',resumen:'x',agregados:{zooms:[{i:1,f:2,escala:1.2},{i:3,f:4,escala:1.2}]}},{id:'ia-e',estado:'aplicado',resumen:'x',agregados:{textos:[{i:1,f:2,texto:'x',y:0.2}]}},{id:'ia-f',estado:'aplicado',resumen:'x',agregados:{cortes:[{i:1,f:2,motivo:'ia'},{i:3,f:4,motivo:'ia'}]}}]}"],
+  ["ia-enviando", "E=>{E.ia.enviando=true;E.ia.texto='Pon un título';const p=E.proyectos[0].proyecto;p.zooms=[];p.cambios_ia=[]}"],
   ["shorts", "E=>{E.ia.enviando=false;E.pestana='shorts'}"],
   ["shorts-buscando", "E=>{E.buscandoShorts=true}"],
   ["shorts-lista", "E=>{E.buscandoShorts=false;E.shorts={lista:[{i:4,f:28,duracion:24,titulo:'Ahorra una hora',gancho:'¿Sabías…?',por_que:'Pregunta directa.'}]}}"],
@@ -293,6 +294,52 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   await p.waitForFunction(() => !document.querySelector("[data-vocab-quitar]"), null, { timeout: 2000 }).catch(() => falla("Quitar del vocabulario no lo borró"));
   await p.fill("#vocab-nueva", "Kalumi"); await p.keyboard.press("Enter");
   await p.waitForSelector(".chip-vocab", { timeout: 2000 }).then(() => console.log("  ✓ Ajustes: el vocabulario se ve, se borra y se agregan palabras")).catch(() => falla("no se agregó la palabra al vocabulario"));
+  await p.close();
+}
+
+// 10) Cambios de la IA: cada tarjeta quita justo lo que hizo ese cambio, aunque después se siga editando
+{
+  const p = await navegador.newPage({ viewport: { width: 1360, height: 860 } });
+  p.on("pageerror", (e) => falla("error de JavaScript (quitar un cambio de la IA): " + e.message));
+  await p.goto(BASE + "?idioma=es"); await p.waitForSelector(".app");
+  const proyecto = () => p.evaluate(() => { let r; window.Corta._probar((E) => { r = JSON.parse(JSON.stringify(E.proyectos[0].proyecto)); }); return r; });
+  // Lógica: lo que la persona cambió a mano se conserva; un ajuste que ella volvió a cambiar, también
+  const malos = await p.evaluate(() => {
+    const P = window.Corta._pruebas, m = [], z = (i, o) => ({ i, f: i + 1, escala: 1.3, ...(o ? { origen: o } : {}) });
+    const q = { palabras: [{ t: "Kalumi", i: 0, f: 1 }], cortes: [{ i: 5, f: 6, motivo: "manual" }], zooms: [z(1, "ia-a"), z(3, "ia-a"), z(8), z(10, "ia-b")], textos: [], lienzo: "1:1",
+      subtitulos: { estilo: "neon" }, cambios_ia: [{ id: "ia-a", estado: "aplicado", agregados: { zooms: [z(1, "ia-a"), z(3, "ia-a")] }, ajustes: [{ campo: "lienzo", antes: "9:16", despues: "1:1" }],
+        palabras: [{ antes: [{ t: "calumi", i: 0, f: 1 }], despues: [{ t: "Kalumi", i: 0, f: 1 }] }] },
+      { id: "ia-b", estado: "aplicado", agregados: { zooms: [z(10, "ia-b")] }, ajustes: [{ campo: "subtitulos.estilo", antes: "pop", despues: "caja" }] }] };
+    q.zooms[1].f = 4.5;  // la persona alargó uno de los zooms de la IA
+    const r = P.quitarCambioIA(q, "ia-a");
+    if (JSON.stringify(r) !== JSON.stringify({ quitados: 3, conservados: 1 })) m.push("resultado " + JSON.stringify(r));
+    if (JSON.stringify(q.zooms) !== JSON.stringify([{ i: 3, f: 4.5, escala: 1.3 }, z(8), z(10, "ia-b")])) m.push("zooms " + JSON.stringify(q.zooms));
+    if (q.lienzo !== "9:16" || q.palabras[0].t !== "calumi" || q.cambios_ia[0].estado !== "quitado") m.push("ajustes o palabras");
+    if (P.quitarCambioIA(q, "ia-a") !== null) m.push("quitar dos veces");
+    const r2 = P.quitarCambioIA(q, "ia-b");
+    if (r2.conservados !== 1 || q.subtitulos.estilo !== "neon" || q.zooms.length !== 2) m.push("estilo cambiado después por la persona " + JSON.stringify([r2, q.subtitulos]));
+    if (P.textoQueCabe("hola mundo", 4, "11px sans-serif") !== "" || !/^hola…$/.test(P.textoQueCabe("hola mundo grande y largo", 52, "11px sans-serif"))) m.push("textoQueCabe");
+    return m;
+  });
+  malos.forEach((x) => falla("quitar un cambio de la IA: " + x));
+  // En la interfaz: pedir zooms (IA simulada), editar a mano después y quitar solo los zooms de la IA
+  await p.click('[data-pestana="ia"]');
+  await p.fill("#pedido-ia", "Pon zoom cuando digo algo importante"); await p.click('[data-accion="pedir-ia"]');
+  await p.waitForSelector("[data-quitar-ia]", { timeout: 4000 });
+  const etiqueta = await p.textContent("[data-quitar-ia]");
+  await p.evaluate(() => window.Corta._probar((E) => { E.proyectos[0].proyecto.cortes.push({ i: 20, f: 21, motivo: "manual" }); E.proyectos[0].proyecto.lienzo = "4:5"; }));
+  await p.click("[data-quitar-ia]");
+  const q = await proyecto();
+  if (etiqueta.trim() !== "Quitar estos 3 zooms") falla("el botón no dice qué quita: " + etiqueta);
+  else if (q.zooms.length || !q.cortes.some((c) => c.i === 20) || q.lienzo !== "4:5" || q.cambios_ia[0].estado !== "quitado") falla("quitar el cambio tocó otra cosa: " + JSON.stringify([q.zooms, q.cortes, q.lienzo]));
+  else if (!(await p.textContent(".historial-ia")).includes("Quitado")) falla("la tarjeta no quedó como «Quitado»");
+  else if (!malos.length) console.log("  ✓ Quitar un cambio de la IA quita justo lo suyo (aunque hayas seguido editando) y conserva lo que cambiaste a mano");
+  // Línea de tiempo: la pista de subtítulos nunca muestra letras sueltas
+  await p.evaluate(() => window.Corta._probar((E) => { E.proyectos[0].proyecto.subtitulos.palabras_por_linea = 1; }));
+  const etiquetas = await p.$$eval(".pista-subtitulos .etq", (els) => els.map((e) => e.textContent));
+  const rotas = etiquetas.filter((t) => t && !/^\S{2,}/.test(t.replace("…", "")));
+  if (rotas.length) falla("la pista de subtítulos muestra pedazos ilegibles: " + rotas.join(" | "));
+  else console.log(`  ✓ Pista de subtítulos legible (${etiquetas.filter(Boolean).length} de ${etiquetas.length} frases caben)`);
   await p.close();
 }
 

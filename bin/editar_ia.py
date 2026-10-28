@@ -16,16 +16,42 @@ import os
 import re
 import shutil
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ia  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
+import vocabulario  # noqa: E402
+
+#: Lo que cambió la IA queda anotado en el proyecto («cambios_ia», los últimos MAX_CAMBIOS) para poder quitar justo ese cambio
+#: después, aunque la persona haya seguido editando (ui/app.js, `quitarCambioIA`). Formato en el README.
+MAX_CAMBIOS = 20
+AJUSTES = ("lienzo", "subtitulos.estilo", "subtitulos.activos", "subtitulos.palabras_por_linea", "musica.volumen")
+
+
+def leer_campo(p, campo):
+    v = p
+    for k in campo.split("."):
+        v = v.get(k) if isinstance(v, dict) else None
+    return v
+
+
+def nuevo_id():
+    """ia-<base 36 del tiempo en ms>: corto, único en el proyecto y sin nada de la persona."""
+    n, r = time.time_ns() // 1_000_000, ""
+    while n:
+        n, x = divmod(n, 36)
+        r = "0123456789abcdefghijklmnopqrstuvwxyz"[x] + r
+    return "ia-" + r
 
 OPERACIONES = """- {"op": "cortar", "desde": N, "hasta": M}             saca las palabras N a M (incluidas)
 - {"op": "restaurar", "desde": N, "hasta": M}          vuelve a poner las palabras N a M si estaban cortadas
 - {"op": "zoom", "desde": N, "hasta": M, "escala": 1.0-1.6}   acerca la imagen mientras se dicen esas palabras
-- {"op": "texto", "desde": N, "hasta": M, "texto": "..."}      texto grande arriba (máx. 40 caracteres) mientras se dicen
+- {"op": "texto", "desde": N, "hasta": M, "texto": "..."}      título o dato clave arriba (máx. 40 caracteres) mientras se dicen;
+                                                       nunca repitas lo que se dice: eso ya lo muestran los subtítulos
+- {"op": "corregir", "desde": N, "hasta": M, "texto": "..."}   corrige cómo quedaron escritas esas palabras (nombres, marcas);
+                                                       mantiene los tiempos, solo cambia el texto del subtítulo
 - {"op": "estilo", "id": "<id>"}                        cambia el estilo de los subtítulos
 - {"op": "subtitulos", "activos": true|false, "palabras_por_linea": 1-6}
 - {"op": "lienzo", "valor": "9:16"|"1:1"|"4:5"|"16:9"}
@@ -76,12 +102,18 @@ def leer_json_ia(texto):
         return None
 
 
-def aplicar(p, operaciones, estilos):
-    """Aplica las operaciones válidas sobre una copia. Devuelve (proyecto_nuevo, aplicadas, ignoradas)."""
+def aplicar(p, operaciones, estilos, origen=None):
+    """Aplica las operaciones válidas sobre una copia. Devuelve (proyecto_nuevo, aplicadas, ignoradas). Con `origen` (el id del
+    cambio), lo que se agrega lleva `"origen": <id>` y en `cambios_ia` queda qué agregó y qué cambió, para poder quitarlo."""
     q = copy.deepcopy(p)
     w = q["palabras"]
     n = len(w)
-    hechas, malas = [], []
+    hechas, malas, correcciones = [], [], []
+
+    def marca(o):
+        if origen:
+            o["origen"] = origen
+        return o
 
     def rango(o):
         d, h = o.get("desde"), o.get("hasta")
@@ -91,15 +123,16 @@ def aplicar(p, operaciones, estilos):
 
     for o in operaciones if isinstance(operaciones, list) else []:
         tipo = o.get("op") if isinstance(o, dict) else None
-        r = rango(o) if tipo in ("cortar", "restaurar", "zoom", "texto") else None
+        r = rango(o) if tipo in ("cortar", "restaurar", "zoom", "texto", "corregir") else None
         if tipo == "cortar" and r:
             proyecto.cortar_palabras(q, r[0], r[1], "ia")
+            marca(q["cortes"][-1])
         elif tipo == "restaurar" and r:
             proyecto.restaurar(q, w[r[0]]["i"] - 0.01, w[r[1]]["f"] + 0.01)
         elif tipo == "zoom" and r and isinstance(o.get("escala"), (int, float)) and 1 <= o["escala"] <= 1.6:
-            q["zooms"].append({"i": w[r[0]]["i"], "f": w[r[1]]["f"], "escala": round(float(o["escala"]), 2)})
+            q["zooms"].append(marca({"i": w[r[0]]["i"], "f": w[r[1]]["f"], "escala": round(float(o["escala"]), 2)}))
         elif tipo == "texto" and r and isinstance(o.get("texto"), str) and 0 < len(o["texto"].strip()) <= 40:
-            q["textos"].append({"i": w[r[0]]["i"], "f": w[r[1]]["f"], "texto": o["texto"].strip(), "y": 0.18})
+            q["textos"].append(marca({"i": w[r[0]]["i"], "f": w[r[1]]["f"], "texto": o["texto"].strip(), "y": 0.18}))
         elif tipo == "estilo" and o.get("id") in estilos:
             q["subtitulos"]["estilo"] = o["id"]
         elif tipo == "subtitulos" and (isinstance(o.get("activos"), bool) or isinstance(o.get("palabras_por_linea"), int)):
@@ -111,10 +144,36 @@ def aplicar(p, operaciones, estilos):
             q["lienzo"] = o["valor"]
         elif tipo == "musica" and q.get("musica") and isinstance(o.get("volumen"), (int, float)) and 0 <= o["volumen"] <= 0.5:
             q["musica"]["volumen"] = round(float(o["volumen"]), 2)
+        elif tipo == "corregir" and r and isinstance(o.get("texto"), str) and 0 < len(o["texto"].strip()) <= 80 \
+                and not any(a <= r[1] and r[0] <= b for a, b, _ in correcciones):
+            correcciones.append((r[0], r[1], o["texto"].strip()))  # al final, de atrás para adelante (los números no se corren)
         else:
             malas.append(o)
             continue
         hechas.append(o)
+    cambios_palabras = []
+    for a, b, texto in sorted(correcciones, reverse=True):
+        antes = q["palabras"][a:b + 1]
+        q["palabras"] = vocabulario.editar_palabras(q["palabras"], a, b, texto)
+        cambios_palabras.insert(0, {"antes": antes, "despues": q["palabras"][a:a + len(texto.split())]})
+    if origen and hechas:
+        agregados = {}
+        for lista in ("zooms", "textos", "cortes"):
+            suyos = [o for o in q.get(lista, []) if o.get("origen") == origen]
+            if suyos:
+                agregados[lista] = copy.deepcopy(suyos)
+        cambio = {"id": origen, "estado": "aplicado", "fecha": time.strftime("%Y-%m-%dT%H:%M:%S"), "agregados": agregados}
+        ajustes = [{"campo": c, "antes": leer_campo(p, c), "despues": leer_campo(q, c)} for c in AJUSTES if leer_campo(p, c) != leer_campo(q, c)]
+        if ajustes:
+            cambio["ajustes"] = ajustes
+        antes_c = [c for c in p.get("cortes", [])]
+        despues_c = [c for c in q["cortes"] if c.get("origen") != origen]
+        quitados, nuevos = [c for c in antes_c if c not in despues_c], [c for c in despues_c if c not in antes_c]
+        if quitados or nuevos:
+            cambio["restaurados"] = {"antes": quitados, "despues": nuevos}
+        if cambios_palabras:
+            cambio["palabras"] = cambios_palabras
+        q["cambios_ia"] = (q.get("cambios_ia") or [])[-(MAX_CAMBIOS - 1):] + [cambio]
     if proyecto.validar(q):
         return p, [], list(operaciones)
     return q, hechas, malas
@@ -131,10 +190,14 @@ def pedir(carpeta, pedido):
     datos = leer_json_ia(texto)
     if not isinstance(datos, dict):
         return {"ok": False, "error": f"{ia.nombre()} no respondió con cambios que pueda aplicar. Prueba diciéndolo de otra forma."}
-    nuevo, hechas, malas = aplicar(p, datos.get("operaciones", []), estilos)
+    origen = nuevo_id()
+    nuevo, hechas, malas = aplicar(p, datos.get("operaciones", []), estilos, origen)
+    resumen = str(datos.get("resumen", ""))[:300]
     if hechas:
+        cambio = nuevo["cambios_ia"][-1]
+        cambio["pedido"], cambio["resumen"] = pedido.strip()[:200], resumen
         proyecto.guardar(carpeta, nuevo)
-    return {"ok": True, "resumen": str(datos.get("resumen", ""))[:300], "aplicadas": len(hechas), "ignoradas": len(malas),
+    return {"ok": True, "resumen": resumen, "aplicadas": len(hechas), "ignoradas": len(malas), "cambio": origen if hechas else None,
             "proyecto": nuevo}
 
 
@@ -202,6 +265,7 @@ def crear_short(carpeta, desde, hasta, titulo):
     q["zooms"] = [z for z in q["zooms"] if z["f"] > desde and z["i"] < hasta]
     q["textos"] = [t for t in q["textos"] if t["f"] > desde and t["i"] < hasta]
     q["lienzo"] = "9:16"
+    q["cambios_ia"] = []  # los cambios de la IA se quitan en el video donde se hicieron
     if problemas := proyecto.validar(q):  # antes de crear la carpeta y enlazar el video
         raise ValueError(" ".join(problemas[:3]))
     limpio = re.sub(r"[\\/:*?<>|]+", " ", q["titulo"])[:40]

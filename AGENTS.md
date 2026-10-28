@@ -49,6 +49,12 @@ vecinos); el formato no cambia. Los bordes se arrastran con eventos de puntero (
 teclado. En la vista previa la música suena en el tiempo del video exportado (parte en 0 y se repite, como en `render.py`) y baja con
 las palabras que quedan (`tramosVoz`, `cuantoBaja`), imitando el sidechain que ffmpeg hace con la voz al exportar.
 
+**Cambios de la IA:** `editar_ia.aplicar` marca lo que agrega con `origen: <id>` (`ia-<base36>`) y anota el cambio en `cambios_ia`
+(qué agregó, qué ajustes cambió con su valor anterior, cortes que volvió a poner y palabras corregidas). Cada tarjeta de la pestaña IA
+sale de ahí y «Quitar estos N zooms» llama `quitarCambioIA` (solo en `ui/app.js`): quita lo que sigue tal como lo dejó la IA,
+devuelve los ajustes que nadie volvió a cambiar y conserva (sin `origen`) lo que la persona ya editó, contándolo en `conservados`.
+El resultado se guarda como cualquier edición (y se puede deshacer).
+
 ## Puente interfaz ↔ app
 La UI llama `host.enviar(accion, datos)` y la app responde con `window.Corta.<funcion>(json)`; en el navegador responde `simular()`.
 Acciones: `listo, config, guardarProyecto, deshacer, elegirVideo, soltarVideo, transcribir, limpiar, pedirIA, buscarShorts, crearShort,

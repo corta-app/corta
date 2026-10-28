@@ -99,6 +99,8 @@ def nuevo(titulo, fuente):
 
 # El video del proyecto es un archivo dentro de su carpeta («original.mp4»): sin «/» ni «\\», sin empezar con «-» (ffmpeg lo
 # tomaría como opción) y sin caracteres de control. Así un proyecto.json cambiado a mano no hace leer ni enlazar archivos de afuera.
+#: Id de un cambio de la IA («origen» de lo que agregó y «id» en cambios_ia).
+ORIGEN = re.compile(r"ia-[0-9a-z]{1,24}")
 ARCHIVO_FUENTE = re.compile(r"[^\\/\x00-\x1f\-][^\\/\x00-\x1f]{0,199}")
 
 
@@ -157,6 +159,15 @@ def validar(p):
         e.append("subtitulos.palabras_por_linea debe estar entre 1 y 8.")
     if not (isinstance(s.get("posicion"), (int, float)) and 0.1 <= s["posicion"] <= 0.95):
         e.append("subtitulos.posicion debe estar entre 0.1 y 0.95.")
+    for lista in ("cortes", "zooms", "textos"):
+        if any(isinstance(o, dict) and "origen" in o and not (isinstance(o["origen"], str) and ORIGEN.fullmatch(o["origen"]))
+               for o in p.get(lista, [])):
+            e.append(f"{lista}: origen debe ser el id de un cambio de la IA.")
+    c = p.get("cambios_ia")
+    if c is not None and not (isinstance(c, list) and len(c) <= 50 and all(
+            isinstance(x, dict) and isinstance(x.get("id"), str) and ORIGEN.fullmatch(x["id"]) and x.get("estado") in ("aplicado", "quitado")
+            for x in c)):
+        e.append("cambios_ia: lista de {id, estado: aplicado|quitado, …}.")
     m = p.get("musica")
     if m is not None and not (isinstance(m, dict) and isinstance(m.get("archivo"), str) and m["archivo"].strip()
                               and "\x00" not in m["archivo"] and isinstance(m.get("volumen"), (int, float))

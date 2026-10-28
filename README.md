@@ -71,6 +71,7 @@ Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal c
 | `cortes` | `[{i, f, motivo}]`: lo que no va. `motivo`: `silencio`, `muletilla`, `manual`, `ia` o `fuera` (fuera de un Short). |
 | `subtitulos` | `{activos, estilo, palabras_por_linea, posicion}` |
 | `zooms`, `textos` | `[{i, f, escala}]` y `[{i, f, texto, y}]` |
+| `cambios_ia` | (opcional) Lo que hizo tu IA, para quitar justo ese cambio aunque hayas seguido editando: `[{id, estado: "aplicado" \| "quitado", pedido, resumen, fecha, agregados: {zooms, textos, cortes}, ajustes?: [{campo, antes, despues}], restaurados?: {antes, despues}, palabras?: [{antes, despues}], conservados?}]` (los últimos 20). Lo que agregó la IA lleva `"origen": "<id>"`. |
 | `musica` | `null` o `{archivo, volumen}`: `archivo` relativo a la carpeta del proyecto (la app copia la canción a `musica/`) o una ruta absoluta; `volumen` de 0 a 1. La música baja sola cuando hablas. |
 
 Todos los tiempos están en segundos **del video original**: los cortes dicen qué se saca y lo demás se conserva.

@@ -9,6 +9,7 @@ if "La persona te pide un cambio" in pedido:
         {"op": "zoom", "desde": 6, "hasta": 8, "escala": 1.3},
         {"op": "cortar", "desde": 1, "hasta": 3},
         {"op": "estilo", "id": "neon"},
+        {"op": "corregir", "desde": 5, "hasta": 5, "texto": "Kalumi"},
         {"op": "cortar", "desde": 2, "hasta": 999},
         {"op": "borrar_todo"},
     ], "resumen": "Puse zoom, corté el saludo y cambié el estilo."}, ensure_ascii=False))

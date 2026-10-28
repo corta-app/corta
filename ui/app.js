@@ -231,6 +231,52 @@
     return [r, n];
   }
 
+  // ───────────── Quitar un cambio de la IA (cambios_ia, lo anota bin/editar_ia.py) ─────────────
+  const leerCampo = (p, campo) => campo.split(".").reduce((v, k) => (v && typeof v === "object" ? v[k] : undefined), p);
+  function ponerCampo(p, campo, valor) {
+    const ks = campo.split("."), ultimo = ks.pop(), o = ks.reduce((v, k) => (v && typeof v === "object" ? v[k] : undefined), p);
+    if (o && typeof o === "object") o[ultimo] = valor;
+  }
+  const igualJSON = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  /** Quita justo lo que hizo el cambio `id` de la IA, aunque después se haya editado otra cosa: lo que agregó (zooms, textos, cortes,
+   *  efectos con `origen: id`), los ajustes que cambió, los cortes que volvió a poner y las palabras que corrigió. Lo que la persona
+   *  ya cambió a mano se conserva (deja de ser «de la IA») y se cuenta en `conservados`. Devuelve {quitados, conservados} o null. */
+  function quitarCambioIA(p, id) {
+    const c = (p.cambios_ia || []).find((x) => x.id === id);
+    if (!c || c.estado === "quitado") return null;
+    let quitados = 0, conservados = 0;
+    for (const lista of ["zooms", "textos", "cortes", "efectos"]) {
+      if (!Array.isArray(p[lista])) continue;
+      const copias = (c.agregados?.[lista] || []).map((x) => JSON.stringify(x));
+      p[lista] = p[lista].filter((o) => {
+        if (o.origen !== id) return true;
+        const k = copias.indexOf(JSON.stringify(o));
+        if (k >= 0) { copias.splice(k, 1); quitados++; return false; }
+        conservados++; delete o.origen; return true;
+      });
+    }
+    for (const a of c.ajustes || []) {
+      if (igualJSON(leerCampo(p, a.campo), a.despues)) { ponerCampo(p, a.campo, a.antes); quitados++; } else conservados++;
+    }
+    const rs = c.restaurados;
+    if (rs) {
+      const actuales = p.cortes.map((x) => JSON.stringify(x));
+      if ((rs.despues || []).every((x) => actuales.includes(JSON.stringify(x)))) {
+        const fuera = (rs.despues || []).map((x) => JSON.stringify(x));
+        p.cortes = p.cortes.filter((x) => { const k = fuera.indexOf(JSON.stringify(x)); if (k >= 0) { fuera.splice(k, 1); return false; } return true; }).concat(clonarJSON(rs.antes || []));
+        quitados++;
+      } else conservados++;
+    }
+    for (const w of [...(c.palabras || [])].reverse()) {
+      const n = w.despues.length, k = p.palabras.findIndex((_, j) => igualJSON(p.palabras.slice(j, j + n), w.despues));
+      if (k >= 0) { p.palabras.splice(k, n, ...clonarJSON(w.antes)); quitados++; } else conservados++;
+    }
+    c.estado = "quitado";
+    if (conservados) c.conservados = conservados;
+    return { quitados, conservados };
+  }
+  const clonarJSON = (o) => JSON.parse(JSON.stringify(o));
+
   // ───────────── Utilidades ─────────────
   const proy = () => E.proyectos.find((x) => x.carpeta === E.sel);
   const P = () => proy()?.proyecto;
@@ -270,6 +316,7 @@
     if (nuevo && viejo && viejo.getAttribute("src") === nuevo.getAttribute("src")) nuevo.replaceWith(viejo);
     if ($("#video")) ajustarPantalla();  // el tamaño sale del proyecto, no hace falta esperar a que cargue el video
     if (activo) document.getElementById(activo)?.focus();
+    ajustarEtiquetas();
     if (activo === "editar-palabra" || activo === "editar-sub") { const inp = document.getElementById(activo); inp?.setSelectionRange?.(inp.value.length, inp.value.length); }
   }
 
@@ -489,15 +536,34 @@
   }
 
   const EJEMPLOS_IA = ["Saca la parte donde me equivoco", "Pon zoom cuando digo algo importante", "Pon un título grande al inicio", "Subtítulos de una palabra a la vez", "Hazlo cuadrado para Instagram"];
+  /** Qué dice el botón de un cambio de la IA: lo que agregó, contado («Quitar estos 6 zooms»), o «Quitar este cambio». */
+  function etiquetaQuitar(c) {
+    const a = c.agregados || {}, listas = Object.keys(a).filter((k) => a[k]?.length);
+    const otros = (c.ajustes?.length || 0) + (c.restaurados ? 1 : 0) + (c.palabras?.length || 0);
+    if (listas.length === 1 && !otros) {
+      const n = a[listas[0]].length, nombres = { zooms: ["Quitar este zoom", "Quitar estos {n} zooms"], textos: ["Quitar este texto", "Quitar estos {n} textos"],
+        cortes: ["Quitar este corte", "Quitar estos {n} cortes"], efectos: ["Quitar este efecto", "Quitar estos {n} efectos"] }[listas[0]];
+      if (nombres) return Tp(n === 1 ? nombres[0] : nombres[1], { n });
+    }
+    return Tp("Quitar este cambio");
+  }
   function panelIA() {
-    const ia = E.ia, nombre = esc(nombreIA());
-    const historial = ia.historial.map((c) => `<div class="cambio ${c.error ? "error" : ""}"><span class="pedido" data-sin-traducir>«${esc(c.pedido)}»</span>
-      <span data-sin-traducir>${esc(c.error || c.resumen)}</span>${c.ok && c.aplicadas ? ` <button class="boton sutil" data-accion="deshacer" style="padding:2px 6px">↶ <span>Deshacer</span></button>` : ""}</div>`).join("");
+    const ia = E.ia, nombre = esc(nombreIA()), p = P();
+    // Lo que la IA cambió en este video queda anotado en el proyecto: cada tarjeta quita justo ese cambio (`quitarCambioIA`).
+    const cambios = [...(p.cambios_ia || [])].reverse().map((c) => {
+      const pie = c.estado === "quitado"
+        ? `<span class="estado-cambio">${c.conservados ? frase(c.conservados === 1 ? "Quitado. Dejé 1 cosa que cambiaste a mano." : "Quitado. Dejé {n} cosas que cambiaste a mano.", { n: c.conservados }) : "Quitado"}</span>`
+        : `<button class="boton chico" data-quitar-ia="${esc(c.id)}" data-sin-traducir>${esc(etiquetaQuitar(c))}</button>`;
+      return `<div class="cambio ${c.estado === "quitado" ? "quitado" : ""}">${c.pedido ? `<span class="pedido" data-sin-traducir>«${esc(c.pedido)}»</span>` : ""}
+        <span data-sin-traducir>${esc(c.resumen || tr("Listo."))}</span><div class="pie-cambio">${pie}</div></div>`;
+    }).join("");
+    const historial = ia.historial.filter((c) => c.carpeta === E.sel).map((c) => `<div class="cambio ${c.error ? "error" : ""}"><span class="pedido" data-sin-traducir>«${esc(c.pedido)}»</span>
+      <span data-sin-traducir>${esc(c.error || c.resumen)}</span></div>`).join("") + cambios;
     return `<div class="tarjeta"><h3>${frase("Dile a {ia} qué cambiar", { ia: nombre })}</h3>
       <textarea id="pedido-ia" rows="3" placeholder="${esc(tr("Ej.: corta desde «te muestro» hasta «cómo» y pon zoom en «publicar»"))}" ${ia.enviando ? "disabled" : ""} data-sin-traducir>${esc(ia.texto)}</textarea>
       <div class="ejemplos">${EJEMPLOS_IA.map((e) => `<button class="chip" data-ejemplo="${esc(tr(e))}">${esc(e)}</button>`).join("")}</div>
       <button class="boton principal grande" data-accion="pedir-ia" ${ia.enviando ? "disabled" : ""}>${ia.enviando ? frase("{ia} está editando…", { ia: nombre }) : "Aplicar"}</button>
-      <p class="nota">${frase("{ia} usa tu cuenta y solo ve el texto con sus tiempos, nunca el video. Puedes deshacer cada cambio.", { ia: nombre })}</p></div>
+      <p class="nota">${frase("{ia} usa tu cuenta y solo ve el texto con sus tiempos, nunca el video. Puedes quitar cada cambio, aunque hayas seguido editando.", { ia: nombre })}</p></div>
       <div class="historial-ia">${historial}</div>`;
   }
 
@@ -580,18 +646,19 @@
       return `<span class="borde ${b}" id="lt-${lista}-${k}-${b}" role="slider" tabindex="0" data-borde="${b}" aria-label="${esc(nombre)}"
         aria-valuemin="${lo}" aria-valuemax="${hi}" aria-valuenow="${o[b]}" aria-valuetext="${esc(relojFino(o[b]))}" data-sin-traducir></span>`;
     }).join("");
-    const bloque = (lista, k, o, clase, etiqueta = "", titulo = "") => `<div class="bloque ${clase} ${sel?.lista === lista && sel.k === k ? "sel" : ""}"
-      data-lt="${lista}" data-k="${k}" style="${pos(o)}"${titulo ? ` title="${esc(titulo)}"` : ""}>${bordes(lista, k, o)}<span class="etq" data-sin-traducir>${etiqueta}</span></div>`;
+    // Las etiquetas con texto de la persona se llenan después, con lo que cabe (`ajustarEtiquetas`): nunca letras sueltas.
+    const bloque = (lista, k, o, clase, etiqueta = "", titulo = "", texto = null) => `<div class="bloque ${clase} ${sel?.lista === lista && sel.k === k ? "sel" : ""}"
+      data-lt="${lista}" data-k="${k}" style="${pos(o)}"${titulo ? ` title="${esc(titulo)}"` : ""}>${bordes(lista, k, o)}<span class="etq" data-sin-traducir${texto != null ? ` data-texto="${esc(texto)}"` : ""}>${etiqueta}</span></div>`;
     const onda = Array.from({ length: 120 }, (_, k) => {
       const t = (k + 0.5) / 120 * dur, habla = p.palabras.some((w) => w.i <= t && t <= w.f);
       return `<i style="height:${habla ? 30 + ((k * 37) % 50) : 4}%"></i>`;
     }).join("");
     const cortes = p.cortes.map((c, k) => bloque("cortes", k, c, "b-corte", "", MOTIVOS[c.motivo] || "")).join("");
     const zooms = p.zooms.map((z, k) => bloque("zooms", k, z, "b-zoom", esc(`🔍 ${z.escala}×`))).join("");
-    const textos = p.textos.map((x, k) => bloque("textos", k, x, "b-texto", esc(x.texto))).join("");
+    const textos = p.textos.map((x, k) => bloque("textos", k, x, "b-texto", "", "", x.texto)).join("");
     const cortados = unir(p.cortes);
     const subs = lineas(p.palabras.filter((w) => !palabraCortada(p, w, cortados)), p.subtitulos.palabras_por_linea)
-      .map((g) => `<div class="bloque b-sub" style="${pos({ i: g[0].i, f: g[g.length - 1].f })}"><span class="etq" data-sin-traducir>${esc(g.map((w) => w.t).join(" "))}</span></div>`).join("");
+      .map((g) => { const t = g.map((w) => w.t).join(" "); return `<div class="bloque b-sub" style="${pos({ i: g[0].i, f: g[g.length - 1].f })}" title="${esc(t)}" data-sin-traducir><span class="etq" data-sin-traducir data-texto="${esc(t)}"></span></div>`; }).join("");
     const sombras = cortados.map((c) => `<span style="${pos(c)}"></span>`).join("");
     let musica = `<button class="lt-agregar" data-accion="elegir-musica">＋ <span>Agregar música</span></button>`;
     if (p.musica) {
@@ -624,6 +691,25 @@
           <div class="lt-sombras" aria-hidden="true">${sombras}</div>
           <span class="cabezal" id="cabezal" style="left:0"></span></div></div></div></div>`;
   }
+  /** Lo que cabe de un texto en `px`: entero; si no, cortado en una palabra con «…»; si ni la primera palabra cabe, nada. */
+  let medidor = null;
+  function textoQueCabe(texto, px, fuente) {
+    medidor ||= document.createElement("canvas").getContext("2d");
+    medidor.font = fuente;
+    const ancho = (t) => medidor.measureText(t).width;
+    if (ancho(texto) <= px) return texto;
+    let r = "";
+    for (const w of texto.split(" ")) { const t = r ? r + " " + w : w; if (ancho(t + "…") > px) break; r = t; }
+    return r ? r + "…" : "";
+  }
+  function ajustarEtiquetas() {
+    let fuente = null;
+    for (const el of document.querySelectorAll(".lt .etq[data-texto]")) {
+      fuente ||= getComputedStyle(el).font;
+      const t = textoQueCabe(el.dataset.texto, el.parentElement.getBoundingClientRect().width - 14, fuente);
+      if (el.textContent !== t) el.textContent = t;
+    }
+  }
   function infoSel() {
     const p = P(), s = E.lt.sel, o = s && p?.[s.lista]?.[s.k];
     if (!o) return `<span class="nota">Arrastra los bordes de un tramo para ajustarlo. Con el teclado, usa las flechas.</span>`;
@@ -650,6 +736,7 @@
       h.setAttribute("aria-valuemin", lo); h.setAttribute("aria-valuemax", hi);
       h.setAttribute("aria-valuenow", o[b]); h.setAttribute("aria-valuetext", relojFino(o[b]));
     }
+    ajustarEtiquetas();
     pintarInfo();
   }
   function quitarBloque(lista, k) {
@@ -855,7 +942,7 @@
     pant.dataset.escala = pw / W;
     // La línea de tiempo: con su ancho real se eligen cada cuánto van las marcas de la regla.
     const vista = $("#lt-vista");
-    if (vista && vista.clientWidth && vista.clientWidth !== E.lt.ancho) { E.lt.ancho = vista.clientWidth; const m = $("#lt-marcas"); if (m) m.innerHTML = marcasRegla(); }
+    if (vista && vista.clientWidth && vista.clientWidth !== E.lt.ancho) { E.lt.ancho = vista.clientWidth; const m = $("#lt-marcas"); if (m) m.innerHTML = marcasRegla(); ajustarEtiquetas(); }
     actualizarCapas();
   }
   let tramosCache = null, tramosDe = null;
@@ -974,7 +1061,7 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra]");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
     if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
@@ -983,6 +1070,12 @@
     if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; E.lt.sel = null; E.editar = null; E.sugerencia = null; return pintar(); }
     if (d.pestana) { E.pestana = d.pestana; return pintar(); }
     if (d.subW != null) return empezarEdicion(Number(d.subW), Number(d.subW), "vista");
+    if (d.quitarIa) {
+      const r = quitarCambioIA(p, d.quitarIa);
+      if (!r) return;
+      E.lt.sel = null;
+      return guardar(p, r.conservados ? Tp(r.conservados === 1 ? "Listo. Dejé 1 cosa que cambiaste a mano." : "Listo. Dejé {n} cosas que cambiaste a mano.", { n: r.conservados }) : "Cambio quitado");
+    }
     if (d.vocabQuitar != null) { const r = E.vocabulario.reemplazos[Number(d.vocabQuitar)]; if (r) host.enviar("vocabulario", { accion: "quitar", de: r.de }); return; }
     if (d.vocabQuitarPalabra != null) { const w = E.vocabulario.palabras[Number(d.vocabQuitarPalabra)]; if (w) host.enviar("vocabulario", { accion: "quitar_palabra", palabra: w }); return; }
     if (d.w != null) {
@@ -1227,7 +1320,9 @@
     limpiado(r) { E.limpiando = false; if (r.ok) { E.ultimoAhorro = r.ahorro; window.Corta.proyectoActualizado({ carpeta: E.sel, proyecto: r.proyecto }); } else { toast(r.error || "No se pudo limpiar"); pintar(); } },
     iaRespondio(r) {
       const pedido = E.ia.texto;
-      E.ia = { texto: r.ok ? "" : pedido, enviando: false, historial: [{ pedido, ok: r.ok, resumen: r.resumen || tr("Listo."), aplicadas: r.aplicadas, error: r.ok ? "" : r.error }, ...E.ia.historial].slice(0, 12) };
+      // Lo que se aplicó queda en el proyecto (cambios_ia); aquí solo lo que no cambió nada (un error o «eso no se puede»).
+      const nota = r.ok && r.cambio ? [] : [{ pedido, carpeta: E.sel, ok: r.ok, resumen: r.resumen || tr("Listo."), error: r.ok ? "" : r.error }];
+      E.ia = { texto: r.ok ? "" : pedido, enviando: false, historial: [...nota, ...E.ia.historial].slice(0, 12) };
       if (r.ok && r.proyecto) window.Corta.proyectoActualizado({ carpeta: E.sel, proyecto: r.proyecto }); else pintar();
     },
     shortsListos(r) { E.buscandoShorts = false; E.shorts = r.ok ? { lista: r.shorts } : { error: r.error }; pintar(); },
@@ -1248,7 +1343,7 @@
     vocabularioActualizado(r) { if (r.ok) E.vocabulario = r.vocabulario; else toast(r.error || "No pude guardar."); pintar(); },
     _probar(f) { f(E); pintar(); },
     _pruebas: { conservados, aSalida, duracionFinal, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
-      tramosVoz, cuantoBaja, normalizar, partes, editarPalabras, reemplazarTodo, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
+      tramosVoz, cuantoBaja, textoQueCabe, normalizar, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config },
   };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
@@ -1271,16 +1366,26 @@
         A.limpiado({ ok: true, ahorro: Math.round((antes - duracionFinal(p)) * 10) / 10, proyecto: clonar(p) });
       });
       case "pedirIA": return luego(1100, () => {
-        const x = demoProy(d.carpeta), p = x.proyecto, t = d.texto.toLowerCase();
+        const x = demoProy(d.carpeta), p = x.proyecto, t = d.texto.toLowerCase(), antes = clonar(p), origen = "ia-" + Date.now().toString(36);
         (historial[d.carpeta] ||= []).push(clonar(p));
         let resumen = tr("En la vista previa la IA es de mentira: en la app, tu IA entiende cualquier pedido.");
         const idx = (palabra) => p.palabras.findIndex((w) => w.t.toLowerCase().startsWith(palabra));
-        if (/zoom/.test(t)) { const k = idx("ahorrar"), j = idx("hora"); p.zooms.push({ i: p.palabras[k].i, f: p.palabras[j].f, escala: 1.3 }); resumen = tr("Puse un zoom cuando dices «ahorrar una hora»."); }
-        else if (/t[ií]tulo|title/.test(t)) { p.textos.push({ i: p.palabras[idx("hola")].i, f: p.palabras[idx("ana")].f + 1.2, texto: tr("Edita en 1 minuto"), y: 0.16 }); resumen = tr("Agregué el título «Edita en 1 minuto» al inicio."); }
+        if (/zoom/.test(t)) {
+          for (const [a, b] of [["ahorrar", "hora"], ["primero", "silencios."], ["listo", "publicar."]]) p.zooms.push({ i: p.palabras[idx(a)].i, f: p.palabras[idx(b)].f, escala: 1.3, origen });
+          resumen = tr("Puse 3 zooms en los momentos clave.");
+        }
+        else if (/t[ií]tulo|title/.test(t)) { p.textos.push({ i: p.palabras[idx("hola")].i, f: p.palabras[idx("ana")].f + 1.2, texto: tr("Edita en 1 minuto"), y: 0.16, origen }); resumen = tr("Agregué el título «Edita en 1 minuto» al inicio."); }
         else if (/una palabra|one word/.test(t)) { p.subtitulos.estilo = "palabra"; p.subtitulos.palabras_por_linea = 1; resumen = tr("Cambié los subtítulos a una palabra a la vez."); }
         else if (/cuadrad|square|instagram/.test(t)) { p.lienzo = "1:1"; resumen = tr("Lo dejé cuadrado (1:1) para Instagram."); }
-        else if (/equivoc|mistake|corta|cut/.test(t)) { cortarPalabras(p, idx("mmm"), idx("cómo"), "ia"); resumen = tr("Corté «Mmm… te muestro cómo», que sobraba."); }
-        A.iaRespondio({ ok: true, aplicadas: 1, resumen, proyecto: clonar(p) });
+        else if (/equivoc|mistake|corta|cut/.test(t)) { cortarPalabras(p, idx("mmm"), idx("cómo"), "ia"); p.cortes[p.cortes.length - 1].origen = origen; resumen = tr("Corté «Mmm… te muestro cómo», que sobraba."); }
+        // Igual que bin/editar_ia.py: lo agregado lleva `origen` y queda anotado en cambios_ia para poder quitarlo.
+        const agregados = {};
+        for (const l of ["zooms", "textos", "cortes"]) { const s = p[l].filter((o) => o.origen === origen); if (s.length) agregados[l] = clonar(s); }
+        const ajustes = ["lienzo", "subtitulos.estilo", "subtitulos.activos", "subtitulos.palabras_por_linea"].filter((c) => !igualJSON(leerCampo(antes, c), leerCampo(p, c)))
+          .map((c) => ({ campo: c, antes: leerCampo(antes, c), despues: leerCampo(p, c) }));
+        if (!Object.keys(agregados).length && !ajustes.length) return A.iaRespondio({ ok: true, aplicadas: 0, resumen, proyecto: clonar(p) });
+        p.cambios_ia = [...(p.cambios_ia || []), { id: origen, estado: "aplicado", pedido: d.texto.slice(0, 200), resumen, agregados, ...(ajustes.length ? { ajustes } : {}) }].slice(-20);
+        A.iaRespondio({ ok: true, aplicadas: 1, resumen, cambio: origen, proyecto: clonar(p) });
       });
       case "buscarShorts": return luego(1400, () => {
         const p = demoProy(d.carpeta).proyecto, w = p.palabras, k = (s) => w.findIndex((x) => x.t.toLowerCase().startsWith(s));

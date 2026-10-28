@@ -265,15 +265,32 @@ class Musica(unittest.TestCase):
 class IA(unittest.TestCase):
     def test_pedir_aplica_solo_lo_valido(self):
         carpeta = proyecto_de_prueba()
+        antes = proyecto.cargar(carpeta)
         r = correr("editar_ia.py", "pedir", carpeta, "pon zoom y corta el saludo")
         self.assertTrue(r["ok"], r)
-        self.assertEqual(r["aplicadas"], 3)
+        self.assertEqual(r["aplicadas"], 4)
         self.assertEqual(r["ignoradas"], 2, "una operación con palabras fuera de rango y otra desconocida no se aplican")
         p = proyecto.cargar(carpeta)
         self.assertEqual(len(p["zooms"]), 1)
         self.assertEqual(p["subtitulos"]["estilo"], "neon")
         self.assertTrue(any(c["motivo"] == "ia" for c in p["cortes"]))
+        self.assertEqual(p["palabras"][5]["t"], "Kalumi")
+        self.assertEqual((p["palabras"][5]["i"], p["palabras"][5]["f"]), (antes["palabras"][5]["i"], antes["palabras"][5]["f"]), "corregir no mueve los tiempos")
+        # Lo que hizo queda anotado para poder quitar justo ese cambio (ui/app.js, quitarCambioIA)
+        c = p["cambios_ia"][-1]
+        self.assertEqual(c["id"], r["cambio"])
+        self.assertEqual((c["estado"], c["pedido"]), ("aplicado", "pon zoom y corta el saludo"))
+        self.assertEqual(c["agregados"]["zooms"], p["zooms"])
+        self.assertTrue(all(z["origen"] == c["id"] for z in p["zooms"]))
+        self.assertEqual([x["origen"] for x in p["cortes"] if x["motivo"] == "ia"], [c["id"]])
+        self.assertEqual(c["ajustes"], [{"campo": "subtitulos.estilo", "antes": "pop", "despues": "neon"}])
+        self.assertEqual(c["palabras"], [{"antes": [antes["palabras"][5]], "despues": [p["palabras"][5]]}])
         self.assertTrue(proyecto.deshacer(carpeta))
+        q = proyecto.cargar(carpeta)
+        q["zooms"][0:0] = [{"i": 1, "f": 2, "escala": 1.2, "origen": "ia-x;rm"}]
+        self.assertTrue(proyecto.validar(q), "origen solo puede ser el id de un cambio")
+        q["zooms"], q["cambios_ia"] = [], [{"id": "ia-1", "estado": "borrado"}]
+        self.assertTrue(proyecto.validar(q))
 
     def test_shorts_y_crear(self):
         # Con las palabras del video de demostración completo (30 s): el motor no mira el video para proponer Shorts.
@@ -426,7 +443,7 @@ class App(unittest.TestCase):
         carpeta = proyecto_de_prueba()
         r = con_entrada("editar_ia.py", "entrada", {"accion": "pedir", "carpeta": carpeta, "texto": "pon zoom; $(rm -rf ~) \"y\" 'más'"})
         self.assertTrue(r["ok"], r)
-        self.assertEqual(r["aplicadas"], 3)
+        self.assertEqual(r["aplicadas"], 4)
         r = con_entrada("editar_ia.py", "entrada", {"accion": "crear_short", "carpeta": carpeta, "desde": "0", "hasta": 2, "titulo": "x"})
         self.assertFalse(r["ok"], "los tiempos tienen que ser números")
 
