@@ -530,6 +530,8 @@
   // ───────────── Utilidades ─────────────
   const proy = () => E.proyectos.find((x) => x.carpeta === E.sel);
   const P = () => proy()?.proyecto;
+  /** Pone un estilo solo si cambia (lo que se escribe en cada cuadro, aunque sea igual, puede hacer repintar la ventana entera). */
+  const estiloSi = (el, prop, valor) => { if (el._estilo?.[prop] !== valor) { el.style[prop] = valor; (el._estilo ||= {})[prop] = valor; } };
   const reloj = (s) => { s = Math.max(0, s || 0); const m = Math.floor(s / 60), x = Math.floor(s % 60); return `${m}:${String(x).padStart(2, "0")}`; };
   const segundos = (s) => (Math.round(s * 10) / 10).toLocaleString(E.idioma === "es" ? "es-CL" : "en-US");
   const estilo = () => E.estilos.find((s) => s.id === P()?.subtitulos.estilo) || E.estilos[0];
@@ -551,7 +553,9 @@
   }
 
   // ───────────── Pintar ─────────────
+  let versionPintada = 0;  // sube en cada pintada: lo que actualizarCapas guarda entre cuadros se vuelve a armar después de una
   function pintar() {
+    versionPintada++;
     const raiz = $("#app");
     const scroll = $(".cuerpo-panel")?.scrollTop || 0, scrollLT = $("#lt-vista")?.scrollLeft || 0;
     // El <video> se reutiliza entre repintadas (si es el mismo archivo) para que no se recargue ni se corte la reproducción.
@@ -1578,7 +1582,7 @@
       left: (p.relleno === "desenfoque" ? (pw - vw) / 2 : -(vw - pw) * p.encuadre.x) + "px",
       top: (p.relleno === "desenfoque" ? (ph - vh) / 2 : -(vh - ph) * p.encuadre.y) + "px" });
     const c = $("#fondo-borroso");
-    if (c) { c.width = Math.round(pw / 4); c.height = Math.round(ph / 4); Object.assign(c.style, { inset: "0", width: pw + "px", height: ph + "px", filter: "blur(14px) brightness(.85)", transform: "scale(1.1)" }); }
+    if (c) { c.width = Math.round(pw / 4); c.height = Math.round(ph / 4); c._t = null; Object.assign(c.style, { inset: "0", width: pw + "px", height: ph + "px", filter: "blur(14px) brightness(.85)", transform: "scale(1.1)" }); }
     pant.dataset.escala = pw / W;
     // La línea de tiempo: con su ancho real se eligen cada cuánto van las marcas de la regla.
     const vista = $("#lt-vista");
@@ -1729,6 +1733,18 @@
   }
   let tramosCache = null, tramosDe = null;
   function tramos() { const p = P(); if (tramosDe !== p || !tramosCache || tramosCache.k !== JSON.stringify(p.cortes)) { tramosCache = { k: JSON.stringify(p.cortes), t: conservados(p) }; tramosDe = p; } return tramosCache.t; }
+  /** Las líneas de subtítulos de lo que queda, con el número de cada palabra. Se arman de nuevo solo si cambian las palabras, los
+   *  cortes o las palabras por línea (cada edición pasa por pintar(), que sube `versionPintada`): antes se armaban en cada cuadro. */
+  let gruposCache = null;
+  function gruposSubtitulos(p) {
+    const k = JSON.stringify(p.cortes) + "|" + p.subtitulos.palabras_por_linea;
+    const c = gruposCache;
+    if (c && c.p === p && c.palabras === p.palabras && c.n === p.palabras.length && c.v === versionPintada && c.k === k) return c;
+    const cortes = unir(p.cortes), indice = new Map();
+    const visibles = p.palabras.filter((w, j) => { indice.set(w, j); return !palabraCortada(p, w, cortes); });
+    return (gruposCache = { p, palabras: p.palabras, n: p.palabras.length, v: versionPintada, k, grupos: lineas(visibles, p.subtitulos.palabras_por_linea), indice });
+  }
+  let palabraActiva = { k: -1, el: null, v: 0 };  // la palabra marcada en el panel de texto: se toca el DOM solo cuando cambia
   function actualizarCapas() {
     const p = P(), v = $("#video");
     if (!p || !v) return;
@@ -1736,8 +1752,10 @@
     const [W] = LIENZOS[p.lienzo], pw = W * escala;
     // Reloj y cabezal
     const salida = aSalida(p, t, tramos());
-    const rel = $("#reloj"); if (rel && salida != null) rel.innerHTML = T("**{a}** de {b}", { a: esc(reloj(salida)), b: esc(reloj(duracionFinal(p))) });
-    const cab = $("#cabezal"); if (cab) cab.style.left = (ltX(p, t) * 100).toFixed(3) + "%";
+    // (el DOM se toca solo si cambia lo que se ve: escribirlo igual en cada cuadro obliga al navegador a recalcular y repintar)
+    const rel = $("#reloj");
+    if (rel && salida != null) { const h = T("**{a}** de {b}", { a: esc(reloj(salida)), b: esc(reloj(duracionFinal(p))) }); if (rel._html !== h || !rel.innerHTML) { rel.innerHTML = h; rel._html = h; } }
+    const cab = $("#cabezal"); if (cab) estiloSi(cab, "left", (ltX(p, t) * 100).toFixed(3) + "%");
     const regla = $("#linea");
     if (regla && regla.getAttribute("aria-valuenow") !== String(Math.round(t))) { regla.setAttribute("aria-valuenow", Math.round(t)); regla.setAttribute("aria-valuetext", relojFino(t)); }
     // Con zoom, la línea de tiempo sigue al cabezal mientras se reproduce.
@@ -1749,7 +1767,7 @@
     // Medidor de la música (pestaña Música)
     const nivel = $("#musica-nivel");
     if (nivel && p.musica) {
-      nivel.style.width = Math.round(gananciaMusica * 100) + "%";
+      estiloSi(nivel, "width", Math.round(gananciaMusica * 100) + "%");
       const ahora = $("#musica-ahora"), txt = tr(gananciaMusica < 0.6 ? "La música baja: estás hablando" : "Volumen normal");
       if (ahora && ahora.textContent !== txt) ahora.textContent = txt;
     }
@@ -1760,22 +1778,27 @@
     const capa = $("#capa-zoom");
     if (capa) {
       const esc_ = (z ? z.escala : 1) * fx.zoom;
-      capa.style.transform = esc_ !== 1 ? `scale(${esc_.toFixed(4)})` : "none";
-      capa.style.transition = fx.zoom !== 1 ? "none" : "";
+      estiloSi(capa, "transform", esc_ !== 1 ? `scale(${esc_.toFixed(4)})` : "none");
+      estiloSi(capa, "transition", fx.zoom !== 1 ? "none" : "");
       if (capa.dataset.filtro !== fx.filtro) { capa.style.filter = fx.filtro; capa.dataset.filtro = fx.filtro; }
     }
     const cf = $("#capas-fx"); if (cf && cf.dataset.html !== fx.capas) { cf.innerHTML = fx.capas; cf.dataset.html = fx.capas; }
     pintarPasos(fx.pasos);
     // Fondo borroso
-    const c = $("#fondo-borroso"); if (c && v.readyState >= 2) { try { c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); } catch {} }
+    // (en pausa, solo si cambió el cuadro: copiar el video en cada cuadro de pantalla cuesta aunque nada se mueva)
+    const c = $("#fondo-borroso");
+    if (c && v.readyState >= 2 && !(v.paused && !v.seeking && c._t === t)) { try { c.getContext("2d").drawImage(v, 0, 0, c.width, c.height); c._t = v.seeking ? null : t; } catch {} }
     // Palabra activa en el panel de texto
     const k = p.palabras.findIndex((w) => w.i <= t && t <= w.f + 0.05);
-    document.querySelectorAll(".w.activa").forEach((el) => el.classList.remove("activa"));
-    if (k >= 0) document.querySelector(`.w[data-w="${k}"]`)?.classList.add("activa");
+    if (k !== palabraActiva.k || palabraActiva.v !== versionPintada || (k >= 0 && !palabraActiva.el?.isConnected)) {
+      document.querySelectorAll(".w.activa").forEach((el) => el.classList.remove("activa"));
+      const el = k >= 0 ? document.querySelector(`.w[data-w="${k}"]`) : null;
+      el?.classList.add("activa"); palabraActiva = { k, el, v: versionPintada };
+    }
     // Subtítulos
     const subs = $("#subs");
     if (subs) {
-      subs.style.top = (p.subtitulos.posicion * 100) + "%";
+      estiloSi(subs, "top", (p.subtitulos.posicion * 100) + "%");
       let html = "";
       const ed = E.editar?.donde === "vista" ? E.editar : null;
       if (ed && s) {
@@ -1788,8 +1811,7 @@
           subs.dataset.html = clave; subs.removeAttribute("aria-hidden");
         }
       } else if (p.subtitulos.activos && s) {
-        const cortes = unir(p.cortes), visibles = p.palabras.filter((w) => !palabraCortada(p, w, cortes));
-        const grupos = lineas(visibles, p.subtitulos.palabras_por_linea);
+        const { grupos, indice } = gruposSubtitulos(p);
         const g = grupos.find((gr) => gr[0].i - 0.02 <= t && t <= gr[gr.length - 1].f + 0.25) || null;
         if (g) {
           const activa = g.findIndex((w, j) => t >= w.i - 0.02 && (j + 1 >= g.length || t < g[j + 1].i));
@@ -1800,7 +1822,7 @@
             const es = s.animacion === "palabra" || j === activa;
             const extra = !es || s.animacion === "ninguna" ? "" : `color:${s.color_activo};${s.animacion === "pop" || s.animacion === "palabra" ? "transform:scale(1.12);" : ""}${s.animacion === "subrayado" ? `text-decoration:underline;text-decoration-thickness:${Math.max(2, borde).toFixed(1)}px;` : ""}`;
             // Tocar una palabra del subtítulo la corrige ahí mismo (con el video en pausa, para no perseguirla).
-            return `<span style="${extra}" data-sub-w="${p.palabras.indexOf(w)}" title="${esc(tr("Toca para corregir"))}">${esc(w.t)}</span>`;
+            return `<span style="${extra}" data-sub-w="${indice.get(w)}" title="${esc(tr("Toca para corregir"))}">${esc(w.t)}</span>`;
           }).join(" ")}</div>`;
         }
       }
@@ -1809,7 +1831,7 @@
     const ts = $("#texto-sobre");
     if (ts) {
       const tx = (p.textos || []).find((x) => x.i <= t && t <= x.f);
-      ts.style.top = ((tx?.y ?? 0.18) * 100) + "%";
+      estiloSi(ts, "top", ((tx?.y ?? 0.18) * 100) + "%");
       const h2 = tx && s ? `<div style="${cssEstilo(s, escala)}font-size:${(s.tamano / 100 * pw * 0.9).toFixed(1)}px;display:inline-block" data-sin-traducir>${esc(tx.texto)}</div>` : "";
       if (ts.dataset.html !== h2) { ts.innerHTML = h2; ts.dataset.html = h2; }
     }
@@ -1836,7 +1858,7 @@
         if (sig) v.currentTime = sig.i; else { v.pause(); v.currentTime = tr_[0]?.i || 0; }
       }
       aplicarVelocidad(p, v, v.currentTime);
-      const b = $("#boton-play"); if (b) b.textContent = "❚❚";
+      const b = $("#boton-play"); if (b && b.textContent !== "❚❚") b.textContent = "❚❚";
     } else { const b = $("#boton-play"); if (b && b.textContent !== "▶") b.textContent = "▶"; }
     sincronizarMusica(dt);
     actualizarCapas();

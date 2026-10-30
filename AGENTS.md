@@ -51,6 +51,9 @@ solo mueve los bordes `i`/`f` de `cortes`, `zooms` y `textos` (`limitesBorde`, `
 vecinos); el formato no cambia. Los bordes se arrastran con eventos de puntero (mouse, toque y lápiz) y son `role="slider"` para el
 teclado. En la vista previa la música suena en el tiempo del video exportado (parte en 0 y se repite, como en `render.py`) y baja con
 las palabras que quedan (`tramosVoz`, `cuantoBaja`), imitando el sidechain que ffmpeg hace con la voz al exportar.
+`bucle` → `actualizarCapas` corre en cada cuadro de pantalla: ahí el DOM se toca solo si cambia lo que se ve (`estiloSi`, `palabraActiva`,
+el reloj y el fondo borroso en pausa) y lo caro se guarda entre cuadros (`tramos`, `gruposSubtitulos`, que se rearma cuando cambian
+palabras, cortes o palabras por línea, o en cada `pintar()`). `pruebas/interfaz.mjs` (13) revisa que en pausa no toque la página.
 
 **Efectos** (`bin/efectos.py`, formato en `efectos/README.md`): JSON de solo datos con `pasos` de tipos y rangos conocidos
 (`bin/efecto_formato.py`). Se aplican en el tiempo del video EXPORTADO, después del concat y antes de los subtítulos:

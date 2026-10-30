@@ -5,7 +5,7 @@
 // ancho de celular; 5) contraste del botón principal; 6) editar por texto corta de verdad; 7) la línea de tiempo mueve bordes con
 // mouse, toque y teclado sin cambiar el formato, y la música suena y baja cuando hablas; 8) en el primer uso lo primero es elegir
 // el idioma (con teclado) y lo que sigue sale en ese idioma; 12) plantillas: elegir una, llenar sus huecos y abrir el proyecto (a
-// 390 px y en escritorio). Con CAPTURAS=carpeta guarda capturas (y las de plantillas, con CAPTURAS_PLANTILLAS=carpeta).
+// 390 px y en escritorio); 13) en pausa la vista previa no toca la página y sigue cada edición. Con CAPTURAS=carpeta guarda capturas (y las de plantillas, con CAPTURAS_PLANTILLAS=carpeta).
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
@@ -641,6 +641,41 @@ for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {
   const p = await navegador.newPage();
   await p.goto(BASE); await p.waitForSelector(".app");
   if (await p.$(".capa")) falla("con la bienvenida ya hecha se volvió a mostrar"); else console.log("  ✓ Con la bienvenida ya hecha no se repite");
+  await p.close();
+}
+
+// 13) Vista previa en reposo: en pausa el bucle no toca la página (antes la repintaba entera en cada cuadro) y lo que guarda entre
+// cuadros (líneas de subtítulos, palabra marcada) se rearma después de editar
+{
+  const p = await navegador.newPage({ viewport: { width: 1360, height: 860 } });
+  p.on("pageerror", (e) => falla("error de JavaScript (vista previa en reposo): " + e.message));
+  await p.goto(BASE); await p.waitForFunction(() => window.Corta && document.querySelector("#video"));
+  let w = await p.evaluate(() => { let r; window.Corta._probar((E) => { E.bv = null; E.pestana = "texto"; const q = E.proyectos[0].proyecto; q.cortes = []; q.subtitulos.palabras_por_linea = 3; r = q.palabras[4]; }); return r; });
+  // Sin H.264 (el Chromium de GitHub) el video no se mueve: entonces se corren las palabras para que la 4 quede donde está el video.
+  const t = await p.evaluate((t) => { const v = document.querySelector("#video"); v.pause(); v.currentTime = t;
+    return Promise.race([new Promise((ok) => v.addEventListener("seeked", ok, { once: true })), new Promise((ok) => setTimeout(ok, 2000))]).then(() => v.currentTime); }, (w.i + w.f) / 2);
+  if (Math.abs(t - (w.i + w.f) / 2) > 0.05) w = await p.evaluate((t) => { let r; window.Corta._probar((E) => { const q = E.proyectos[0].proyecto, d = t - (q.palabras[4].i + q.palabras[4].f) / 2; q.palabras = q.palabras.map((x) => ({ ...x, i: x.i + d, f: x.f + d })); r = q.palabras[4]; }); return r; }, t);
+  await p.waitForTimeout(300);
+  const cambios = await p.evaluate(() => new Promise((ok) => {
+    const lista = []; const o = new MutationObserver((m) => m.forEach((x) => lista.push(`${x.type} ${x.target.id || x.target.className || x.target.nodeName} ${x.attributeName || ""}`)));
+    o.observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+    setTimeout(() => { o.disconnect(); ok(lista); }, 700);
+  }));
+  if (cambios.length) falla(`en pausa el bucle tocó la página ${cambios.length} veces: ${[...new Set(cambios)].slice(0, 5).join(" · ")}`);
+  else console.log("  ✓ En pausa la vista previa no toca la página");
+  const vista = () => p.evaluate(() => ({ subs: document.querySelector("#subs")?.textContent.trim(), activas: [...document.querySelectorAll(".w.activa")].map((e) => e.dataset.w) }));
+  let a = await vista();
+  if (!a.subs?.includes(w.t) || a.activas.join() !== "4") falla(`la vista previa no muestra la palabra del momento: ${JSON.stringify(a)}`);
+  await p.evaluate(() => window.Corta._probar((E) => { E.proyectos[0].proyecto.subtitulos.palabras_por_linea = 1; }));
+  await p.waitForTimeout(100); a = await vista();
+  if (a.subs !== w.t) falla(`al cambiar las palabras por línea el subtítulo no se rearmó: «${a.subs}»`);
+  await p.evaluate(() => window.Corta._probar((E) => { E.proyectos[0].proyecto.palabras[4].t = "Kalumi"; }));
+  await p.waitForTimeout(100); a = await vista();
+  if (a.subs !== "Kalumi" || a.activas.join() !== "4") falla(`al corregir una palabra la vista previa quedó con lo de antes: ${JSON.stringify(a)}`);
+  await p.evaluate((x) => window.Corta._probar((E) => { E.proyectos[0].proyecto.cortes = [{ i: x.i - 0.05, f: x.f + 0.05, motivo: "manual" }]; }), w);
+  await p.waitForTimeout(100); a = await vista();
+  if (a.subs === "Kalumi") falla("una palabra cortada siguió en el subtítulo");
+  else console.log("  ✓ Subtítulo y palabra marcada siguen cada edición (palabras por línea, corregir, cortar)");
   await p.close();
 }
 
