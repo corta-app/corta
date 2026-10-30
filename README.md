@@ -192,3 +192,7 @@ published, build it from source: `git clone https://github.com/corta-app/corta ~
 like an AI edit, **Remove** undoes just that change, even after you kept editing. Caption styles, effects and templates are welcome
 in the [community catalog](https://github.com/corta-app/corta-catalogo); questions and ideas in
 [Discussions](https://github.com/corta-app/corta/discussions), in English or Spanish. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+[![Hecho con Pieza](https://pieza-app.github.io/pieza/sello.svg)](https://pieza-app.github.io/pieza/) · Las piezas comunes (tu IA, idiomas, actualizaciones…) viven en [Pieza](https://github.com/pieza-app/pieza).
