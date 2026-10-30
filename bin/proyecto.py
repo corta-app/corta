@@ -12,45 +12,44 @@
 
 Todos los tiempos del proyecto están en segundos del VIDEO ORIGINAL. Los cortes dicen qué partes no van; el resto se conserva.
 """
-import json
 import math
 import os
 import re
 import shutil
-import tempfile
 import time
 
 import efecto_formato
+import nucleo
 
 BASE = os.environ.get("CORTA_CARPETA") or os.path.join(os.path.expanduser("~"), "Corta")
-INTERNO = os.path.join(BASE, ".corta")
-RECURSOS = os.environ.get("CORTA_RECURSOS") or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if os.environ.get("CORTA_CARPETA"):
+    # Pruebas (y quien ponga otra carpeta de videos): los ajustes van dentro de ella, igual que en ~/Corta/.corta.
+    os.environ.setdefault("CORTA_DATOS", os.path.join(BASE, ".corta"))
+#: ~/Corta/.corta (app.json: "datos": "visible"). La pieza «nucleo» la crea solo para la persona (0700).
+INTERNO = nucleo.carpeta_datos()
+#: Raíz del código (app.json, bin/, ui/, estilos/…): la pieza «nucleo» la encuentra junto a bin/ (o por CORTA_RECURSOS).
+RECURSOS = nucleo.recursos()
 FORMATO = 1
 LIENZOS = {"9:16": (1080, 1920), "1:1": (1080, 1080), "4:5": (1080, 1350), "16:9": (1920, 1080)}
 MOTIVOS = {"silencio", "muletilla", "manual", "ia", "fuera"}
 
 
-# ───────────── JSON y escritura segura ─────────────
-def leer_json(ruta, defecto):
-    try:
-        with open(ruta, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return defecto
+# ───────────── JSON y escritura segura (pieza «nucleo») ─────────────
+leer_json = nucleo.leer_json
+#: Escribe en un temporal y lo renombra: si algo se corta a la mitad, el archivo anterior queda intacto (y no deja temporales).
+escribir_json = nucleo.escribir_json
 
-
-def escribir_json(ruta, valor):
-    """Escribe en un temporal y lo renombra: si algo se corta a la mitad, el archivo anterior queda intacto."""
-    os.makedirs(os.path.dirname(ruta) or ".", exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(ruta) or ".", prefix=".tmp-")
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        json.dump(valor, f, ensure_ascii=False, indent=1)
-        f.write("\n")
-    os.replace(tmp, ruta)
+#: Lo que vale si la persona aún no eligió nada. Las claves y valores permitidos están en app.json (nucleo.config los filtra).
+CONFIG_DEFECTO = {"ia": "claude", "idioma_ui": "", "idioma_audio": "auto", "modelo": "turbo"}
+#: idioma_audio va como `-l` del transcriptor: «auto» o un código de idioma, nada más (app.json solo dice «texto»).
+IDIOMA_AUDIO = re.compile(r"auto|[a-z]{2,3}")
 
 
 def config():
-    return {"ia": "claude", "idioma_ui": "", "idioma_audio": "auto", "modelo": "turbo", **leer_json(os.path.join(INTERNO, "config.json"), {})}
+    c = {**CONFIG_DEFECTO, **nucleo.config()}
+    if not IDIOMA_AUDIO.fullmatch(str(c.get("idioma_audio"))):
+        c["idioma_audio"] = "auto"
+    return c
 
 
 # ───────────── Programas (ffmpeg, ffprobe, transcriptor) ─────────────

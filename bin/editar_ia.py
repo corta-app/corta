@@ -224,8 +224,8 @@ def pedir(carpeta, pedido):
         return {"ok": False, "error": "Primero hay que transcribir el video: así tu IA sabe qué se dice y cuándo."}
     estilos = subtitulos.estilos()
     texto, error = ia.preguntar(prompt_pedir(p, pedido.strip()[:500], estilos))
-    if error:
-        return {"ok": False, "error": error}
+    if error:  # pieza «ia»: {codigo, valores}; la interfaz traduce la frase y puede decidir por el código
+        return {"ok": False, "error": ia.frase(error), "codigo": error["codigo"]}
     datos = leer_json_ia(texto)
     if not isinstance(datos, dict):
         return {"ok": False, "error": f"{ia.nombre()} no respondió con cambios que pueda aplicar. Prueba diciéndolo de otra forma."}
@@ -278,8 +278,8 @@ def shorts(carpeta):
     if not p["palabras"]:
         return {"ok": False, "error": "Primero hay que transcribir el video."}
     texto, error = ia.preguntar(prompt_shorts(p))
-    if error:
-        return {"ok": False, "error": error}
+    if error:  # pieza «ia»: {codigo, valores}; la interfaz traduce la frase y puede decidir por el código
+        return {"ok": False, "error": ia.frase(error), "codigo": error["codigo"]}
     datos = leer_json_ia(texto) or {}
     lista = validar_shorts(p, datos.get("shorts"))
     if not lista:

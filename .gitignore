@@ -39,3 +39,7 @@ capturas/
 !/pruebas/datos/ana-corto.mp4
 !/docs/img/antes.mp4
 !/docs/img/despues.mp4
+
+# Pieza: la descripción de la app y las piezas que usa
+!/app.json
+!/piezas.json

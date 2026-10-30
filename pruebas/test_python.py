@@ -1007,6 +1007,59 @@ class App(unittest.TestCase):
             self.assertNotIn('["ffprobe"', fuente)
 
 
+class Piezas(unittest.TestCase):
+    """Lo que Corta usa de Pieza (nucleo, ia, i18n): app.json, carpeta de datos, config validada y probar la IA por archivo."""
+
+    def test_app_json_y_carpeta_de_datos(self):
+        with open(os.path.join(RAIZ, "app.json"), encoding="utf-8") as f:
+            app = json.load(f)
+        self.assertEqual((app["id"], app["nombre"], app["datos"]), ("corta", "Corta", "visible"), "~/Corta/.corta, igual que la app de Mac")
+        self.assertEqual(os.path.realpath(proyecto.INTERNO), os.path.realpath(os.path.join(proyecto.BASE, ".corta")))
+        import nucleo
+        self.assertEqual(os.path.realpath(nucleo.carpeta_datos()), os.path.realpath(proyecto.INTERNO))
+        # Las claves que acepta Ventana.swift (Config.guardar) son las de app.json.
+        swift = open(os.path.join(RAIZ, "app", "Sources", "Corta", "Servicios.swift"), encoding="utf-8").read()
+        for clave in app["config"]:
+            self.assertIn(f'case "{clave}"', swift, f"Config.guardar acepta {clave}")
+        sh = open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read()
+        self.assertIn('cp "$RAIZ/app.json" "$APP/Contents/Resources/corta/app.json"', sh, "app.json va dentro de la app")
+
+    def test_config_validada(self):
+        ruta = os.path.join(proyecto.INTERNO, "config.json")
+        antes = proyecto.leer_json(ruta, None)
+        try:
+            proyecto.escribir_json(ruta, {"ia": "otra", "modelo": "small", "idioma_audio": "es; rm -rf ~", "extra": 1, "bienvenida": True})
+            c = proyecto.config()
+            self.assertEqual((c["ia"], c["modelo"], c["idioma_audio"], c["bienvenida"]), ("claude", "small", "auto", True))
+            self.assertNotIn("extra", c)
+            proyecto.escribir_json(ruta, {"idioma_audio": "pt"})
+            self.assertEqual(proyecto.config()["idioma_audio"], "pt")
+        finally:
+            if antes is None:
+                os.remove(ruta)
+            else:
+                proyecto.escribir_json(ruta, antes)
+
+    def test_probar_ia_por_archivo(self):
+        r = con_entrada("ia.py", "probar", {"ia": "claude"})
+        self.assertEqual((r["ia"], r["ok"]), ("claude", True), r)
+        r = con_entrada("ia.py", "probar", {"ia": "otra"})
+        self.assertEqual((r["ok"], r["codigo"]), (False, "desconocida"))
+        swift = open(os.path.join(RAIZ, "app", "Sources", "Corta", "Servicios.swift"), encoding="utf-8").read()
+        self.assertIn('Procesador.conEntrada("ia.py", "probar", ["ia": id])', swift, "la app prueba la IA con la pieza, por archivo")
+
+    def test_error_de_ia_con_codigo(self):
+        import ia
+        antes = ia.preguntar
+        ia.preguntar = lambda *a, **k: ("", {"codigo": "no_instalada", "valores": {"ia": "Claude", "detalle": ""}})
+        try:
+            carpeta = proyecto_de_prueba()
+            r = editar_ia.pedir(carpeta, "pon zoom")
+        finally:
+            ia.preguntar = antes
+        self.assertEqual(r, {"ok": False, "codigo": "no_instalada", "error": "No encontré Claude en este computador. Revisa en Ajustes → Tu IA."})
+
+
 class Seguridad(unittest.TestCase):
     """Content-Security-Policy de la interfaz y de la página pública (docs/), lo que recibe la IA y cómo se arma el HTML."""
 
@@ -1030,7 +1083,7 @@ class Seguridad(unittest.TestCase):
         os.environ["CORTA_SECRETO_PRUEBA"] = "no-debe-llegar"
         ia.elegida = lambda: id_ia
         try:
-            r = ia.ejecutar_ia("PEDIDO-SECRETO de la persona", timeout=60)
+            r = ia.ejecutar("PEDIDO-SECRETO de la persona", timeout=60)
         finally:
             os.environ["PATH"], ia.elegida = antes_path, antes_elegida
             del os.environ["CORTA_SECRETO_PRUEBA"]
@@ -1053,18 +1106,20 @@ class Seguridad(unittest.TestCase):
         self.assertIn("instrucciones.md", x["archivos"])
 
     def test_T_escapa_los_valores(self):
-        import re
+        """T es de la pieza «i18n» (ui/i18n.js): escapa la frase y cada valor; app.js la usa tal cual."""
         js = open(os.path.join(RAIZ, "ui", "app.js"), encoding="utf-8").read()
-        esc = re.search(r"^  const esc = .*;$", js, re.M).group(0)
-        t = re.search(r"^  function T\(plantilla, valores = \{\}\) \{.*?^  \}$", js, re.M | re.S).group(0)
         if not shutil.which("node"):
             self.skipTest("falta node")
-        prueba = (f"const E = {{ idioma: 'es', textos: {{}} }};\n{esc}\n{t}\n"
+        prueba = (f"const {{ T }} = require({os.path.join(RAIZ, 'ui', 'i18n.js')!r}).crear();\n"
                   "console.log(T('Plantilla «{x}» de **{n}**', { x: '<img src=x onerror=alert(1)>', n: 'a&b' }));")
         r = subprocess.run(["node", "-e", prueba], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(r.stdout.strip(), "Plantilla «&lt;img src=x onerror=alert(1)&gt;» de <b>a&amp;b</b>")
+        self.assertIn("const { T, Tp, tr, frase, traducirDOM } = i18n;", js, "app.js usa la T de la pieza, no una propia")
+        self.assertNotRegex(js, r"function (T|tr|traducirDOM)\(", "sin copias propias de lo que trae la pieza «i18n»")
         self.assertNotRegex(js, r"esc\((T|frase)\(", "T ya escapa: no escapar dos veces")
+        html = open(os.path.join(RAIZ, "ui", "index.html"), encoding="utf-8").read()
+        self.assertLess(html.index('src="i18n.js"'), html.index('src="app.js"'), "i18n.js se carga antes que app.js")
 
     def csp(self, html):
         import re
