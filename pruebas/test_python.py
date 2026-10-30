@@ -900,27 +900,69 @@ class Vocabulario(unittest.TestCase):
         cambio(accion="quitar_palabra", palabra="bien")
         self.assertEqual(vocabulario.leer(), {"formato": 1, "reemplazos": [], "palabras": []})
 
-    def test_transcribir_con_vocabulario(self):
+    def transcribir_con_vocabulario(self, transcriptor=None):
+        """Transcribe el video ficticio con el vocabulario «Kalumi, Ana».
+        transcriptor: None (corta-transcribir, del PATH de las pruebas) o «whisper-cli» (en CORTA_PROGRAMAS, que gana)."""
         os.makedirs(importar.MODELOS, exist_ok=True)
         with open(os.path.join(importar.MODELOS, importar.ARCHIVOS_MODELO["turbo"]), "wb") as f:
             f.write(b"modelo ficticio")
         con_entrada("vocabulario.py", "entrada", {"accion": "agregar", "de": "calumi", "a": "Kalumi"})
         con_entrada("vocabulario.py", "entrada", {"accion": "palabra", "palabra": "Ana"})
-        recibido = os.path.join(TMP, "prompt.txt")
-        os.environ["CORTA_PRUEBA_PROMPT"] = recibido
+        recibido, registro = os.path.join(TMP, "prompt.txt"), os.path.join(TMP, "registro.json")
+        entorno = {"CORTA_PRUEBA_PROMPT": recibido, "CORTA_PRUEBA_REGISTRO": registro}
+        if transcriptor:
+            propios = tempfile.mkdtemp(dir=TMP)
+            shutil.copy(os.path.join(RAIZ, "pruebas", "transcriptor_falso.py"), os.path.join(propios, transcriptor))
+            os.chmod(os.path.join(propios, transcriptor), 0o755)
+            entorno["CORTA_PROGRAMAS"] = propios
+        os.environ.update(entorno)
         try:
             carpeta = correr("importar.py", VIDEO)["carpeta"]
             r = correr("importar.py", "transcribir", carpeta)
         finally:
-            del os.environ["CORTA_PRUEBA_PROMPT"]
+            for k in entorno:
+                del os.environ[k]
+            con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
+            con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
         self.assertTrue(r["ok"], r)
         self.assertEqual(" ".join(w["t"] for w in r["proyecto"]["palabras"]), "Hola, soy de Kalumi. Kalumi ayuda a Ana.")
         self.assertEqual(r["corregidas"], 2)
         with open(recibido, encoding="utf-8") as f:
             self.assertEqual(f.read(), "Kalumi, Ana", "el vocabulario le llega al transcriptor en un archivo")
-        self.assertFalse(os.path.exists(os.path.join(carpeta, "vocabulario.txt")), "el archivo del vocabulario no queda en la carpeta")
-        con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
-        con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
+        with open(registro, encoding="utf-8") as f:
+            reg = json.load(f)
+        for a in reg["argv"]:
+            for palabra in ("Kalumi", "Ana"):
+                self.assertNotIn(palabra, a, "el vocabulario nunca va en los argumentos del proceso (los ve cualquier programa)")
+        self.assertEqual(len(reg["archivos"]), 1)
+        ruta, modo = next(iter(reg["archivos"].items()))
+        self.assertEqual(modo, 0o600, "el archivo con el vocabulario es privado")
+        self.assertFalse(os.path.exists(ruta), "el archivo del vocabulario se borra al terminar")
+        self.assertFalse(ruta.startswith(carpeta), "ni queda en la carpeta del proyecto")
+        self.assertFalse(os.path.exists(os.path.join(carpeta, "vocabulario.txt")))
+        return reg
+
+    def test_transcribir_con_vocabulario(self):
+        reg = self.transcribir_con_vocabulario()
+        self.assertIn("--prompt-archivo", reg["argv"])
+
+    def test_whisper_cli_recibe_el_vocabulario_por_archivo_de_argumentos(self):
+        reg = self.transcribir_con_vocabulario("whisper-cli")
+        self.assertEqual(len(reg["argv"]), 1, "whisper-cli recibe solo @archivo")
+        self.assertTrue(reg["argv"][0].startswith("@"))
+
+    def test_vocabulario_en_una_sola_linea(self):
+        cmd, temporales = importar.comando_transcribir("/x/whisper-cli", ["-m", "m.bin"], "  \n ")
+        self.assertEqual((cmd, temporales), (["/x/whisper-cli", "-m", "m.bin"], []), "sin vocabulario no hay archivo")
+        # Un salto de línea (vocabulario.json cambiado a mano) nunca cuela otra opción en el archivo de argumentos.
+        cmd, temporales = importar.comando_transcribir("/x/whisper-cli", ["-m", "m.bin"], "Kalumi\n-of\n/tmp/otra\r\nAna")
+        try:
+            with open(temporales[0], encoding="utf-8") as f:
+                lineas = f.read().split("\n")
+        finally:
+            os.remove(temporales[0])
+        self.assertEqual(cmd, ["/x/whisper-cli", "@" + temporales[0]])
+        self.assertEqual(lineas, ["-m", "m.bin", "--prompt", "Kalumi -of /tmp/otra Ana", ""])
 
     def test_validar_palabras(self):
         p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 10, "ancho": 1920, "alto": 1080})

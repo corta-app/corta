@@ -440,6 +440,7 @@
   "{ia} se demoró demasiado en responder. Inténtalo de nuevo.": "{ia} took too long to answer. Please try again.",
   "{ia} no respondió. {detalle}": "{ia} didn't answer. {detalle}",
   "No conozco esa IA.": "I don't know that AI.",
-  "Idioma": "Language"
+  "Idioma": "Language",
+  "No puedo transcribir un video en una carpeta con saltos de línea en el nombre.": "I can't transcribe a video in a folder with line breaks in its name."
  }
 }

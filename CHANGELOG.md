@@ -6,6 +6,10 @@ Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriore
 
 ## Sin publicar · Unreleased
 
+- Tu vocabulario (nombres y marcas) ahora también ayuda a transcribir con `whisper-cli`, y va siempre en un archivo privado que se
+  borra al terminar: nunca queda en la carpeta del video ni a la vista de otros programas.
+  *Your vocabulary (names and brands) now also helps transcribe with `whisper-cli`, and it always goes in a private file that is
+  deleted when done: it never stays in the video's folder or visible to other programs.*
 - Por dentro, tu IA, los ajustes y los idiomas usan las piezas compartidas de la familia ([Pieza](https://github.com/pieza-app/pieza)).
   Al probar tu IA en Ajustes, Corta la prueba igual que cuando edita (sin herramientas, sin tu memoria y en una carpeta temporal),
   y si algo falla te dice por qué en tu idioma.
