@@ -649,9 +649,12 @@ for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {
 {
   const p = await navegador.newPage({ viewport: { width: 1360, height: 860 } });
   p.on("pageerror", (e) => falla("error de JavaScript (vista previa en reposo): " + e.message));
-  await p.goto(BASE); await p.waitForFunction(() => window.Corta && document.querySelector("#video")?.readyState >= 2);
-  const w = await p.evaluate(() => { let r; window.Corta._probar((E) => { E.bv = null; E.pestana = "texto"; const q = E.proyectos[0].proyecto; q.cortes = []; q.subtitulos.palabras_por_linea = 3; r = q.palabras[4]; }); return r; });
-  await p.evaluate((t) => { const v = document.querySelector("#video"); v.pause(); v.currentTime = t; return new Promise((ok) => v.addEventListener("seeked", ok, { once: true })); }, (w.i + w.f) / 2);
+  await p.goto(BASE); await p.waitForFunction(() => window.Corta && document.querySelector("#video"));
+  let w = await p.evaluate(() => { let r; window.Corta._probar((E) => { E.bv = null; E.pestana = "texto"; const q = E.proyectos[0].proyecto; q.cortes = []; q.subtitulos.palabras_por_linea = 3; r = q.palabras[4]; }); return r; });
+  // Sin H.264 (el Chromium de GitHub) el video no se mueve: entonces se corren las palabras para que la 4 quede donde está el video.
+  const t = await p.evaluate((t) => { const v = document.querySelector("#video"); v.pause(); v.currentTime = t;
+    return Promise.race([new Promise((ok) => v.addEventListener("seeked", ok, { once: true })), new Promise((ok) => setTimeout(ok, 2000))]).then(() => v.currentTime); }, (w.i + w.f) / 2);
+  if (Math.abs(t - (w.i + w.f) / 2) > 0.05) w = await p.evaluate((t) => { let r; window.Corta._probar((E) => { const q = E.proyectos[0].proyecto, d = t - (q.palabras[4].i + q.palabras[4].f) / 2; q.palabras = q.palabras.map((x) => ({ ...x, i: x.i + d, f: x.f + d })); r = q.palabras[4]; }); return r; }, t);
   await p.waitForTimeout(300);
   const cambios = await p.evaluate(() => new Promise((ok) => {
     const lista = []; const o = new MutationObserver((m) => m.forEach((x) => lista.push(`${x.type} ${x.target.id || x.target.className || x.target.nodeName} ${x.attributeName || ""}`)));
