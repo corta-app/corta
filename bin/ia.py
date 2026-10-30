@@ -41,6 +41,16 @@ def nombre():
     return IAS[elegida()][1]
 
 
+def _entorno():
+    """La IA no recibe las variables de Corta (rutas, programas, recursos): solo lo necesario para correr."""
+    return {k: v for k, v in os.environ.items() if not k.startswith("CORTA_")}
+
+
+#: Claude Code carga la memoria de la persona (CLAUDE.md, memoria automática) aunque corra sin herramientas. Esto la apaga y mantiene
+#: su sesión: la IA solo ve lo que Corta le manda.
+SIN_MEMORIA_CLAUDE = {"CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1", "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1"}
+
+
 def ejecutar_ia(prompt, timeout=600):
     """Le pasa el prompt a la IA del usuario y devuelve un CompletedProcess (stdout = respuesta)."""
     ia = elegida()
@@ -49,27 +59,29 @@ def ejecutar_ia(prompt, timeout=600):
         if ia == "codex":
             salida = os.path.join(tmp, "respuesta.txt")
             cmd = [comando, "exec", "--skip-git-repo-check", "-s", "read-only", "-C", tmp, "-o", salida, "-"]
-            r = subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp)
-            texto = open(salida, encoding="utf-8").read() if os.path.exists(salida) else ""
+            r = subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
+            texto = ""
+            if os.path.exists(salida):
+                with open(salida, encoding="utf-8") as f:
+                    texto = f.read()
             return subprocess.CompletedProcess(cmd, r.returncode, texto, r.stderr)
         es_agy = os.path.basename(comando).lower().split(".")[0] in ("agy", "antigravity")
         if ia == "gemini" and es_agy:
-            # Prompts largos en un archivo: la línea de comandos tiene límite.
-            if len(prompt) < 20000:
-                pedido = prompt
-            else:
-                with open(os.path.join(tmp, "instrucciones.md"), "w", encoding="utf-8") as f:
-                    f.write(prompt)
-                pedido = ("Lee el archivo instrucciones.md de esta carpeta y haz exactamente lo que pide. "
-                          "Entrega solo el resultado pedido, sin comentarios. No modifiques ni crees archivos.")
+            # Antigravity no lee la entrada estándar: el pedido va SIEMPRE en un archivo de la carpeta temporal, nunca en `-p`
+            # (los argumentos de un proceso los puede ver cualquier programa del computador). En `-p` solo va esta frase fija.
+            with open(os.path.join(tmp, "instrucciones.md"), "w", encoding="utf-8") as f:
+                f.write(prompt)
+            pedido = ("Lee el archivo instrucciones.md de esta carpeta y haz exactamente lo que pide. "
+                      "Entrega solo el resultado pedido, sin comentarios. No modifiques ni crees archivos.")
             cmd = [comando, "--output-format", "text", "--sandbox", "--add-dir", tmp, "-p", pedido]
-            return subprocess.run(cmd, stdin=subprocess.DEVNULL, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp)
+            return subprocess.run(cmd, stdin=subprocess.DEVNULL, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
         if ia == "gemini":
             cmd = [comando, "-p", "Responde a las instrucciones de arriba. Entrega solo el resultado pedido.", "-o", "text"]
-        else:
-            # Sin herramientas ni servidores MCP: la IA solo responde texto, no puede leer ni cambiar nada.
-            cmd = [comando, "-p", "--output-format", "text", "--disallowedTools", "*", "--strict-mcp-config"]
-        return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp)
+            return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp, env=_entorno())
+        # Sin herramientas ni servidores MCP ni la memoria de la persona: la IA solo responde texto, no puede leer ni cambiar nada.
+        cmd = [comando, "-p", "--output-format", "text", "--disallowedTools", "*", "--strict-mcp-config"]
+        return subprocess.run(cmd, input=prompt, text=True, encoding="utf-8", capture_output=True, timeout=timeout, cwd=tmp,
+                              env={**_entorno(), **SIN_MEMORIA_CLAUDE})
 
 
 def preguntar(prompt, timeout=600):

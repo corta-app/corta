@@ -3,6 +3,7 @@ y una IA falsa en el PATH (pruebas/ia_falsa.py, instalada como «claude»). Expo
 
 Uso: python3 pruebas/test_python.py
 """
+import hashlib
 import json
 import os
 import shutil
@@ -506,10 +507,14 @@ class Efectos(unittest.TestCase):
         self.assertIn("neon", efectos.disponibles())
         self.assertEqual(efectos.disponibles()["neon"]["origen"], "descargado")
         self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", "sha256": "0" * 64})["ok"], "huella distinta")
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otro"})["ok"], "otro id")
+        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otro", "sha256": huella})["ok"], "otro id")
+        for sin in ({}, {"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella[:63]}):
+            self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", **sin})["ok"], f"sin huella válida: {sin}")
         with open(archivo, "w") as f:
             json.dump({**bueno, "id": "malo", "pasos": [{"tipo": "color", "brillo": 9}]}, f)
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "malo"})["ok"])
+        with open(archivo, "rb") as f:
+            huella_mala = hashlib.sha256(f.read()).hexdigest()
+        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "malo", "sha256": huella_mala})["ok"])
         os.remove(os.path.join(efectos.DESCARGADOS, "neon.json"))
 
     def test_mismo_formato_que_el_catalogo(self):
@@ -724,7 +729,11 @@ class Plantillas(unittest.TestCase):
         self.assertEqual(plantillas.disponibles()["tres"]["origen"], "descargada")
         archivo = os.path.join(TMP, "plantilla.json")
         self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", "sha256": "0" * 64})["ok"])
-        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otra"})["ok"])
+        with open(archivo, "rb") as f:
+            huella = hashlib.sha256(f.read()).hexdigest()
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otra", "sha256": huella})["ok"])
+        for sin in ({}, {"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella + "0"}):
+            self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", **sin})["ok"], f"sin huella válida: {sin}")
         self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "borrar_todo"})["ok"])
         os.remove(os.path.join(plantillas.DESCARGADAS, "tres.json"))
 
@@ -999,7 +1008,63 @@ class App(unittest.TestCase):
 
 
 class Seguridad(unittest.TestCase):
-    """Content-Security-Policy de la interfaz y de la página pública (docs/)."""
+    """Content-Security-Policy de la interfaz y de la página pública (docs/), lo que recibe la IA y cómo se arma el HTML."""
+
+    def _ia_falsa(self, nombre):
+        """Un CLI falso que anota sus argumentos, su entorno y los archivos de su carpeta, y responde «listo»."""
+        carpeta = tempfile.mkdtemp(dir=TMP)
+        anotado = os.path.join(carpeta, "anotado.json")
+        ruta = os.path.join(carpeta, nombre)
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write("#!" + sys.executable + "\nimport json, os, sys\n"
+                    f"json.dump({{'argv': sys.argv[1:], 'env': dict(os.environ), 'archivos': os.listdir('.')}}, open({anotado!r}, 'w'))\n"
+                    "print('listo')\n")
+        os.chmod(ruta, 0o755)
+        return carpeta, anotado
+
+    def _con_ia(self, id_ia, nombre):
+        import ia
+        carpeta, anotado = self._ia_falsa(nombre)
+        antes_path, antes_elegida = os.environ["PATH"], ia.elegida
+        os.environ["PATH"] = carpeta + os.pathsep + antes_path
+        os.environ["CORTA_SECRETO_PRUEBA"] = "no-debe-llegar"
+        ia.elegida = lambda: id_ia
+        try:
+            r = ia.ejecutar_ia("PEDIDO-SECRETO de la persona", timeout=60)
+        finally:
+            os.environ["PATH"], ia.elegida = antes_path, antes_elegida
+            del os.environ["CORTA_SECRETO_PRUEBA"]
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(anotado, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_ia_no_recibe_variables_de_corta(self):
+        for id_ia, nombre in (("claude", "claude"), ("codex", "codex"), ("gemini", "agy")):
+            x = self._con_ia(id_ia, nombre)
+            self.assertFalse([k for k in x["env"] if k.startswith("CORTA_")], f"{id_ia}: las variables CORTA_* no llegan a la IA")
+        x = self._con_ia("claude", "claude")
+        self.assertEqual((x["env"].get("CLAUDE_CODE_DISABLE_CLAUDE_MDS"), x["env"].get("CLAUDE_CODE_DISABLE_AUTO_MEMORY")), ("1", "1"),
+                         "Claude corre sin la memoria de la persona")
+        self.assertIn("--disallowedTools", x["argv"])
+
+    def test_pedido_a_antigravity_va_en_archivo(self):
+        x = self._con_ia("gemini", "agy")
+        self.assertFalse(any("PEDIDO-SECRETO" in a for a in x["argv"]), "el pedido nunca va en los argumentos (los ve cualquier programa)")
+        self.assertIn("instrucciones.md", x["archivos"])
+
+    def test_T_escapa_los_valores(self):
+        import re
+        js = open(os.path.join(RAIZ, "ui", "app.js"), encoding="utf-8").read()
+        esc = re.search(r"^  const esc = .*;$", js, re.M).group(0)
+        t = re.search(r"^  function T\(plantilla, valores = \{\}\) \{.*?^  \}$", js, re.M | re.S).group(0)
+        if not shutil.which("node"):
+            self.skipTest("falta node")
+        prueba = (f"const E = {{ idioma: 'es', textos: {{}} }};\n{esc}\n{t}\n"
+                  "console.log(T('Plantilla «{x}» de **{n}**', { x: '<img src=x onerror=alert(1)>', n: 'a&b' }));")
+        r = subprocess.run(["node", "-e", prueba], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), "Plantilla «&lt;img src=x onerror=alert(1)&gt;» de <b>a&amp;b</b>")
+        self.assertNotRegex(js, r"esc\((T|frase)\(", "T ya escapa: no escapar dos veces")
 
     def csp(self, html):
         import re

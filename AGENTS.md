@@ -141,7 +141,9 @@ transcriptor. Quien ya hizo la bienvenida no la repite; el idioma se cambia en A
   `proyecto.entrada()` (`file:` + ruta absoluta). Nunca va texto de la persona en los argumentos: los pedidos a la IA, los títulos y
   los proyectos van en un JSON de entrada (`Procesador.conEntrada`); toda carpeta que manda la interfaz pasa por
   `Rutas.proyecto` (Swift) y `proyecto.carpeta_valida` (Python). `guardar.py` no deja cambiar `fuente` ni apuntar la música fuera de `musica/`.
-- La IA corre sin herramientas ni MCP (`claude --disallowedTools "*" --strict-mcp-config`, `codex -s read-only`), igual al probarla.
+- La IA corre sin herramientas ni MCP (`claude --disallowedTools "*" --strict-mcp-config`, `codex -s read-only`), igual al probarla;
+  sin las variables `CORTA_*` (`ia._entorno`), Claude sin la memoria de la persona (`SIN_MEMORIA_CLAUDE`) y el pedido a Antigravity
+  siempre en `instrucciones.md`, nunca en `-p`. Instalar un efecto o plantilla exige `sha256` (64 hex) y `T()` escapa sus valores.
 - La ventana solo carga archivos de `ui/` (navegación), el puente solo atiende al marco principal con origen `file` y la interfaz tiene
   acceso de lectura solo a `ui/` (lo demás, por `corta://`). Un enlace https se abre en el navegador.
 - Transcribir y exportar: el avance lo dejan los scripts en `<carpeta>/estado.json`; `Ventana` lo lee cada medio segundo (`progreso`,
