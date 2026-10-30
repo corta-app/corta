@@ -397,11 +397,13 @@ def validar_indice(d):
 
 def instalar(d):
     """Una plantilla que bajó la app: se valida otra vez (huella, id y formato) antes de guardarla."""
-    if not isinstance(d, dict) or not isinstance(d.get("archivo"), str) or not isinstance(d.get("id"), str):
+    if not isinstance(d, dict) or not isinstance(d.get("archivo"), str) or not isinstance(d.get("id"), str) \
+            or not re.fullmatch(r"[0-9a-f]{64}", str(d.get("sha256", ""))):
+        # La huella es obligatoria: sin ella cualquier archivo pasaría por uno del catálogo.
         raise ValueError("No pude leer la plantilla.")
     with open(d["archivo"], "rb") as f:
         crudo = f.read(MAX_BYTES + 1)
-    if len(crudo) > MAX_BYTES or (d.get("sha256") and hashlib.sha256(crudo).hexdigest() != d["sha256"]):
+    if len(crudo) > MAX_BYTES or hashlib.sha256(crudo).hexdigest() != d["sha256"]:
         raise ValueError("La plantilla llegó dañada. Intenta de nuevo.")
     try:
         pl = json.loads(crudo.decode("utf-8"))

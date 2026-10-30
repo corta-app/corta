@@ -58,7 +58,8 @@
       else if (window._faltantes) window._faltantes.add(plantilla);
     }
     t = esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(String(v));
+    // Los valores son texto: se escapan aquí (un nombre de archivo, de plantilla o de la IA nunca entra como HTML).
+    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(esc(String(v)));
     return t;
   }
   /** Como T(), pero en texto plano (para atributos como aria-label; escápalo con esc() al ponerlo). */
@@ -632,8 +633,8 @@
         <div class="capas-fx" id="capas-fx" aria-hidden="true"></div>
         <div class="subs" id="subs" aria-hidden="true"></div><div class="texto-sobre" id="texto-sobre" aria-hidden="true"></div></div></div>
       <div class="reproductor"><button class="play" data-accion="play" aria-label="Reproducir" id="boton-play">▶</button>
-        <span class="tiempo" id="reloj" data-sin-traducir>${T("**{a}** de {b}", { a: "0:00", b: esc(reloj(duracionFinal(p))) })}</span>
-        <span class="tiempo" data-sin-traducir style="opacity:.7">${duracionFinal(p) < dur ? T("(original {x})", { x: esc(reloj(dur)) }) : ""}</span>
+        <span class="tiempo" id="reloj" data-sin-traducir>${T("**{a}** de {b}", { a: "0:00", b: reloj(duracionFinal(p)) })}</span>
+        <span class="tiempo" data-sin-traducir style="opacity:.7">${duracionFinal(p) < dur ? T("(original {x})", { x: reloj(dur) }) : ""}</span>
         ${horizontal ? `<label class="encuadre"><span>Encuadre</span><input type="range" min="0" max="1" step="0.01" value="${p.encuadre.x}" data-encuadre aria-label="Mover el encuadre"></label>
           <select data-relleno aria-label="Relleno"><option value="recorte" ${p.relleno === "recorte" ? "selected" : ""}>Recortar</option><option value="desenfoque" ${p.relleno === "desenfoque" ? "selected" : ""}>Fondo borroso</option></select>` : ""}
       </div>
@@ -686,7 +687,7 @@
     const nSel = sel ? sel[1] - sel[0] + 1 : 0;
     const selCortada = sel && p.palabras.slice(sel[0], sel[1] + 1).every((w) => palabraCortada(p, w, cortes));
     return `<div class="tarjeta limpiar"><div class="txt"><b>Silencios y muletillas</b>
-        <small>${E.ultimoAhorro != null ? frase("Listo: el video quedó **{s} s** más corto.", { s: esc(segundos(E.ultimoAhorro)) }) : "Saca las pausas largas y los «eh», «mmm» de una vez."}</small></div>
+        <small>${E.ultimoAhorro != null ? frase("Listo: el video quedó **{s} s** más corto.", { s: segundos(E.ultimoAhorro) }) : "Saca las pausas largas y los «eh», «mmm» de una vez."}</small></div>
         <button class="boton ${E.ultimoAhorro == null ? "principal" : ""}" data-accion="limpiar" ${E.limpiando ? "disabled" : ""}>${E.limpiando ? "Limpiando…" : E.ultimoAhorro == null ? "Limpiar" : "Otra vez"}</button></div>
       ${nSel && !E.editar ? `<div class="acciones-sel">${frase(nSel === 1 ? "1 palabra elegida" : "{n} palabras elegidas", { n: nSel })}
         <button class="boton sutil" data-accion="editar-sel" title="Corregir cómo se escribe (o tócala otra vez)">✎ <span>Corregir</span></button>
@@ -739,7 +740,7 @@
   function sugerenciaHTML() {
     const s = E.sugerencia;
     if (!s || !P()) return "";
-    const v = { de: esc(s.de), a: esc(s.a), n: s.n };
+    const v = { de: s.de, a: s.a, n: s.n };
     const texto = s.n && !s.todo ? (s.n === 1 ? "¿Cambiar «{de}» por «{a}» en todo el video (1 vez)?" : "¿Cambiar «{de}» por «{a}» en todo el video ({n} veces)?")
       : s.todo ? (s.n === 1 ? "Listo: cambié «{de}» por «{a}» 1 vez más." : "Listo: cambié «{de}» por «{a}» {n} veces más.") : "Corregiste «{de}» por «{a}».";
     return `<div class="sugerencia" role="status"><span class="txt" data-sin-traducir>${T(texto, v)}</span><span class="acciones">
@@ -842,12 +843,12 @@
   }
   function panelEfectos() {
     const p = P(), d = destinoEfecto(), aplicados = p.efectos || [];
-    const destino = d ? `<div class="tarjeta fx-destino"><div class="txt"><b>${frase("Al tramo de {a} a {b}", { a: esc(relojFino(d.i)), b: esc(relojFino(d.f)) })}</b>
+    const destino = d ? `<div class="tarjeta fx-destino"><div class="txt"><b>${frase("Al tramo de {a} a {b}", { a: relojFino(d.i), b: relojFino(d.f) })}</b>
         ${d.texto ? `<small data-sin-traducir>«${esc(d.texto)}»</small>` : ""}</div><button class="boton sutil chico" data-accion="fx-todo">Todo el video</button></div>`
       : `<p class="nota" style="margin:0 0 10px">Se aplica a todo el video. Para un solo momento, elige palabras en Texto o un tramo en la línea de tiempo.</p>`;
     const filas = aplicados.map((ap, k) => {
       const ef = efectoPorId(ap.efecto), nombre = ef ? nombreFx(ef) : ap.efecto;
-      const donde = "i" in ap ? T("{a} a {b}", { a: esc(relojFino(ap.i)), b: esc(relojFino(ap.f)) }) : esc(tr("Todo el video"));
+      const donde = "i" in ap ? T("{a} a {b}", { a: relojFino(ap.i), b: relojFino(ap.f) }) : esc(tr("Todo el video"));
       return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(nombre)}</b><small data-sin-traducir>${donde}</small></div>
         <button class="boton sutil chico" data-quitar-fx="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: nombre }))}" data-sin-traducir>${esc(tr("Quitar"))}</button></div>`;
     }).join("");
@@ -956,7 +957,7 @@
       const c = el.querySelector(".pv-cabezal"); if (c) c.style.left = (t / total * 100).toFixed(2) + "%";
     }
   }
-  const metaPl = (pl) => T("{d} s · {n} clips", { d: esc(segundosPl(duracionPl(pl))), n: pl.huecos.length });
+  const metaPl = (pl) => T("{d} s · {n} clips", { d: segundosPl(duracionPl(pl)), n: pl.huecos.length });
   function tarjetaPl(pl) {
     return `<button class="pl" data-ver-pl="${esc(pl.id)}" data-sin-traducir>${vistaPl(pl)}<span class="nombre">${esc(nombreFx(pl))}</span><small>${metaPl(pl)}</small></button>`;
   }
@@ -986,7 +987,7 @@
   function detallePlantilla(pl) {
     const x = E.pl, propia = plantillaPorId(pl.id), faltan = faltanPl(pl), catEf = x.catalogo?.efectos || E.catalogo?.efectos || [];
     const huecos = pl.huecos.map((h, k) => `<li><span class="num">${k + 1}</span><span class="txt">${h.pista ? `<b data-sin-traducir>${esc(enIdioma(h.pista))}</b>` : `<b>Lo que quieras</b>`}</span>
-      <small data-sin-traducir>${esc(tr({ video: "Video", foto: "Foto", cualquiera: "Video o foto" }[h.tipo]))} · ${T("{s} s", { s: esc(segundosPl(durHueco(h))) })}${h.velocidad ? ` · ⏱ ${esc(nombreVel(h.velocidad))}` : ""}</small></li>`).join("");
+      <small data-sin-traducir>${esc(tr({ video: "Video", foto: "Foto", cualquiera: "Video o foto" }[h.tipo]))} · ${T("{s} s", { s: segundosPl(durHueco(h)) })}${h.velocidad ? ` · ⏱ ${esc(nombreVel(h.velocidad))}` : ""}</small></li>`).join("");
     const faltaHTML = faltan.length ? `<div class="tarjeta falta-pl"><b>Usa efectos de la comunidad que no tienes</b>${faltan.map((id) => {
         const ef = catEf.find((e) => e.id === id), bajando = x.bajando[id];
         return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(ef ? nombreFx(ef) : id)}</b></div>
@@ -1014,13 +1015,13 @@
         : `<video class="mini-clip" src="${esc(fuenteClip(E.sel, h.archivo))}" muted playsinline preload="metadata" data-mini="${k}" data-desde="${h.desde}"></video>`;
       const control = este ? `<small class="ok">${esc(tr("Armando…"))}</small>`
         : max > 0.05 ? `<label class="desde"><input type="range" min="0" max="${max}" step="0.1" value="${h.desde}" data-hueco-desde="${k}" ${ocupado ? "disabled" : ""} aria-label="${esc(Tp("Desde qué segundo del clip {n}", { n: k + 1 }))}">
-            <output id="desde-${k}">${T("desde {t}", { t: esc(relojFino(h.desde)) })}</output></label>` : "";
+            <output id="desde-${k}">${T("desde {t}", { t: relojFino(h.desde) })}</output></label>` : "";
       return `<div class="hueco-fila" data-sin-traducir><span class="num">${k + 1}</span>${mini}<div class="txt"><b>${esc(pista || Tp("Clip {n}", { n: k + 1 }))}</b>
-          <small>${esc(tr(h.tipo === "foto" ? "Foto" : "Video"))} · ${T("{a} a {b}", { a: esc(relojFino(ini[k])), b: esc(relojFino(ini[k + 1])) })}</small>${control}</div>
+          <small>${esc(tr(h.tipo === "foto" ? "Foto" : "Video"))} · ${T("{a} a {b}", { a: relojFino(ini[k]), b: relojFino(ini[k + 1]) })}</small>${control}</div>
         <button class="boton chico" data-cambiar-clip="${k}" ${ocupado ? "disabled" : ""}>${esc(tr("Cambiar"))}</button></div>`;
     }).join("");
     return `<div class="tarjeta"><h3>Tus clips</h3>
-      <p class="nota" style="margin:0 0 10px">${pl ? frase("Plantilla «{x}». Cambia un clip o mueve la barra para elegir qué parte del video va en su hueco.", { x: esc(nombreFx(pl)) })
+      <p class="nota" style="margin:0 0 10px">${pl ? frase("Plantilla «{x}». Cambia un clip o mueve la barra para elegir qué parte del video va en su hueco.", { x: nombreFx(pl) })
         : esc(tr("Cambia un clip o mueve la barra para elegir qué parte del video va en su hueco."))}</p>${filas}</div>
       ${pl?.musica?.bpm ? `<p class="nota">${frase("Los cortes van al ritmo de una música de ~{b} BPM: elige una parecida en Música.", { b: Math.round(pl.musica.bpm) })}</p>` : ""}`;
   }
@@ -1063,7 +1064,7 @@
     return Tp("Quitar este cambio");
   }
   function panelIA() {
-    const ia = E.ia, nombre = esc(nombreIA()), p = P();
+    const ia = E.ia, nombre = nombreIA(), p = P();
     // Lo que la IA cambió en este video queda anotado en el proyecto: cada tarjeta quita justo ese cambio (`quitarCambioIA`).
     const cambios = [...(p.cambios_ia || [])].reverse().map((c) => {
       const pie = c.estado === "quitado"
@@ -1083,13 +1084,13 @@
   }
 
   function panelShorts() {
-    const p = P(), nombre = esc(nombreIA());
+    const p = P(), nombre = nombreIA();
     const largo = p.fuente.duracion >= 90;
     let cuerpo;
     if (E.buscandoShorts) cuerpo = `<div class="tarjeta">${frase("{ia} está buscando los mejores momentos…", { ia: nombre }, "p")}<div class="barra-prog indef"><i></i></div></div>`;
     else if (E.shorts?.error) cuerpo = `<p class="error-txt" data-sin-traducir>${esc(E.shorts.error)}</p>`;
     else if (E.shorts?.lista) {
-      cuerpo = E.shorts.lista.map((s, k) => `<article class="short"><span class="meta" data-sin-traducir>${esc(T("#{n} · {s} s", { n: k + 1, s: Math.round(s.duracion) }))}</span>
+      cuerpo = E.shorts.lista.map((s, k) => `<article class="short"><span class="meta" data-sin-traducir>${T("#{n} · {s} s", { n: k + 1, s: Math.round(s.duracion) })}</span>
         <h4 data-sin-traducir>${esc(s.titulo)}</h4><p data-sin-traducir>${s.gancho ? `<q>${esc(s.gancho)}</q><br>` : ""}${esc(s.por_que)}</p>
         <div class="acciones"><button class="boton" data-ver-short="${k}">▶ <span>Ver</span></button><button class="boton principal" data-crear-short="${k}">Crear este Short</button></div></article>`).join("");
     } else cuerpo = "";
@@ -1190,7 +1191,7 @@
       ${lenta ? op("data-vel-suavizar", !!e?.suavizar, "Suavizar", "Mezcla los cuadros para que la cámara lenta no salte.") : ""}
       ${lenta && e?.suavizar ? op("data-vel-fluido", e.suavizar === "movimiento", "Más fluido (exportar tarda más)", "Inventa los cuadros que faltan. Exportar tarda bastante más.") : ""}
       ${v < 0.5 || v > 2 || rampa ? op("data-vel-silencio", muda, "Silenciar el audio del tramo", "Bajo 0,5× la voz se silencia sola. La música nunca cambia de velocidad.") : ""}
-      <small class="nota">${frase("Dura {a} s y en el video, {b} s", { a: esc(segundos(tr_.f - tr_.i)), b: esc(segundos(sale)) })}</small></div>`;
+      <small class="nota">${frase("Dura {a} s y en el video, {b} s", { a: segundos(tr_.f - tr_.i), b: segundos(sale) })}</small></div>`;
   }
   /** Hasta dónde se puede mover un borde: sin dar vuelta el tramo (mínimo 0,05 s), sin salir del video y sin pisar a sus vecinos. */
   function limitesBorde(lista, k, borde, dur) {
@@ -1343,7 +1344,7 @@
   function infoSel() {
     const p = P(), s = E.lt.sel, o = s && (s.lista === "tramos" ? tramosEdicion(p)[s.k] : p?.[s.lista]?.[s.k]);
     if (!o || !("i" in o)) return `<span class="nota">Toca un tramo del video para borrarlo, recortarlo o ponerle un efecto. Arrastra los bordes para ajustarlos.</span>`;
-    const v = { a: esc(relojFino(o.i)), b: esc(relojFino(o.f)) };
+    const v = { a: relojFino(o.i), b: relojFino(o.f) };
     if (s.lista === "tramos") {
       const e = velTramo(p, o);
       return `${frase("Tramo de {a} a {b}", v, "b")}<span class="herr-tramo"><button class="boton sutil chico" data-tramo="inicio" title="Recorta desde el inicio del tramo hasta el cabezal">⇤ <span>Recortar</span></button>
@@ -1476,15 +1477,15 @@
   function dialogoExportar() {
     const x = E.exportar, p = P();
     if (x.paso === "listo") {
-      return `<h2 id="t-exp">¡Listo para publicar! 🎉</h2>${frase("Tu video vertical de **{d}** quedó guardado en la carpeta del proyecto.", { d: esc(reloj(x.duracion)) }, "p")}
+      return `<h2 id="t-exp">¡Listo para publicar! 🎉</h2>${frase("Tu video vertical de **{d}** quedó guardado en la carpeta del proyecto.", { d: reloj(x.duracion) }, "p")}
         <div class="pie-dialogo"><button class="boton" data-accion="mostrar-exportado">Mostrar en la carpeta</button><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
     }
     if (x.paso === "error") return `<h2 id="t-exp">No se pudo exportar</h2><p class="error-txt" data-sin-traducir>${esc(x.error)}</p><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button><button class="boton principal" data-accion="exportar-ya">Reintentar</button></div>`;
     if (x.paso === "exportando") {
-      return `<h2 id="t-exp">Exportando…</h2>${frase("Formato {l}, 1080 px, con subtítulos. Esto pasa en tu computador.", { l: esc(p.lienzo) }, "p")}
-        <div class="barra-prog"><i style="width:${x.pct || 0}%"></i></div><p class="nota" data-sin-traducir>${esc(T("{n} %", { n: x.pct || 0 }))}</p>`;
+      return `<h2 id="t-exp">Exportando…</h2>${frase("Formato {l}, 1080 px, con subtítulos. Esto pasa en tu computador.", { l: p.lienzo }, "p")}
+        <div class="barra-prog"><i style="width:${x.pct || 0}%"></i></div><p class="nota" data-sin-traducir>${T("{n} %", { n: x.pct || 0 })}</p>`;
     }
-    return `<h2 id="t-exp">Exportar</h2>${frase("Queda un video de **{d}** en formato {l}, listo para subir.", { d: esc(reloj(duracionFinal(p))), l: esc(p.lienzo) }, "p")}
+    return `<h2 id="t-exp">Exportar</h2>${frase("Queda un video de **{d}** en formato {l}, listo para subir.", { d: reloj(duracionFinal(p)), l: p.lienzo }, "p")}
       <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="exportar-ya">Exportar video</button></div>`;
   }
   function dialogoAjustes() {
@@ -1495,7 +1496,7 @@
       <div class="seccion"><h3>Vocabulario</h3>${seccionVocabulario()}</div>
       <div class="seccion"><h3>General</h3><div class="fila"><div class="txt"><b>Idioma de la app</b></div><select data-config="idioma_ui"><option value="es" ${E.idioma === "es" ? "selected" : ""}>Español</option><option value="en" ${E.idioma === "en" ? "selected" : ""}>English</option></select></div>
         <div class="fila"><div class="txt"><b>Carpeta de tus videos</b><small data-sin-traducir>${esc(E.carpeta)}</small></div><button class="boton" data-accion="abrir-carpeta">Abrir</button></div></div>
-      <div class="seccion"><h3>Acerca de Corta</h3><p style="margin:0 0 8px;color:var(--suave)">${frase("Corta {v} · Gratis y de código abierto (AGPL-3.0).", { v: esc(E.version) })}</p>
+      <div class="seccion"><h3>Acerca de Corta</h3><p style="margin:0 0 8px;color:var(--suave)">${frase("Corta {v} · Gratis y de código abierto (AGPL-3.0).", { v: E.version })}</p>
         <div class="fila"><div class="txt"><b>Actualizaciones</b>${actualizando ? `<small data-sin-traducir>${esc(E.act.texto || "")}</small>`
           : `<small>${E.buscando === "buscando" ? "Buscando…" : E.buscando === "alDia" ? "Estás en la última versión." : E.buscando === "sinConexion" ? "No pude revisar. Revisa tu conexión." : E.actualizacion?.hay ? "Hay una versión nueva." : "Corta revisa sola cada 6 horas."}</small>`}</div>
           ${actualizando ? `<div style="width:120px"><div class="barra-prog ${E.act.pct == null ? "indef" : ""}"><i style="width:${E.act.pct ?? 0}%"></i></div></div>`
@@ -1736,7 +1737,7 @@
     const [W] = LIENZOS[p.lienzo], pw = W * escala;
     // Reloj y cabezal
     const salida = aSalida(p, t, tramos());
-    const rel = $("#reloj"); if (rel && salida != null) rel.innerHTML = T("**{a}** de {b}", { a: esc(reloj(salida)), b: esc(reloj(duracionFinal(p))) });
+    const rel = $("#reloj"); if (rel && salida != null) rel.innerHTML = T("**{a}** de {b}", { a: reloj(salida), b: reloj(duracionFinal(p)) });
     const cab = $("#cabezal"); if (cab) cab.style.left = (ltX(p, t) * 100).toFixed(3) + "%";
     const regla = $("#linea");
     if (regla && regla.getAttribute("aria-valuenow") !== String(Math.round(t))) { regla.setAttribute("aria-valuenow", Math.round(t)); regla.setAttribute("aria-valuetext", relojFino(t)); }
@@ -2017,7 +2018,7 @@
     if (ds.huecoDesde != null) {
       // Mientras se arrastra solo se mueve el cuadro del clip; al soltar se vuelve a armar el video (change).
       const k = ds.huecoDesde, t = Number(ev.target.value), o = document.getElementById("desde-" + k), m = document.querySelector(`[data-mini="${k}"]`);
-      if (o) o.innerHTML = T("desde {t}", { t: esc(relojFino(t)) });
+      if (o) o.innerHTML = T("desde {t}", { t: relojFino(t) });
       if (m) { m.dataset.desde = t; try { m.currentTime = t + 0.05; } catch {} }
       return;
     }
