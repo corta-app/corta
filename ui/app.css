@@ -142,7 +142,8 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .nombre-m { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); max-width: calc(100% - 16px); font-size: 11px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .lt-agregar { position: absolute; left: 6px; top: 4px; bottom: 4px; border: 1px dashed var(--linea); background: transparent; border-radius: 7px; padding: 0 10px; font-size: 11.5px; color: var(--suave); }
 .lt-agregar:hover { color: var(--texto); border-color: var(--suave); }
-.lt .cabezal { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--texto); box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); z-index: 4; pointer-events: none; }
+/* El cabezal se mueve en cada cuadro: en su propia capa, moverlo no repinta toda la ventana. */
+.lt .cabezal { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--texto); box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); z-index: 4; pointer-events: none; will-change: transform; }
 .lt .cabezal::before { content: ""; position: absolute; top: 0; left: -5px; border: 6px solid transparent; border-top: 8px solid var(--texto); border-bottom: 0; }
 
 /* Panel derecho */
