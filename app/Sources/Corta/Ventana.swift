@@ -397,7 +397,7 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
             // Efectos de la comunidad (pieza «catálogo»): el índice se baja de un dominio fijo y lo valida bin/catalogo.py.
             Catalogo.listar("efectos") { Ventana.shared.llamar("catalogoListo", $0) }
         case "descargarEfecto":
-            // El id solo se busca en el último índice validado; la respuesta trae el efecto en «efecto» o {codigo, plantilla}.
+            // El id solo se busca en el último índice validado; la respuesta trae el efecto en «efecto» o {codigo, frase}.
             Catalogo.descargar("efectos", d["id"] as? String ?? "") { Ventana.shared.llamar("efectoDescargado", $0) }
         case "catalogoPlantillas":
             // Plantillas de la comunidad (y el índice de efectos, para ofrecer los que una plantilla usa y la persona no tiene).

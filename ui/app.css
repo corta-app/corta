@@ -23,8 +23,8 @@
   --violeta: light-dark(var(--violeta-claro), var(--violeta-oscuro)); --violeta-suave: light-dark(var(--violeta-suave-claro), var(--violeta-suave-oscuro));
   --azul: light-dark(var(--azul-claro), var(--azul-oscuro)); --azul-suave: light-dark(var(--azul-suave-claro), var(--azul-suave-oscuro));
   --corte: repeating-linear-gradient(135deg, var(--corte-fuerte) 0 4px, var(--corte-suave) 4px 8px);
-  /* Lo que se toca en el editor conserva sus tamaños (más compactos que los de la pieza); en los diálogos, en pantallas táctiles
-     y a 760 px o menos, la pieza «componentes» los sube a --pz-tactil (44 px). */
+  /* Lo que se toca en el editor conserva sus tamaños (más compactos que los de la pieza). En pantallas táctiles y a 760 px o
+     menos, la pieza «componentes» sube a --pz-tactil (44 px) solo lo suyo (diálogos, filas de Ajustes, avisos); el editor no crece. */
   --pz-boton-alto: 0px; --pz-chip-alto: 0px;
   --fuente: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px;
 }
@@ -272,8 +272,6 @@ textarea:focus, input.texto:focus { outline: 2px solid var(--acento); outline-of
 .pz-dialogo > p { margin: 0 0 16px; line-height: 1.55; }
 .pz-dialogo p.nota { margin: 6px 0 0; }
 .pz-dialogo .nota-idioma { margin: 18px 0 0; }
-/* La ✕ de un diálogo mide lo de siempre en el escritorio (el alto de los botones de Corta es 0: ver :root). */
-.pz-cerrar { min-width: max(36px, var(--pz-boton-alto)); }
 @media (max-width: 760px) {
   .pz-dialogo { border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
   .pz-capa:has(.dialogo-pl) { padding: 0; }

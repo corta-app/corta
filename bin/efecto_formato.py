@@ -141,8 +141,3 @@ def validar_efecto(d, archivo=None):
         e.append("etiquetas: hasta 8 palabras cortas.")
     e += validar_pasos(d.get("pasos"))
     return e
-
-
-# Para la pieza «catálogo» (bin/catalogo.py de la app): validar(obj) -> [problemas] y los campos que se guardan.
-validar = validar_efecto
-CAMPOS = CLAVES
