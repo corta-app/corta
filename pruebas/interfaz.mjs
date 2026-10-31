@@ -200,7 +200,7 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
       p.on("pageerror", (e) => falla(`error de JavaScript (${idioma}, ${modo}): ${e.message}`));
       await p.addInitScript(() => { window._faltantes = new Set(); });
       await p.goto(BASE + "?" + [consulta, bv ? "bienvenida" : ""].filter(Boolean).join("&"));
-      await p.waitForFunction((sel) => window.Corta && document.querySelector(sel), bv ? ".capa" : ".app");
+      await p.waitForFunction((sel) => window.Corta && document.querySelector(sel), bv ? ".pz-capa" : ".app");
       const pasos = bv ? [0, 1, 2, 3].map((n) => [`bienvenida-${n}`, `E=>{E.bv=${n}}`]) : VISTAS;
       for (const [nombre, f] of pasos) {
         await p.evaluate(`window.Corta._probar(${f})`);
@@ -361,7 +361,7 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   else console.log(`  ✓ Esc cancela, vacía sale del subtítulo y la frase se ${q.palabras[1].linea === "fin" ? "separa" : "une"} a mano`);
   // Ajustes: el vocabulario se ve y se borra
   await p.evaluate(() => window.Corta._probar((E) => { E.ajustes = true; }));
-  const fila = await p.textContent(".dialogo").catch(() => "");
+  const fila = await p.textContent(".pz-dialogo").catch(() => "");
   if (!/calumi\s*→\s*Kalumi/.test(fila)) falla("Ajustes no muestra el vocabulario");
   await p.click("[data-vocab-quitar]");
   await p.waitForFunction(() => !document.querySelector("[data-vocab-quitar]"), null, { timeout: 2000 }).catch(() => falla("Quitar del vocabulario no lo borró"));
@@ -615,7 +615,7 @@ if (errores.length === antesPlantillas) console.log("  ✓ Plantillas: categorí
 for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {
   const p = await navegador.newPage({ viewport: { width: ancho, height: 844 }, colorScheme: esquema, locale: "es-CL" });
   p.on("pageerror", (e) => falla("error de JavaScript (idioma): " + e.message));
-  await p.goto(BASE + "?bienvenida"); await p.waitForSelector(".capa");
+  await p.goto(BASE + "?bienvenida"); await p.waitForSelector(".pz-capa");
   const primera = await p.evaluate(() => ({
     titulo: document.querySelector("#t-bv")?.textContent.replace(/\s+/g, " ").trim(), detras: !!document.querySelector(".app, video"),
     opciones: [...document.querySelectorAll("[data-elegir-idioma]")].map((b) => b.querySelector("b").textContent), foco: document.activeElement?.id,
@@ -632,7 +632,7 @@ for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {
   await p.waitForFunction(() => document.querySelector("#t-bv")?.textContent === "Hi, this is Corta", null, { timeout: 3000 })
     .catch(() => falla("después de elegir English el siguiente paso no salió en inglés"));
   const despues = await p.evaluate(() => ({ guardado: window.Corta._pruebas.demoConfig()?.idioma_ui, lang: document.documentElement.lang,
-    boton: document.querySelector('.pie-dialogo [data-bv="2"]')?.textContent }));
+    boton: document.querySelector('.pz-pie [data-bv="2"]')?.textContent }));
   if (despues.guardado !== "en" || despues.lang !== "en" || despues.boton !== "Next") falla("elegir English no guardó idioma_ui o no cambió la app: " + JSON.stringify(despues));
   else if (esquema === "light") console.log("  ✓ Primer uso: lo primero es el idioma; con teclado se elige English, se guarda idioma_ui y lo que sigue sale en inglés");
   await p.close();
@@ -640,17 +640,17 @@ for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {
 {
   const p = await navegador.newPage();
   await p.goto(BASE); await p.waitForSelector(".app");
-  if (await p.$(".capa")) falla("con la bienvenida ya hecha se volvió a mostrar"); else console.log("  ✓ Con la bienvenida ya hecha no se repite");
+  if (await p.$(".pz-capa")) falla("con la bienvenida ya hecha se volvió a mostrar"); else console.log("  ✓ Con la bienvenida ya hecha no se repite");
   await p.close();
 }
 
 // 5) Contraste del botón principal
 for (const esquema of ["light", "dark"]) {
   const p = await navegador.newPage({ colorScheme: esquema });
-  await p.goto(BASE); await p.waitForSelector(".boton.principal");
+  await p.goto(BASE); await p.waitForSelector(".pz-boton.pz-principal");
   const c = await p.evaluate(() => {
     const lum = (s) => { const [r, g, b] = s.match(/[\d.]+/g).slice(0, 3).map((x) => { x = x / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
-    const cs = getComputedStyle(document.querySelector(".boton.principal")); const a = lum(cs.color), b = lum(cs.backgroundColor);
+    const cs = getComputedStyle(document.querySelector(".pz-boton.pz-principal")); const a = lum(cs.color), b = lum(cs.backgroundColor);
     return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
   });
   if (c < 4.5) falla(`contraste del botón principal en modo ${esquema}: ${c.toFixed(2)} (mínimo 4.5)`);

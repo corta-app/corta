@@ -22,6 +22,11 @@
    "turbo",
    "small"
   ],
-  "idioma_audio": "texto"
+  "idioma_audio": "texto",
+  "tema": [
+   "sistema",
+   "claro",
+   "oscuro"
+  ]
  }
 }

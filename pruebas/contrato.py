@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Contrato entre la interfaz (ui/app.js) y las apps: cada host.enviar("x") de la interfaz debe existir en Mac (Ventana.swift), en la
-vista previa del navegador (simular())
-y, cuando exista, en Windows/Linux (escritorio/src/main.js, objeto ACCIONES). Y cada window.Corta.x que llaman las apps debe existir.
+vista previa del navegador (simular() o, para las comunes, PiezaHost.simulacionesComunes de ui/host.js)
+y, cuando exista, en Windows/Linux (escritorio/src/main.js, objeto ACCIONES). También las que manda la pieza «componentes»
+(ui/componentes.js: probarIA, buscarActualizacion, actualizar, abrirEnlace, config). Y cada window.Corta.x que llaman las apps debe
+existir (las respuestas van en host.responder({…}) de ui/app.js).
 También revisa que los scripts que llaman las apps existan en bin/ y que el video se pida con el esquema que sirve la app (corta://)."""
 import os
 import re
@@ -20,12 +22,17 @@ def leer(r):
 
 ui = leer("ui/app.js")
 acciones = set(re.findall(r'host\.enviar\("(\w+)"', ui))
-cuerpo = ui.split("window.Corta = {", 1)[1].split("\n  };", 1)[0]
+componentes = leer("ui/componentes.js") or ""
+acciones |= set(re.findall(r'\benviar\("(\w+)"', componentes))
+cuerpo = ui.split("host.responder({", 1)[1].split("\n  });", 1)[0]
 funciones_ui = set(re.findall(r"^\s{4}(?:async\s+)?(\w+)\(", cuerpo, re.M))
 problemas = []
 # La vista previa del navegador responde cada acción en simular() (aunque sea con un aviso «en la app, aquí…»).
 simulado = ui.split("function simular(", 1)[1].split("\n  }\n", 1)[0]
 casos_web = set(re.findall(r'case "(\w+)"', simulado))
+if "simulacionesComunes()" in ui:  # default: las de la pieza «host-ui»
+    comunes = (leer("ui/host.js") or "").split("function simulacionesComunes", 1)[1].split("\n  }\n", 1)[0]
+    casos_web |= set(re.findall(r"^\s{6}(\w+): \(d, c\)", comunes, re.M))
 problemas += [f'La vista previa (simular) no responde la acción "{a}"' for a in sorted(acciones - casos_web)]
 mac = leer("app/Sources/Corta/Ventana.swift")
 if mac is None:
