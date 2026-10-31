@@ -1056,6 +1056,13 @@ class Piezas(unittest.TestCase):
         with open(os.path.join(RAIZ, "app.json"), encoding="utf-8") as f:
             app = json.load(f)
         self.assertEqual((app["id"], app["nombre"], app["datos"]), ("corta", "Corta", "visible"), "~/Corta/.corta, igual que la app de Mac")
+        self.assertTrue(app.get("privado"), "los JSON de Corta quedan 0600, como siempre")
+        ruta = os.path.join(TMP, "permisos.json")
+        with open(ruta, "w") as f:
+            f.write("{}")
+        os.chmod(ruta, 0o644)
+        proyecto.escribir_json(ruta, {"a": 1})
+        self.assertEqual(stat.S_IMODE(os.stat(ruta).st_mode), 0o600)
         self.assertEqual(os.path.realpath(proyecto.INTERNO), os.path.realpath(os.path.join(proyecto.BASE, ".corta")))
         import nucleo
         self.assertEqual(os.path.realpath(nucleo.carpeta_datos()), os.path.realpath(proyecto.INTERNO))
@@ -1090,6 +1097,24 @@ class Piezas(unittest.TestCase):
         swift = open(os.path.join(RAIZ, "app", "Sources", "Corta", "Servicios.swift"), encoding="utf-8").read()
         self.assertIn('Procesador.conEntrada("ia.py", "probar", ["ia": id])', swift, "la app prueba la IA con la pieza, por archivo")
 
+    def test_cli_sin_protecciones_no_corre(self):
+        """Una IA que no conoce las protecciones nunca corre sin ellas: se pide actualizarla (código «actualizar»)."""
+        import ia
+        carpeta = tempfile.mkdtemp(dir=TMP)
+        corrio = os.path.join(carpeta, "corrio")
+        with open(os.path.join(carpeta, "claude"), "w", encoding="utf-8") as f:
+            f.write(f"#!{sys.executable}\nimport sys\nif '--help' in sys.argv: print('-p --print'); sys.exit(0)\n"
+                    f"open({corrio!r}, 'w').write('x'); print('listo')\n")
+        os.chmod(os.path.join(carpeta, "claude"), 0o755)
+        antes = os.environ["PATH"]
+        os.environ["PATH"] = carpeta + os.pathsep + antes
+        try:
+            _, error = ia.preguntar("hola", ia="claude", timeout=30)
+        finally:
+            os.environ["PATH"] = antes
+        self.assertEqual(error["codigo"], "actualizar")
+        self.assertFalse(os.path.exists(corrio), "nunca se corre sin las protecciones")
+
     def test_error_de_ia_con_codigo(self):
         import ia
         antes = ia.preguntar
@@ -1112,6 +1137,7 @@ class Seguridad(unittest.TestCase):
         ruta = os.path.join(carpeta, nombre)
         with open(ruta, "w", encoding="utf-8") as f:
             f.write("#!" + sys.executable + "\nimport json, os, sys\n"
+                    "if '--help' in sys.argv: print('--strict-mcp-config --disallowedTools'); sys.exit(0)\n"
                     f"json.dump({{'argv': sys.argv[1:], 'env': dict(os.environ), 'archivos': os.listdir('.')}}, open({anotado!r}, 'w'))\n"
                     "print('listo')\n")
         os.chmod(ruta, 0o755)

@@ -2,6 +2,7 @@
  "nombre": "Corta",
  "id": "corta",
  "datos": "visible",
+ "privado": true,
  "icono": "docs/favicon.svg",
  "plataformas": [
   "mac"

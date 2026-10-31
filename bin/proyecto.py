@@ -21,11 +21,10 @@ import time
 import efecto_formato
 import nucleo
 
+#: ~/Corta: videos y proyectos. CORTA_CARPETA la mueve entera en las pruebas (la pieza «nucleo» entiende la misma variable).
 BASE = os.environ.get("CORTA_CARPETA") or os.path.join(os.path.expanduser("~"), "Corta")
-if os.environ.get("CORTA_CARPETA"):
-    # Pruebas (y quien ponga otra carpeta de videos): los ajustes van dentro de ella, igual que en ~/Corta/.corta.
-    os.environ.setdefault("CORTA_DATOS", os.path.join(BASE, ".corta"))
-#: ~/Corta/.corta (app.json: "datos": "visible"). La pieza «nucleo» la crea solo para la persona (0700).
+#: <BASE>/.corta (app.json: "datos": "visible"). La pieza «nucleo» la crea solo para la persona (0700); con "privado": true todo
+#: JSON que escribe queda 0600, como siempre en Corta.
 INTERNO = nucleo.carpeta_datos()
 #: Raíz del código (app.json, bin/, ui/, estilos/…): la pieza «nucleo» la encuentra junto a bin/ (o por CORTA_RECURSOS).
 RECURSOS = nucleo.recursos()
