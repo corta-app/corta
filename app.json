@@ -1,0 +1,27 @@
+{
+ "nombre": "Corta",
+ "id": "corta",
+ "datos": "visible",
+ "privado": true,
+ "icono": "docs/favicon.svg",
+ "plataformas": [
+  "mac"
+ ],
+ "config": {
+  "idioma_ui": [
+   "es",
+   "en"
+  ],
+  "bienvenida": "bool",
+  "ia": [
+   "claude",
+   "codex",
+   "gemini"
+  ],
+  "modelo": [
+   "turbo",
+   "small"
+  ],
+  "idioma_audio": "texto"
+ }
+}

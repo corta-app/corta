@@ -28,6 +28,15 @@ import vocabulario  # noqa: E402
 #: Lo que cambió la IA queda anotado en el proyecto («cambios_ia», los últimos MAX_CAMBIOS) para poder quitar justo ese cambio
 #: después, aunque la persona haya seguido editando (ui/app.js, `quitarCambioIA`). Formato en el README.
 MAX_CAMBIOS = 20
+#: Lo que dice Corta y no la pieza «ia»: dónde se elige la IA (la frase con {ia} está en ui/idiomas/en.json).
+FRASES_IA = {"no_instalada": "No encontré {ia} en este computador. Revisa en Ajustes → Tu IA."}
+
+
+def error_ia(error):
+    """Respuesta de un pedido cuando la IA falla: la frase en español (la interfaz la traduce entera) y el código de la pieza."""
+    propia = FRASES_IA.get(error["codigo"])
+    texto = propia.replace("{ia}", str(error.get("valores", {}).get("ia", ""))) if propia else ia.frase(error)
+    return {"ok": False, "error": texto, "codigo": error["codigo"]}
 AJUSTES = ("lienzo", "subtitulos.estilo", "subtitulos.activos", "subtitulos.palabras_por_linea", "musica.volumen")
 
 
@@ -224,8 +233,8 @@ def pedir(carpeta, pedido):
         return {"ok": False, "error": "Primero hay que transcribir el video: así tu IA sabe qué se dice y cuándo."}
     estilos = subtitulos.estilos()
     texto, error = ia.preguntar(prompt_pedir(p, pedido.strip()[:500], estilos))
-    if error:
-        return {"ok": False, "error": error}
+    if error:  # pieza «ia»: {codigo, valores}; la interfaz traduce la frase y puede decidir por el código
+        return error_ia(error)
     datos = leer_json_ia(texto)
     if not isinstance(datos, dict):
         return {"ok": False, "error": f"{ia.nombre()} no respondió con cambios que pueda aplicar. Prueba diciéndolo de otra forma."}
@@ -278,8 +287,8 @@ def shorts(carpeta):
     if not p["palabras"]:
         return {"ok": False, "error": "Primero hay que transcribir el video."}
     texto, error = ia.preguntar(prompt_shorts(p))
-    if error:
-        return {"ok": False, "error": error}
+    if error:  # pieza «ia»: {codigo, valores}; la interfaz traduce la frase y puede decidir por el código
+        return error_ia(error)
     datos = leer_json_ia(texto) or {}
     lista = validar_shorts(p, datos.get("shorts"))
     if not lista:

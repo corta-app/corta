@@ -12,6 +12,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -81,6 +82,36 @@ def palabras_de_whisper(datos):
     return [] if texto in ALUCINACIONES else r
 
 
+def _archivo_privado(contenido, sufijo):
+    """Un temporal que solo puede leer la persona (0600, lo crea así mkstemp), fuera de la carpeta del proyecto. Quien lo pide lo borra."""
+    fd, ruta = tempfile.mkstemp(prefix="corta-", suffix=sufijo)
+    with os.fdopen(fd, "wb") as f:
+        f.write(contenido)
+    return ruta
+
+
+def comando_transcribir(binario, opciones, vocab):
+    """El comando del transcriptor y los temporales que hay que borrar al terminar.
+
+    El vocabulario de la persona (nombres, marcas) ayuda a whisper a reconocerlos, pero **nunca** va como argumento: otros programas
+    ven los argumentos en la lista de procesos. corta-transcribir (Mac) lo lee con --prompt-archivo; whisper-cli (v1.7.4+), con su
+    archivo de argumentos oficial `whisper-cli @archivo` (una opción por línea). Va en una sola línea, así un salto de línea en lo
+    que escribió la persona no puede colar otra opción."""
+    prompt = " ".join(str(vocab or "").split())
+    if not prompt:
+        return [binario] + opciones, []
+    if os.path.basename(binario).startswith("corta-transcribir"):
+        archivo = _archivo_privado(prompt.encode("utf-8"), ".vocabulario.txt")
+        return [binario] + opciones + ["--prompt-archivo", archivo], [archivo]
+    # whisper-cli: las rutas como las abre el sistema y el prompt en UTF-8 (lo que espera el tokenizador de whisper). Una ruta con
+    # un salto de línea partiría su línea en dos: no se transcribe así.
+    lineas = [os.fsencode(x) for x in opciones] + [b"--prompt", prompt.encode("utf-8")]
+    if any(b"\n" in x or b"\r" in x for x in lineas):
+        raise RuntimeError("No puedo transcribir un video en una carpeta con saltos de línea en el nombre.")
+    archivo = _archivo_privado(b"\n".join(lineas) + b"\n", ".argumentos.txt")
+    return [binario, "@" + archivo], [archivo]
+
+
 def transcribir(carpeta):
     p = proyecto.cargar(carpeta)
     cfg = proyecto.config()
@@ -99,21 +130,14 @@ def transcribir(carpeta):
     proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "transcribiendo", "texto": "Transcribiendo en tu computador…"})
     hilos = str(max(2, min(8, (os.cpu_count() or 4) - 1)))
     salida = os.path.join(carpeta, "transcripcion")
-    args = [binario, "-m", modelo, "-l", cfg.get("idioma_audio") or "auto", "-t", hilos, "-f", audio,
-            "-ml", "1", "-sow", "-oj", "-of", salida, "-np"]
-    # El vocabulario de la persona (nombres, marcas) ayuda a whisper a reconocerlos. Va en un archivo, nunca como argumento:
-    # corta-transcribir lo lee con --prompt-archivo. whisper-cli no sabe leerlo de un archivo; con él solo se corrige después.
+    opciones = ["-m", modelo, "-l", cfg.get("idioma_audio") or "auto", "-t", hilos, "-f", audio,
+                "-ml", "1", "-sow", "-oj", "-of", salida, "-np"]
     vocab = vocabulario.leer()
-    texto_prompt = vocabulario.prompt(vocab)
-    archivo_prompt = os.path.join(carpeta, "vocabulario.txt")
-    if texto_prompt and os.path.basename(binario).startswith("corta-transcribir"):
-        with open(archivo_prompt, "w", encoding="utf-8") as f:
-            f.write(texto_prompt)
-        args += ["--prompt-archivo", archivo_prompt]
+    args, temporales = comando_transcribir(binario, opciones, vocabulario.prompt(vocab))
     try:
         r = subprocess.run(args, capture_output=True, text=True, timeout=4 * 3600)
     finally:
-        for x in (audio, archivo_prompt):
+        for x in [audio] + temporales:
             if os.path.exists(x):
                 os.remove(x)
     if r.returncode != 0 or not os.path.exists(salida + ".json"):

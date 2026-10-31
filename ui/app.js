@@ -9,7 +9,7 @@
     proyectos: [], sel: null, estilos: [], config: {}, ias: [], modelos: { lista: [] }, version: "", carpeta: "", progreso: {},
     pestana: "texto", seleccion: null, ancla: null, ia: { texto: "", enviando: false, historial: [] }, shorts: null, buscandoShorts: false,
     limpiando: false, ultimoAhorro: null, exportar: null, bv: null, bvCerrada: false, ajustes: false, probando: {}, resultadoIA: {},
-    descarga: null, actualizacion: { hay: false }, act: null, buscando: null, idioma: "es", textos: {}, soltar: false,
+    descarga: null, actualizacion: { hay: false }, act: null, buscando: null, idioma: "es", soltar: false,  // idioma: copia de i18n.idioma
     lt: { zoom: 1, sel: null, ancho: 0, vel: false },  // línea de tiempo: zoom horizontal, tramo elegido ({lista, k}), ancho visible en px
                                                        // y si se ve la velocidad del tramo elegido
     vocabulario: { reemplazos: [], palabras: [] },
@@ -41,60 +41,14 @@
     },
   };
 
-  // ───────────── Idiomas (las claves son el texto en español) ─────────────
-  function tr(t) {
-    if (E.idioma === "es" || !t) return t;
-    const limpio = String(t).replace(/\s+/g, " ").trim();
-    if (!limpio) return t;
-    if (E.textos[limpio]) return t.replace(limpio, E.textos[limpio]);
-    if (window._faltantes && /\p{L}{2}/u.test(limpio)) window._faltantes.add(limpio);
-    return t;
-  }
-  /** Frase completa con marcadores ({x}, {n}…): se traduce entera y después se ponen los valores. Va dentro de data-sin-traducir. */
-  function T(plantilla, valores = {}) {
-    let t = plantilla;
-    if (E.idioma !== "es") {
-      if (E.textos[plantilla]) t = E.textos[plantilla];
-      else if (window._faltantes) window._faltantes.add(plantilla);
-    }
-    t = esc(t).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
-    // Los valores son texto: se escapan aquí (un nombre de archivo, de plantilla o de la IA nunca entra como HTML).
-    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(esc(String(v)));
-    return t;
-  }
-  /** Como T(), pero en texto plano (para atributos como aria-label; escápalo con esc() al ponerlo). */
-  function Tp(plantilla, valores = {}) {
-    let t = plantilla;
-    if (E.idioma !== "es") {
-      if (E.textos[plantilla]) t = E.textos[plantilla];
-      else if (window._faltantes) window._faltantes.add(plantilla);
-    }
-    for (const [k, v] of Object.entries(valores)) t = t.split(`{${k}}`).join(String(v));
-    return t;
-  }
-  const frase = (plantilla, valores, etiqueta = "span") => `<${etiqueta} data-sin-traducir>${T(plantilla, valores)}</${etiqueta}>`;
-  function traducirDOM(raiz) {
-    if (E.idioma === "es") return;
-    const w = document.createTreeWalker(raiz, NodeFilter.SHOW_TEXT);
-    const nodos = []; let n; while ((n = w.nextNode())) nodos.push(n);
-    for (const t of nodos) {
-      const el = t.parentElement;
-      if (!el || el.closest("[data-sin-traducir], script, style") || !/\p{L}/u.test(t.nodeValue)) continue;
-      const v = tr(t.nodeValue); if (v !== t.nodeValue) t.nodeValue = v;
-    }
-    for (const el of raiz.querySelectorAll("[title],[aria-label],[placeholder]")) {
-      if (el.closest("[data-sin-traducir]")) continue;
-      for (const a of ["title", "aria-label", "placeholder"]) { const v = el.getAttribute(a); if (v) el.setAttribute(a, tr(v)); }
-    }
-  }
+  // ───────────── Idiomas: pieza «i18n» (ui/i18n.js; las claves son el texto en español) ─────────────
+  // T escapa la frase y los valores (texto de afuera nunca entra como HTML); Thtml es solo para HTML armado aquí con esc().
+  const i18n = window.PiezaI18n.crear();
+  const { T, Tp, tr, frase, traducirDOM } = i18n;
   /** Carga el idioma: el que la persona acaba de elegir (Ajustes o la bienvenida), ?idioma= de la vista previa, el guardado o el del sistema. */
   async function cargarIdioma(elegido) {
-    const pedido = new URLSearchParams(location.search).get("idioma");
-    const codigo = elegido || pedido || E.config.idioma_ui || ((navigator.language || "es").startsWith("es") ? "es" : "en");
-    if (codigo === E.idioma && (codigo === "es" || Object.keys(E.textos).length)) return;
-    E.idioma = codigo; E.textos = {};
-    if (codigo !== "es") { try { E.textos = (await (await fetch(`idiomas/${codigo}.json`)).json()).textos || {}; } catch { E.idioma = "es"; } }
-    document.documentElement.lang = E.idioma;
+    await i18n.cargar(i18n.elegir({ elegido, config: E.config.idioma_ui }));
+    E.idioma = i18n.idioma;
   }
 
   // ───────────── Lógica del proyecto (la misma que bin/proyecto.py, limpiar.py y subtitulos.py; casos en pruebas/casos.json) ─────────────
@@ -1460,7 +1414,7 @@
     return E.ias.map((ia) => {
       const enUso = E.config.ia === ia.id, probando = E.probando[ia.id], r = E.resultadoIA[ia.id];
       const estado = !ia.instalada ? `<small>No está instalada · <a href="#" data-enlace="${ENLACES.guiaIA}#${ia.id}">Cómo instalarla</a></small>`
-        : r && !r.ok ? `<small class="error-txt" data-sin-traducir>${esc(r.texto || tr("No respondió."))}</small>` : `<small>Instalada</small>`;
+        : r && !r.ok ? `<small class="error-txt" data-sin-traducir>${esc(tr(r.texto || "No respondió."))}</small>` : `<small>Instalada</small>`;
       const accion = enUso ? `<span class="ok">✓ En uso</span>` : ia.instalada ? `<button class="boton" data-probar="${esc(ia.id)}" ${probando ? "disabled" : ""}>${probando ? "Probando…" : "Usar"}</button>` : "";
       return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(ia.nombre)}</b>${estado}</div>${accion}</div>`;
     }).join("");

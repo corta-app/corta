@@ -1,5 +1,6 @@
 {
- "idioma": "English",
+ "codigo": "en",
+ "nombre": "English",
  "textos": {
   "#{n} · {s} s": "#{n} · {s} s",
   "**{a}** de {b}": "**{a}** of {b}",
@@ -434,6 +435,15 @@
   "Quitar estas {n} velocidades": "Remove these {n} speed changes",
   "Puse cámara lenta, con una rampa suave, en «listo para publicar».": "I added slow motion, with a smooth ramp, on “ready to publish”.",
   "Más fluido (exportar tarda más)": "Smoother (slower to export)",
-  "Bajo 0,5× la voz se silencia sola. La música nunca cambia de velocidad.": "Below 0.5× the voice is muted automatically. Music never changes speed."
+  "Bajo 0,5× la voz se silencia sola. La música nunca cambia de velocidad.": "Below 0.5× the voice is muted automatically. Music never changes speed.",
+  "No encontré {ia} en este computador. Revisa en Ajustes → Tu IA.": "I couldn't find {ia} on this computer. Check Settings → Your AI.",
+  "{ia} se demoró demasiado en responder. Inténtalo de nuevo.": "{ia} took too long to answer. Please try again.",
+  "{ia} no respondió. {detalle}": "{ia} didn't answer. {detalle}",
+  "No conozco esa IA.": "I don't know that AI.",
+  "Idioma": "Language",
+  "No puedo transcribir un video en una carpeta con saltos de línea en el nombre.": "I can't transcribe a video in a folder with line breaks in its name.",
+  "Actualiza {ia} para usarla con {app}: tu versión no conoce las protecciones que necesitamos.": "Update {ia} to use it with {app}: your version doesn't know the protections we need.",
+  "No encontré {ia} en este computador.": "I couldn't find {ia} on this computer.",
+  "{ia} no respondió.": "{ia} didn't answer."
  }
 }

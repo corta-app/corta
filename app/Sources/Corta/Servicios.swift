@@ -132,38 +132,15 @@ enum IA {
         conocidas.map { ["id": $0.id, "nombre": $0.nombre, "instalada": buscar($0.comandos) != nil] }
     }
 
-    /// Prueba real: le pide una palabra. Así sabemos que está instalada y con la sesión iniciada. Sin herramientas (igual que bin/ia.py).
+    /// Prueba real: le pide una palabra. Así sabemos que está instalada y con la sesión iniciada. La corre bin/ia.py (pieza «ia»),
+    /// con las mismas protecciones que cuando edita: la IA va en un archivo de entrada ({"ia": id}), nunca como argumento.
+    /// Responde (ok, texto): sin éxito, `texto` es la frase en español de la pieza (la interfaz la traduce con tr()).
     static func probar(_ id: String, _ fin: @escaping @MainActor (Bool, String) -> Void) {
-        guard let ia = conocidas.first(where: { $0.id == id }), let ruta = buscar(ia.comandos) else { fin(false, Idioma.t("No está instalada.")); return }
-        let pedido = "Responde solo con la palabra: listo"
-        let esAgy = (ruta as NSString).lastPathComponent == "agy"
-        let args: [String]
-        switch id {
-        case "codex": args = ["exec", "--skip-git-repo-check", "-s", "read-only", "-"]
-        case "gemini" where esAgy: args = ["--output-format", "text", "--sandbox", "-p", pedido]
-        case "gemini": args = ["-p", "Responde a las instrucciones de arriba.", "-o", "text"]
-        default: args = ["-p", "--output-format", "text", "--disallowedTools", "*", "--strict-mcp-config"]
+        guard conocidas.contains(where: { $0.id == id }) else { fin(false, "No conozco esa IA."); return }
+        Procesador.conEntrada("ia.py", "probar", ["ia": id]) { r in
+            let ok = r["ok"] as? Bool == true
+            fin(ok, ok ? "listo" : (r["error"] as? String ?? "No respondió."))
         }
-        let p = Process(), salida = Pipe(), error = Pipe(), entrada = Pipe()
-        p.executableURL = URL(fileURLWithPath: ruta)
-        p.arguments = args
-        var env = ProcessInfo.processInfo.environment.filter { !$0.key.hasPrefix("CORTA_") }
-        env["PATH"] = (dirs() + ["/bin"]).joined(separator: ":")
-        p.environment = env
-        p.currentDirectoryURL = FileManager.default.temporaryDirectory
-        p.standardInput = entrada; p.standardOutput = salida; p.standardError = error
-        p.terminationHandler = { pr in
-            let texto = String(data: salida.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            let err = String(data: error.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
-            Task { @MainActor in
-                let ok = pr.terminationStatus == 0 && !texto.isEmpty
-                fin(ok, ok ? texto.trimmingCharacters(in: .whitespacesAndNewlines) : String(err.suffix(300)))
-            }
-        }
-        do { try p.run() } catch { fin(false, error.localizedDescription); return }
-        entrada.fileHandleForWriting.write(pedido.data(using: .utf8)!)
-        try? entrada.fileHandleForWriting.close()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 90) { if p.isRunning { p.terminate() } }
     }
 }
 

@@ -2,7 +2,7 @@
 # Arma dist/Corta.app (autosuficiente) y dist/Corta-macOS.zip + .sha256, sin instalar nada. Solo en un Mac (Apple Silicon).
 # Lo usan build.sh (en tu Mac) y, cuando exista, la acción de GitHub que publica cada versión.
 # Dentro van: la app; corta-transcribir + whisper.framework (whisper.cpp oficial, con Metal); ffmpeg y ffprobe; Python portátil;
-# y el código (bin/, ui/, estilos/, efectos/, plantillas/) en Contents/Resources/corta. Los videos y proyectos de la persona quedan en ~/Corta.
+# y el código (bin/, ui/, estilos/, efectos/, plantillas/ y app.json) en Contents/Resources/corta. Los videos y proyectos de la persona quedan en ~/Corta.
 # Todo lo que se descarga tiene su huella SHA-256 fija aquí: si no coincide, no se usa y el armado se detiene.
 set -euo pipefail
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH
@@ -50,6 +50,8 @@ cp Info.plist "$APP/Contents/Info.plist"
 ditto "$REL/whisper.framework" "$APP/Contents/Frameworks/whisper.framework"
 tar -xzf "$CACHE/python-3.13.16.tar.gz" -C "$APP/Contents/Resources"   # → Resources/python/bin/python3
 for d in bin ui estilos efectos plantillas; do ditto "$RAIZ/$d" "$APP/Contents/Resources/corta/$d"; done
+# app.json: la descripción de la app que leen las piezas (bin/nucleo.py la busca junto a bin/; sin ella ningún script arranca).
+cp "$RAIZ/app.json" "$APP/Contents/Resources/corta/app.json"
 # La app usa tus videos, nunca la demo (y el video de Ana pesa).
 rm -rf "$APP/Contents/Resources/corta/ui/demo.json" "$APP/Contents/Resources/corta/ui/demo"
 find "$APP/Contents/Resources/corta" -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true

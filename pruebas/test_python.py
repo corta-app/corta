@@ -900,27 +900,69 @@ class Vocabulario(unittest.TestCase):
         cambio(accion="quitar_palabra", palabra="bien")
         self.assertEqual(vocabulario.leer(), {"formato": 1, "reemplazos": [], "palabras": []})
 
-    def test_transcribir_con_vocabulario(self):
+    def transcribir_con_vocabulario(self, transcriptor=None):
+        """Transcribe el video ficticio con el vocabulario «Kalumi, Ana».
+        transcriptor: None (corta-transcribir, del PATH de las pruebas) o «whisper-cli» (en CORTA_PROGRAMAS, que gana)."""
         os.makedirs(importar.MODELOS, exist_ok=True)
         with open(os.path.join(importar.MODELOS, importar.ARCHIVOS_MODELO["turbo"]), "wb") as f:
             f.write(b"modelo ficticio")
         con_entrada("vocabulario.py", "entrada", {"accion": "agregar", "de": "calumi", "a": "Kalumi"})
         con_entrada("vocabulario.py", "entrada", {"accion": "palabra", "palabra": "Ana"})
-        recibido = os.path.join(TMP, "prompt.txt")
-        os.environ["CORTA_PRUEBA_PROMPT"] = recibido
+        recibido, registro = os.path.join(TMP, "prompt.txt"), os.path.join(TMP, "registro.json")
+        entorno = {"CORTA_PRUEBA_PROMPT": recibido, "CORTA_PRUEBA_REGISTRO": registro}
+        if transcriptor:
+            propios = tempfile.mkdtemp(dir=TMP)
+            shutil.copy(os.path.join(RAIZ, "pruebas", "transcriptor_falso.py"), os.path.join(propios, transcriptor))
+            os.chmod(os.path.join(propios, transcriptor), 0o755)
+            entorno["CORTA_PROGRAMAS"] = propios
+        os.environ.update(entorno)
         try:
             carpeta = correr("importar.py", VIDEO)["carpeta"]
             r = correr("importar.py", "transcribir", carpeta)
         finally:
-            del os.environ["CORTA_PRUEBA_PROMPT"]
+            for k in entorno:
+                del os.environ[k]
+            con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
+            con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
         self.assertTrue(r["ok"], r)
         self.assertEqual(" ".join(w["t"] for w in r["proyecto"]["palabras"]), "Hola, soy de Kalumi. Kalumi ayuda a Ana.")
         self.assertEqual(r["corregidas"], 2)
         with open(recibido, encoding="utf-8") as f:
             self.assertEqual(f.read(), "Kalumi, Ana", "el vocabulario le llega al transcriptor en un archivo")
-        self.assertFalse(os.path.exists(os.path.join(carpeta, "vocabulario.txt")), "el archivo del vocabulario no queda en la carpeta")
-        con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
-        con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
+        with open(registro, encoding="utf-8") as f:
+            reg = json.load(f)
+        for a in reg["argv"]:
+            for palabra in ("Kalumi", "Ana"):
+                self.assertNotIn(palabra, a, "el vocabulario nunca va en los argumentos del proceso (los ve cualquier programa)")
+        self.assertEqual(len(reg["archivos"]), 1)
+        ruta, modo = next(iter(reg["archivos"].items()))
+        self.assertEqual(modo, 0o600, "el archivo con el vocabulario es privado")
+        self.assertFalse(os.path.exists(ruta), "el archivo del vocabulario se borra al terminar")
+        self.assertFalse(ruta.startswith(carpeta), "ni queda en la carpeta del proyecto")
+        self.assertFalse(os.path.exists(os.path.join(carpeta, "vocabulario.txt")))
+        return reg
+
+    def test_transcribir_con_vocabulario(self):
+        reg = self.transcribir_con_vocabulario()
+        self.assertIn("--prompt-archivo", reg["argv"])
+
+    def test_whisper_cli_recibe_el_vocabulario_por_archivo_de_argumentos(self):
+        reg = self.transcribir_con_vocabulario("whisper-cli")
+        self.assertEqual(len(reg["argv"]), 1, "whisper-cli recibe solo @archivo")
+        self.assertTrue(reg["argv"][0].startswith("@"))
+
+    def test_vocabulario_en_una_sola_linea(self):
+        cmd, temporales = importar.comando_transcribir("/x/whisper-cli", ["-m", "m.bin"], "  \n ")
+        self.assertEqual((cmd, temporales), (["/x/whisper-cli", "-m", "m.bin"], []), "sin vocabulario no hay archivo")
+        # Un salto de línea (vocabulario.json cambiado a mano) nunca cuela otra opción en el archivo de argumentos.
+        cmd, temporales = importar.comando_transcribir("/x/whisper-cli", ["-m", "m.bin"], "Kalumi\n-of\n/tmp/otra\r\nAna")
+        try:
+            with open(temporales[0], encoding="utf-8") as f:
+                lineas = f.read().split("\n")
+        finally:
+            os.remove(temporales[0])
+        self.assertEqual(cmd, ["/x/whisper-cli", "@" + temporales[0]])
+        self.assertEqual(lineas, ["-m", "m.bin", "--prompt", "Kalumi -of /tmp/otra Ana", ""])
 
     def test_validar_palabras(self):
         p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 10, "ancho": 1920, "alto": 1080})
@@ -1007,6 +1049,84 @@ class App(unittest.TestCase):
             self.assertNotIn('["ffprobe"', fuente)
 
 
+class Piezas(unittest.TestCase):
+    """Lo que Corta usa de Pieza (nucleo, ia, i18n): app.json, carpeta de datos, config validada y probar la IA por archivo."""
+
+    def test_app_json_y_carpeta_de_datos(self):
+        with open(os.path.join(RAIZ, "app.json"), encoding="utf-8") as f:
+            app = json.load(f)
+        self.assertEqual((app["id"], app["nombre"], app["datos"]), ("corta", "Corta", "visible"), "~/Corta/.corta, igual que la app de Mac")
+        self.assertTrue(app.get("privado"), "los JSON de Corta quedan 0600, como siempre")
+        ruta = os.path.join(TMP, "permisos.json")
+        with open(ruta, "w") as f:
+            f.write("{}")
+        os.chmod(ruta, 0o644)
+        proyecto.escribir_json(ruta, {"a": 1})
+        self.assertEqual(stat.S_IMODE(os.stat(ruta).st_mode), 0o600)
+        self.assertEqual(os.path.realpath(proyecto.INTERNO), os.path.realpath(os.path.join(proyecto.BASE, ".corta")))
+        import nucleo
+        self.assertEqual(os.path.realpath(nucleo.carpeta_datos()), os.path.realpath(proyecto.INTERNO))
+        # Las claves que acepta Ventana.swift (Config.guardar) son las de app.json.
+        swift = open(os.path.join(RAIZ, "app", "Sources", "Corta", "Servicios.swift"), encoding="utf-8").read()
+        for clave in app["config"]:
+            self.assertIn(f'case "{clave}"', swift, f"Config.guardar acepta {clave}")
+        sh = open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read()
+        self.assertIn('cp "$RAIZ/app.json" "$APP/Contents/Resources/corta/app.json"', sh, "app.json va dentro de la app")
+
+    def test_config_validada(self):
+        ruta = os.path.join(proyecto.INTERNO, "config.json")
+        antes = proyecto.leer_json(ruta, None)
+        try:
+            proyecto.escribir_json(ruta, {"ia": "otra", "modelo": "small", "idioma_audio": "es; rm -rf ~", "extra": 1, "bienvenida": True})
+            c = proyecto.config()
+            self.assertEqual((c["ia"], c["modelo"], c["idioma_audio"], c["bienvenida"]), ("claude", "small", "auto", True))
+            self.assertNotIn("extra", c)
+            proyecto.escribir_json(ruta, {"idioma_audio": "pt"})
+            self.assertEqual(proyecto.config()["idioma_audio"], "pt")
+        finally:
+            if antes is None:
+                os.remove(ruta)
+            else:
+                proyecto.escribir_json(ruta, antes)
+
+    def test_probar_ia_por_archivo(self):
+        r = con_entrada("ia.py", "probar", {"ia": "claude"})
+        self.assertEqual((r["ia"], r["ok"]), ("claude", True), r)
+        r = con_entrada("ia.py", "probar", {"ia": "otra"})
+        self.assertEqual((r["ok"], r["codigo"]), (False, "desconocida"))
+        swift = open(os.path.join(RAIZ, "app", "Sources", "Corta", "Servicios.swift"), encoding="utf-8").read()
+        self.assertIn('Procesador.conEntrada("ia.py", "probar", ["ia": id])', swift, "la app prueba la IA con la pieza, por archivo")
+
+    def test_cli_sin_protecciones_no_corre(self):
+        """Una IA que no conoce las protecciones nunca corre sin ellas: se pide actualizarla (código «actualizar»)."""
+        import ia
+        carpeta = tempfile.mkdtemp(dir=TMP)
+        corrio = os.path.join(carpeta, "corrio")
+        with open(os.path.join(carpeta, "claude"), "w", encoding="utf-8") as f:
+            f.write(f"#!{sys.executable}\nimport sys\nif '--help' in sys.argv: print('-p --print'); sys.exit(0)\n"
+                    f"open({corrio!r}, 'w').write('x'); print('listo')\n")
+        os.chmod(os.path.join(carpeta, "claude"), 0o755)
+        antes = os.environ["PATH"]
+        os.environ["PATH"] = carpeta + os.pathsep + antes
+        try:
+            _, error = ia.preguntar("hola", ia="claude", timeout=30)
+        finally:
+            os.environ["PATH"] = antes
+        self.assertEqual(error["codigo"], "actualizar")
+        self.assertFalse(os.path.exists(corrio), "nunca se corre sin las protecciones")
+
+    def test_error_de_ia_con_codigo(self):
+        import ia
+        antes = ia.preguntar
+        ia.preguntar = lambda *a, **k: ("", {"codigo": "no_instalada", "valores": {"ia": "Claude", "detalle": ""}})
+        try:
+            carpeta = proyecto_de_prueba()
+            r = editar_ia.pedir(carpeta, "pon zoom")
+        finally:
+            ia.preguntar = antes
+        self.assertEqual(r, {"ok": False, "codigo": "no_instalada", "error": "No encontré Claude en este computador. Revisa en Ajustes → Tu IA."})
+
+
 class Seguridad(unittest.TestCase):
     """Content-Security-Policy de la interfaz y de la página pública (docs/), lo que recibe la IA y cómo se arma el HTML."""
 
@@ -1017,6 +1137,7 @@ class Seguridad(unittest.TestCase):
         ruta = os.path.join(carpeta, nombre)
         with open(ruta, "w", encoding="utf-8") as f:
             f.write("#!" + sys.executable + "\nimport json, os, sys\n"
+                    "if '--help' in sys.argv: print('--strict-mcp-config --disallowedTools'); sys.exit(0)\n"
                     f"json.dump({{'argv': sys.argv[1:], 'env': dict(os.environ), 'archivos': os.listdir('.')}}, open({anotado!r}, 'w'))\n"
                     "print('listo')\n")
         os.chmod(ruta, 0o755)
@@ -1030,7 +1151,7 @@ class Seguridad(unittest.TestCase):
         os.environ["CORTA_SECRETO_PRUEBA"] = "no-debe-llegar"
         ia.elegida = lambda: id_ia
         try:
-            r = ia.ejecutar_ia("PEDIDO-SECRETO de la persona", timeout=60)
+            r = ia.ejecutar("PEDIDO-SECRETO de la persona", timeout=60)
         finally:
             os.environ["PATH"], ia.elegida = antes_path, antes_elegida
             del os.environ["CORTA_SECRETO_PRUEBA"]
@@ -1053,18 +1174,20 @@ class Seguridad(unittest.TestCase):
         self.assertIn("instrucciones.md", x["archivos"])
 
     def test_T_escapa_los_valores(self):
-        import re
+        """T es de la pieza «i18n» (ui/i18n.js): escapa la frase y cada valor; app.js la usa tal cual."""
         js = open(os.path.join(RAIZ, "ui", "app.js"), encoding="utf-8").read()
-        esc = re.search(r"^  const esc = .*;$", js, re.M).group(0)
-        t = re.search(r"^  function T\(plantilla, valores = \{\}\) \{.*?^  \}$", js, re.M | re.S).group(0)
         if not shutil.which("node"):
             self.skipTest("falta node")
-        prueba = (f"const E = {{ idioma: 'es', textos: {{}} }};\n{esc}\n{t}\n"
+        prueba = (f"const {{ T }} = require({os.path.join(RAIZ, 'ui', 'i18n.js')!r}).crear();\n"
                   "console.log(T('Plantilla «{x}» de **{n}**', { x: '<img src=x onerror=alert(1)>', n: 'a&b' }));")
         r = subprocess.run(["node", "-e", prueba], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(r.stdout.strip(), "Plantilla «&lt;img src=x onerror=alert(1)&gt;» de <b>a&amp;b</b>")
+        self.assertIn("const { T, Tp, tr, frase, traducirDOM } = i18n;", js, "app.js usa la T de la pieza, no una propia")
+        self.assertNotRegex(js, r"function (T|tr|traducirDOM)\(", "sin copias propias de lo que trae la pieza «i18n»")
         self.assertNotRegex(js, r"esc\((T|frase)\(", "T ya escapa: no escapar dos veces")
+        html = open(os.path.join(RAIZ, "ui", "index.html"), encoding="utf-8").read()
+        self.assertLess(html.index('src="i18n.js"'), html.index('src="app.js"'), "i18n.js se carga antes que app.js")
 
     def csp(self, html):
         import re

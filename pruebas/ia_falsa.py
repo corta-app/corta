@@ -3,6 +3,9 @@
 import json
 import sys
 
+if "--help" in sys.argv:  # la pieza «ia» pregunta qué protecciones conoce: sin estas, nunca la corre
+    print("-p --print --output-format --strict-mcp-config --disallowedTools")
+    sys.exit(0)
 pedido = sys.stdin.read()
 if "La persona te pide un cambio" in pedido:
     print("Listo:\n" + json.dumps({"operaciones": [
