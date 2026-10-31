@@ -29,7 +29,7 @@ Reglas que importan: código, comentarios y textos en español (todo texto nuevo
 **nunca subas videos reales ni datos personales**; solo biblioteca estándar en Python; la vista previa y la exportación tienen que verse
 igual; y no romper el [formato del proyecto](README.md#formato-del-proyecto).
 
-**Archivos de piezas:** `bin/nucleo.py`, `bin/ia.py`, `ui/i18n.js`, `ui/host.js`, `ui/tema.js`, `ui/tema.css`, `ui/componentes.js` y
+**Archivos de piezas:** `bin/nucleo.py`, `bin/ia.py`, `bin/transcribir.py`, `bin/catalogo.py`, `app/Sources/PiezaCatalogo/`, `ui/i18n.js`, `ui/host.js`, `ui/tema.js`, `ui/tema.css`, `ui/componentes.js` y
 `ui/componentes.css` vienen de [Pieza](https://github.com/pieza-app/pieza) (están en
 `piezas.json`, con el aviso de la MPL-2.0). No los cambies aquí: propón el cambio en Pieza y llega a Corta con «Pieza al día».
 
@@ -67,7 +67,7 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
   Code and comments are in Spanish; UI text needs its English entry in `ui/idiomas/en.json`; never commit real videos or personal data.
   If your change is visible, also update the README, the page (`docs/`), screenshots and `CHANGELOG.md`, or say so in the
   pull request and we'll do it.
-- **Piece files:** `bin/nucleo.py`, `bin/ia.py`, `ui/i18n.js`, `ui/host.js`, `ui/tema.js`, `ui/tema.css`, `ui/componentes.js` and
+- **Piece files:** `bin/nucleo.py`, `bin/ia.py`, `bin/transcribir.py`, `bin/catalogo.py`, `app/Sources/PiezaCatalogo/`, `ui/i18n.js`, `ui/host.js`, `ui/tema.js`, `ui/tema.css`, `ui/componentes.js` and
   `ui/componentes.css` come from [Pieza](https://github.com/pieza-app/pieza) (listed in
   `piezas.json`, MPL-2.0 notice included). Don't change them here: propose the change in Pieza and it arrives through «Pieza al día».
 - **Review:** everything goes through a pull request and a maintainer merges it. Contributions are licensed under AGPL-3.0.

@@ -1,15 +1,14 @@
 """Plantillas: un video armado de antemano con huecos para tus clips o fotos (formato en bin/plantilla_formato.py y plantillas/README.md).
 
-  plantillas.py indice <indice.json> <salida.json>     valida el índice del catálogo que bajó la app → {"ok", "plantillas": [...]}
   plantillas.py entrada <entrada.json> <salida.json>   lo que pide la app (en un archivo, nunca como argumento):
       {"accion": "crear", "plantilla": id, "archivos": [rutas], "idioma"}   copia los clips a <carpeta>/clips/, llena los huecos en
                                                        orden (`llenar`), arma el video y crea el proyecto → {"ok", "carpeta", "proyecto", "faltan"}
       {"accion": "ajustar", "carpeta", "hueco", "desde"}    desde qué segundo del clip se usa en ese hueco (vuelve a armar)
       {"accion": "cambiar", "carpeta", "hueco", "archivo"}  otro clip o foto para ese hueco (vuelve a armar)
-      {"accion": "instalar", "archivo", "id", "sha256"}     valida una plantilla que bajó la app y la deja en ~/Corta/.corta/plantillas/
 
 Dónde están: incluidas en la app (`plantillas/<categoria>/<id>.json`) y descargadas del catálogo (`~/Corta/.corta/plantillas/`,
-ganan sobre las incluidas con el mismo id).
+ganan sobre las incluidas con el mismo id). Leerlas, validar el índice e instalar lo que baja la app es de la pieza «catálogo»
+(bin/catalogo.py, tipo «plantillas» en app.json, validador bin/plantilla_formato.py).
 
 Cómo se arma: los huecos van uno detrás de otro en un solo video («plantilla-N.mp4», el `fuente` del proyecto), del tamaño del
 lienzo. Lo demás es un proyecto normal y editable: textos, efectos de cada hueco (con sus pasos copiados), transiciones en la unión
@@ -21,7 +20,6 @@ pruebas/casos.json).
 Lista blanca de filtros para armar (solo estos, con números que salen del código; ningún texto de la plantilla llega a ffmpeg):
   trim, setpts, tpad, fps, scale, crop, setsar, format, atrim, asetpts, aresample, aformat, apad, anullsrc, concat
 """
-import hashlib
 import json
 import math
 import os
@@ -31,15 +29,12 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import catalogo  # noqa: E402
 import efectos  # noqa: E402
 import importar  # noqa: E402
-import plantilla_formato  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
 
-DESCARGADAS = os.path.join(proyecto.INTERNO, "plantillas")
-MAX_BYTES = 64 * 1024
-ARCHIVO_CATALOGO = re.compile(r"plantillas/([a-z]+)/([a-z0-9][a-z0-9-]{0,38}[a-z0-9])\.json")
 VIDEOS = (".mp4", ".mov", ".m4v", ".webm", ".mkv")
 FOTOS = (".jpg", ".jpeg", ".png", ".webp")
 #: Zoom de una foto: qué efecto incluido la mueve.
@@ -47,39 +42,10 @@ ZOOM_FOTO = {"acercar": "zoom-lento", "alejar": "alejar"}
 FPS = 30
 
 
-def incluidas_dir():
-    return os.path.join(proyecto.RECURSOS, "plantillas")
-
-
-def _leer(ruta):
-    try:
-        if os.path.getsize(ruta) > MAX_BYTES:
-            return None
-    except OSError:
-        return None
-    d = proyecto.leer_json(ruta, None)
-    return d if d is not None and not plantilla_formato.validar_plantilla(d, ruta) else None
-
-
 def disponibles():
-    """Todas las plantillas válidas, por id: las incluidas y las descargadas (estas ganan). Cada una con `origen`."""
-    todas = {}
-    base = incluidas_dir()
-    for categoria in sorted(os.listdir(base)) if os.path.isdir(base) else []:
-        carpeta = os.path.join(base, categoria)
-        if not os.path.isdir(carpeta):
-            continue
-        for n in sorted(os.listdir(carpeta)):
-            if n.endswith(".json"):
-                d = _leer(os.path.join(carpeta, n))
-                if d and d["categoria"] == categoria:
-                    todas[d["id"]] = {**d, "origen": "incluida"}
-    for n in sorted(os.listdir(DESCARGADAS)) if os.path.isdir(DESCARGADAS) else []:
-        if n.endswith(".json"):
-            d = _leer(os.path.join(DESCARGADAS, n))
-            if d:
-                todas[d["id"]] = {**d, "origen": "descargada"}
-    return todas
+    """Todas las plantillas válidas, por id: las incluidas y las descargadas (estas ganan). Cada una con `origen`
+    («incluido» o «descargado»)."""
+    return {p["id"]: p for p in catalogo.listar("plantillas")}
 
 
 def tipos_de_efectos(todos):
@@ -376,53 +342,12 @@ def cambiar(d):
     return {"ok": True, "carpeta": carpeta, "proyecto": p}
 
 
-# ───────────── Catálogo (lo descarga la app; aquí solo se valida) ─────────────
-def validar_indice(d):
-    """Del índice del catálogo, solo las entradas válidas: {…plantilla, archivo, sha256, bytes}. Lo demás se descarta."""
-    lista = d.get("plantillas") if isinstance(d, dict) else None
-    r, vistos = [], set()
-    for x in lista if isinstance(lista, list) else []:
-        if not isinstance(x, dict):
-            continue
-        pl = {k: v for k, v in x.items() if k in plantilla_formato.CLAVES}
-        m = ARCHIVO_CATALOGO.fullmatch(str(x.get("archivo", "")))
-        if (plantilla_formato.validar_plantilla(pl) or not m or m.group(1) != pl["categoria"] or m.group(2) != pl["id"]
-                or not re.fullmatch(r"[0-9a-f]{64}", str(x.get("sha256", ""))) or not isinstance(x.get("bytes"), int)
-                or not 0 < x["bytes"] <= MAX_BYTES or pl["id"] in vistos):
-            continue
-        vistos.add(pl["id"])
-        r.append({**pl, "archivo": x["archivo"], "sha256": x["sha256"], "bytes": x["bytes"]})
-    return r[:500]
-
-
-def instalar(d):
-    """Una plantilla que bajó la app: se valida otra vez (huella, id y formato) antes de guardarla."""
-    if not isinstance(d, dict) or not isinstance(d.get("archivo"), str) or not isinstance(d.get("id"), str) \
-            or not re.fullmatch(r"[0-9a-f]{64}", str(d.get("sha256", ""))):
-        # La huella es obligatoria: sin ella cualquier archivo pasaría por uno del catálogo.
-        raise ValueError("No pude leer la plantilla.")
-    with open(d["archivo"], "rb") as f:
-        crudo = f.read(MAX_BYTES + 1)
-    if len(crudo) > MAX_BYTES or hashlib.sha256(crudo).hexdigest() != d["sha256"]:
-        raise ValueError("La plantilla llegó dañada. Intenta de nuevo.")
-    try:
-        pl = json.loads(crudo.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        raise ValueError("Esa plantilla no es válida.") from None
-    if plantilla_formato.validar_plantilla(pl) or pl["id"] != d["id"]:
-        raise ValueError("Esa plantilla no es válida.")
-    proyecto.escribir_json(os.path.join(DESCARGADAS, pl["id"] + ".json"), pl)
-    return {"ok": True, "plantilla": {**pl, "origen": "descargada"}}
-
-
-ACCIONES = {"crear": crear, "ajustar": ajustar, "cambiar": cambiar, "instalar": instalar}
+ACCIONES = {"crear": crear, "ajustar": ajustar, "cambiar": cambiar}
 
 if __name__ == "__main__":
     a = sys.argv[1:]
     try:
-        if len(a) == 3 and a[0] == "indice":
-            r = {"ok": True, "plantillas": validar_indice(proyecto.leer_json(a[1], None))}
-        elif len(a) == 3 and a[0] == "entrada":
+        if len(a) == 3 and a[0] == "entrada":
             datos = proyecto.leer_json(a[1], None)
             if not isinstance(datos, dict) or datos.get("accion") not in ACCIONES:
                 raise ValueError("No sé hacer eso.")

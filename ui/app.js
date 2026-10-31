@@ -727,6 +727,8 @@
 
   // ───────────── Efectos: incluidos, descargados y de la comunidad (solo datos; bin/efectos.py los exporta) ─────────────
   const CATEGORIAS_FX = [["todos", "Todos"], ["filtro", "Filtros"], ["color", "Color"], ["movimiento", "Movimiento"], ["transicion", "Transiciones"]];
+  /** El error de la pieza «catálogo» ({codigo, plantilla}: la frase en español) en el idioma elegido. */
+  const errorCatalogo = (r) => (typeof r.plantilla === "string" ? Tp(r.plantilla) : r.error ? Tp(r.error) : "");
   const nombreFx = (ef) => (ef?.nombre?.[E.idioma] || ef?.nombre?.es || "");
   const descripcionFx = (ef) => (ef?.descripcion?.[E.idioma] || ef?.descripcion?.es || "");
   const efectoPorId = (id) => E.efectos.find((x) => x.id === id);
@@ -2168,18 +2170,18 @@
     actualizacionProgreso(r) { ui.actualizacionProgreso(r); },
     /** {hay, notas, sinConexion}: la fila «Actualizaciones» de Ajustes (pieza «componentes»). */
     actualizacionRevisada(r) { ui.actualizacionRevisada(r, { pintar: E.bv !== 0 }); },  // nada se pinta detrás del idioma
-    /** Respuesta a `catalogoEfectos`: {ok, efectos} (ya validados por bin/efectos.py) o {ok: false, error}. */
+    /** Respuesta a `catalogoEfectos`: {ok, tipo, efectos} (ya validados por bin/catalogo.py) o {ok: false, codigo, plantilla}. */
     catalogoListo(r) {
       if (!E.catalogo) return;
-      Object.assign(E.catalogo, r.ok ? { estado: "listo", efectos: r.efectos || [] } : { estado: "error", error: r.error });
+      Object.assign(E.catalogo, r.ok ? { estado: "listo", efectos: r.efectos || [] } : { estado: "error", error: errorCatalogo(r) });
       pintar();
     },
-    /** Respuesta a `descargarEfecto`: {ok, efecto} o {ok: false, id, error}. */
+    /** Respuesta a `descargarEfecto`: {ok, efecto} o {ok: false, id, codigo, plantilla}. */
     efectoDescargado(r) {
       if (E.catalogo) delete E.catalogo.bajando[r.ok ? r.efecto.id : r.id];
       if (E.pl) delete E.pl.bajando[r.ok ? r.efecto.id : r.id];
       if (r.ok) { E.efectos = [...E.efectos.filter((x) => x.id !== r.efecto.id), r.efecto]; toast(Tp("«{x}» quedó en tus efectos", { x: nombreFx(r.efecto) }), true); }
-      else toast(r.error || "No pude descargarlo");
+      else toast(errorCatalogo(r) || "No pude descargarlo");
       pintar();
     },
     /** Respuesta a `elegirClips`, `ajustarHueco` y `cambiarClip`: {ok, carpeta, proyecto, faltan?, usados?} o {ok: false, error}
@@ -2194,19 +2196,19 @@
       window.Corta.proyectoActualizado({ carpeta: r.carpeta, proyecto: r.proyecto, seleccionar: !!nuevo });
       if (nuevo) toast(Tp(faltan ? "Listo. Faltan {n} efectos de la comunidad: puedes ponerlos después." : "Listo: tu video está armado", { n: faltan }), true);
     },
-    /** Respuesta a `catalogoPlantillas`: {ok, plantillas, efectos} (ya validados por bin/) o {ok: false, error}. */
+    /** Respuesta a `catalogoPlantillas`: {ok, plantillas, efectos} (ya validados por bin/catalogo.py) o {ok: false, codigo, plantilla}. */
     catalogoPlantillasListo(r) {
       if (!E.pl) return;
-      E.pl.catalogo = r.ok ? { estado: "listo", plantillas: r.plantillas || [], efectos: r.efectos || [] } : { estado: "error", error: r.error, plantillas: [], efectos: [] };
+      E.pl.catalogo = r.ok ? { estado: "listo", plantillas: r.plantillas || [], efectos: r.efectos || [] } : { estado: "error", error: errorCatalogo(r), plantillas: [], efectos: [] };
       const id = E.pl.pendiente; E.pl.pendiente = null;
       if (id) { if (r.ok) host.enviar("descargarEfecto", { id }); else delete E.pl.bajando[id]; }
       pintar();
     },
-    /** Respuesta a `descargarPlantilla`: {ok, plantilla} o {ok: false, id, error}. */
+    /** Respuesta a `descargarPlantilla`: {ok, plantilla} o {ok: false, id, codigo, plantilla}. */
     plantillaDescargada(r) {
       if (E.pl) delete E.pl.bajando[r.ok ? r.plantilla.id : r.id];
       if (r.ok) { E.plantillas = [...E.plantillas.filter((x) => x.id !== r.plantilla.id), r.plantilla]; toast(Tp("«{x}» quedó en tus plantillas", { x: nombreFx(r.plantilla) }), true); }
-      else toast(r.error || "No pude descargarla");
+      else toast(errorCatalogo(r) || "No pude descargarla");
       pintar();
     },
     /** Respuesta a `vocabulario`: {ok, vocabulario} o {ok: false, error}. */
@@ -2327,18 +2329,18 @@
       });
       case "cambiarClip": toast("En la app, aquí eliges otro clip o foto"); return luego(300, () => A.plantillaArmada({ ok: false }));
       case "catalogoPlantillas": return luego(500, () => A.catalogoPlantillasListo({ ok: true, plantillas: clonar(DEMO.catalogo_plantillas || []), efectos: clonar(DEMO.catalogo || []) }));
-      case "descargarPlantilla": return luego(600, () => {  // en la app: Swift la baja de raw.githubusercontent.com y bin/plantillas.py la valida
+      case "descargarPlantilla": return luego(600, () => {  // en la app: la pieza «catálogo» la baja de raw.githubusercontent.com y bin/catalogo.py la valida
         const x = (DEMO.catalogo_plantillas || []).find((y) => y.id === d.id);
-        if (!x) return A.plantillaDescargada({ ok: false, id: d.id, error: tr("Esa plantilla no es válida.") });
-        const plantilla = { ...Object.fromEntries(Object.entries(x).filter(([k]) => !["archivo", "sha256", "bytes"].includes(k))), origen: "descargada" };
+        if (!x) return A.plantillaDescargada({ ok: false, tipo: "plantillas", id: d.id, codigo: "no_esta", plantilla: "Ya no está en el catálogo. Vuelve a abrirlo." });
+        const plantilla = { ...Object.fromEntries(Object.entries(x).filter(([k]) => !["ruta", "sha256", "tamano"].includes(k))), origen: "descargado" };
         DEMO.plantillas = [...(DEMO.plantillas || []).filter((y) => y.id !== d.id), plantilla];
         A.plantillaDescargada({ ok: true, plantilla: clonar(plantilla) });
       });
       case "catalogoEfectos": return luego(500, () => A.catalogoListo({ ok: true, efectos: clonar(DEMO.catalogo || []) }));
-      case "descargarEfecto": return luego(600, () => {  // en la app: Swift lo baja de raw.githubusercontent.com y bin/efectos.py lo valida
+      case "descargarEfecto": return luego(600, () => {  // en la app: la pieza «catálogo» lo baja de raw.githubusercontent.com y bin/catalogo.py lo valida
         const ef = (DEMO.catalogo || []).find((x) => x.id === d.id);
-        if (!ef) return A.efectoDescargado({ ok: false, id: d.id, error: tr("Ese efecto no es válido.") });
-        const efecto = { ...Object.fromEntries(Object.entries(ef).filter(([k]) => !["archivo", "sha256", "bytes"].includes(k))), origen: "descargado" };
+        if (!ef) return A.efectoDescargado({ ok: false, tipo: "efectos", id: d.id, codigo: "no_esta", plantilla: "Ya no está en el catálogo. Vuelve a abrirlo." });
+        const efecto = { ...Object.fromEntries(Object.entries(ef).filter(([k]) => !["ruta", "sha256", "tamano"].includes(k))), origen: "descargado" };
         DEMO.efectos = [...(DEMO.efectos || []).filter((x) => x.id !== d.id), efecto];
         A.efectoDescargado({ ok: true, efecto: clonar(efecto) });
       });

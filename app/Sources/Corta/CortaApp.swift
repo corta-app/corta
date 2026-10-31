@@ -1,4 +1,5 @@
 import AppKit
+import PiezaCatalogo
 
 /// Corta para Mac: una ventana con la interfaz web de ui/ y un puente a los scripts de bin/ (Python portátil, ffmpeg y el
 /// transcriptor vienen dentro de la app). Los videos y proyectos viven en ~/Corta, fuera de la app: actualizar nunca borra nada.
@@ -17,6 +18,10 @@ final class CortaApp: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ aviso: Notification) {
         Menu.instalar()
+        // Pieza «catálogo»: repo y tipos (efectos y plantillas) salen de app.json; los scripts los corre Procesador.
+        Catalogo.configurar(appJSON: Rutas.recursos.appendingPathComponent("app.json"), agente: "Corta/\(Actualizaciones.version)") { s, a, d, fin in
+            Procesador.conEntrada(s, a, d, fin: fin)
+        }
         Ventana.shared.mostrar()
         // En el primer uso lo primero es elegir el idioma: lo que corre solo y puede mostrar algo (actualizaciones) espera a que
         // esté elegido. Ventana lo llama al guardarse idioma_ui.

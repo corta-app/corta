@@ -31,5 +31,27 @@
    "claro",
    "oscuro"
   ]
+ },
+ "catalogo": {
+  "repo": "corta-app/corta-catalogo",
+  "rama": "main",
+  "tipos": {
+   "efectos": {
+    "validador": "efecto_formato",
+    "indice": "efectos/index.json",
+    "max_bytes": 65536,
+    "max_indice": 524288,
+    "max_en_indice": 500,
+    "singular": "efecto"
+   },
+   "plantillas": {
+    "validador": "plantilla_formato",
+    "indice": "plantillas/index.json",
+    "max_bytes": 65536,
+    "max_indice": 524288,
+    "max_en_indice": 500,
+    "singular": "plantilla"
+   }
+  }
  }
 }

@@ -28,6 +28,7 @@ os.chmod(destino, os.stat(destino).st_mode | stat.S_IEXEC)
 os.environ["PATH"] = BIN_FALSO + os.pathsep + os.environ["PATH"]
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 
+import catalogo  # noqa: E402
 import editar_ia  # noqa: E402
 import efecto_formato  # noqa: E402
 import efectos  # noqa: E402
@@ -37,6 +38,7 @@ import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
+import transcribir  # noqa: E402
 import vocabulario  # noqa: E402
 
 with open(os.path.join(RAIZ, "pruebas", "casos.json"), encoding="utf-8") as f:
@@ -51,6 +53,25 @@ def correr(script, *args):
     assert r.returncode == 0, r.stderr
     with open(salida, encoding="utf-8") as f:
         return json.load(f)
+
+
+def del_catalogo(tipo, obj):
+    """Instala `obj` como lo hace la app: primero el índice validado (catalogo.py indice) y después el archivo que «bajó»
+    (catalogo.py instalar), con su huella. Devuelve (respuesta de instalar, crudo, huella)."""
+    import hashlib
+    crudo = json.dumps(obj).encode()
+    huella = hashlib.sha256(crudo).hexdigest()
+    indice, archivo = os.path.join(TMP, "indice.json"), os.path.join(TMP, "bajado.json")
+    with open(indice, "w", encoding="utf-8") as f:
+        json.dump({"formato": 1, tipo: [{**obj, "ruta": f"{tipo}/{obj['categoria']}/{obj['id']}.json", "sha256": huella, "tamano": len(crudo)}]}, f)
+    assert con_entrada("catalogo.py", "indice", {"tipo": tipo, "archivo": indice})["ok"]
+    with open(archivo, "wb") as f:
+        f.write(crudo)
+    return con_entrada("catalogo.py", "instalar", {"tipo": tipo, "archivo": archivo, "id": obj["id"], "sha256": huella}), crudo, huella
+
+
+def descargado(tipo, ident):
+    return os.path.join(proyecto.INTERNO, tipo, ident + ".json")
 
 
 def proyecto_de_prueba():
@@ -316,10 +337,14 @@ class IA(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(c["carpeta"], q["fuente"]["archivo"])))
 
     def test_whisper_a_palabras(self):
+        # La pieza «transcribir» da lo mismo que daba Corta: {t, i, f} en segundos del original, la puntuación suelta pegada a la
+        # palabra anterior, sin marcas ([música]) ni inventos en silencio.
         datos = {"transcription": [{"text": " Hola", "offsets": {"from": 0, "to": 400}}, {"text": ",", "offsets": {"from": 400, "to": 420}},
-                                   {"text": " [música]", "offsets": {"from": 500, "to": 900}}, {"text": " Ana", "offsets": {"from": 1000, "to": 1300}}]}
-        self.assertEqual(importar.palabras_de_whisper(datos), [{"t": "Hola,", "i": 0.0, "f": 0.42}, {"t": "Ana", "i": 1.0, "f": 1.3}])
-        self.assertEqual(importar.palabras_de_whisper({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
+                                   {"text": " [música]", "offsets": {"from": 500, "to": 900}}, {"text": " Ana", "offsets": {"from": 1000, "to": 1300}},
+                                   {"text": " Pérez.", "offsets": {"from": 1333, "to": 1777}}]}
+        self.assertEqual(transcribir.palabras_de(datos), [{"t": "Hola,", "i": 0.0, "f": 0.42}, {"t": "Ana", "i": 1.0, "f": 1.3},
+                                                         {"t": "Pérez.", "i": 1.333, "f": 1.777}])
+        self.assertEqual(transcribir.palabras_de({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
 
 
 class Efectos(unittest.TestCase):
@@ -491,31 +516,53 @@ class Efectos(unittest.TestCase):
         self.assertLess(max(max(cuadro[k:k + 3]) - min(cuadro[k:k + 3]) for k in range(0, len(cuadro), 3)), 24)
 
     def test_catalogo(self):
+        # Pieza «catálogo»: el índice se valida con bin/efecto_formato.py y solo se instala lo que está en el último índice validado,
+        # con su tamaño y su huella.
+        import hashlib
         bueno = {"formato": 1, "id": "neon", "categoria": "filtro", "nombre": {"es": "Neón"}, "pasos": [{"tipo": "color", "tono": 40}]}
         crudo = json.dumps(bueno).encode()
-        import hashlib
         huella = hashlib.sha256(crudo).hexdigest()
-        entrada = {**bueno, "archivo": "efectos/filtro/neon.json", "sha256": huella, "bytes": len(crudo)}
+        entrada = {**bueno, "archivo": "efectos/filtro/neon.json", "sha256": huella, "bytes": len(crudo)}  # el índice de siempre
         indice = {"formato": 1, "efectos": [entrada, {**entrada, "id": "otro"}, {**entrada, "archivo": "../../x.json"}, {**entrada, "sha256": "x"}, "raro",
                                             {**entrada, "id": "neon2", "archivo": "efectos/filtro/neon2.json", "pasos": [{"tipo": "color", "codigo": 1}]}]}
-        self.assertEqual([e["id"] for e in efectos.validar_indice(indice)], ["neon"], "solo las entradas válidas, una vez")
+        ruta_indice = os.path.join(TMP, "indice.json")
+        with open(ruta_indice, "w", encoding="utf-8") as f:
+            json.dump(indice, f)
+        r = con_entrada("catalogo.py", "indice", {"tipo": "efectos", "archivo": ruta_indice})
+        self.assertEqual([(e["id"], e["ruta"], e["tamano"]) for e in r["efectos"]], [("neon", "efectos/filtro/neon.json", len(crudo))],
+                         "solo las entradas válidas, una vez, con ruta y tamaño")
         archivo = os.path.join(TMP, "efecto.json")
         with open(archivo, "wb") as f:
             f.write(crudo)
-        r = con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", "sha256": huella})
+        instalar = lambda **x: con_entrada("catalogo.py", "instalar", {"tipo": "efectos", "archivo": archivo, "id": "neon", "sha256": huella, **x})  # noqa: E731
+        self.assertEqual(instalar(sha256="0" * 64)["codigo"], "no_esta", "huella distinta a la del índice")
+        self.assertFalse(instalar(id="otro")["ok"], "otro id")
+        for sin in ({"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella[:63]}):
+            self.assertFalse(instalar(**sin)["ok"], f"sin huella válida: {sin}")
+        self.assertFalse(os.path.exists(descargado("efectos", "neon")))
+        with open(archivo, "ab") as f:
+            f.write(b" ")
+        self.assertEqual(instalar()["codigo"], "danado", "el archivo no calza con la huella del índice")
+        with open(archivo, "wb") as f:
+            f.write(crudo)
+        r = instalar()
         self.assertTrue(r["ok"], r)
-        self.assertIn("neon", efectos.disponibles())
+        self.assertEqual(r["efecto"]["origen"], "descargado")
+        self.assertEqual(stat.S_IMODE(os.stat(descargado("efectos", "neon")).st_mode), 0o600)
         self.assertEqual(efectos.disponibles()["neon"]["origen"], "descargado")
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", "sha256": "0" * 64})["ok"], "huella distinta")
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otro", "sha256": huella})["ok"], "otro id")
-        for sin in ({}, {"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella[:63]}):
-            self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", **sin})["ok"], f"sin huella válida: {sin}")
-        with open(archivo, "w") as f:
-            json.dump({**bueno, "id": "malo", "pasos": [{"tipo": "color", "brillo": 9}]}, f)
-        with open(archivo, "rb") as f:
-            huella_mala = hashlib.sha256(f.read()).hexdigest()
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "malo", "sha256": huella_mala})["ok"])
-        os.remove(os.path.join(efectos.DESCARGADOS, "neon.json"))
+        malo, _, _ = del_catalogo("efectos", {**bueno, "id": "malo", "pasos": [{"tipo": "color", "brillo": 9}]})
+        self.assertFalse(malo["ok"])
+        os.remove(descargado("efectos", "neon"))
+
+    def test_descargados_de_antes_siguen(self):
+        # Lo que bajó Corta antes de la pieza quedó en ~/Corta/.corta/efectos/<id>.json: la pieza lee la misma carpeta.
+        viejo = {"formato": 1, "id": "de-antes", "categoria": "color", "nombre": {"es": "De antes"}, "pasos": [{"tipo": "color", "brillo": 1.1}]}
+        proyecto.escribir_json(descargado("efectos", "de-antes"), viejo)
+        try:
+            self.assertEqual(efectos.disponibles()["de-antes"], {**viejo, "origen": "descargado"})
+            self.assertIn("de-antes", [e["id"] for e in correr("estado.py")["efectos"]])
+        finally:
+            os.remove(descargado("efectos", "de-antes"))
 
     def test_mismo_formato_que_el_catalogo(self):
         # El catálogo de la comunidad usa este mismo archivo para validar: si está al lado (../corta-catalogo), tienen que ser iguales.
@@ -549,7 +596,7 @@ class Plantillas(unittest.TestCase):
         self.assertGreaterEqual(len({p["categoria"] for p in todas.values()}), 4)
         tipos = plantillas.tipos_de_efectos({i: e for i, e in efectos.disponibles().items() if e["origen"] == "incluido"})
         for p in todas.values():
-            self.assertEqual(p["origen"], "incluida")
+            self.assertEqual(p["origen"], "incluido")
             self.assertEqual(plantilla_formato.referencias(p, tipos, set(subtitulos.estilos())), [], p["id"])
             self.assertTrue(p["nombre"].get("en") and p["descripcion"].get("en"), f"{p['id']}: falta el inglés")
             for h in p["huecos"]:
@@ -638,12 +685,7 @@ class Plantillas(unittest.TestCase):
         return rojo, azul
 
     def _instalar(self, d):
-        crudo = json.dumps(d).encode()
-        archivo = os.path.join(TMP, "plantilla.json")
-        with open(archivo, "wb") as f:
-            f.write(crudo)
-        import hashlib
-        return con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": d["id"], "sha256": hashlib.sha256(crudo).hexdigest()})
+        return del_catalogo("plantillas", d)[0]
 
     def _color(self, video, t):
         cuadro = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(t), "-i", video, "-frames:v", "1", "-vf", "scale=8:8,format=rgb24",
@@ -699,7 +741,7 @@ class Plantillas(unittest.TestCase):
         self.assertEqual(d["proyecto"]["fuente"], r["proyecto"]["fuente"])
         self.assertTrue(os.path.exists(os.path.join(carpeta, d["proyecto"]["fuente"]["archivo"])))
         self.assertIn(os.path.realpath(carpeta), [x["carpeta"] for x in correr("estado.py")["proyectos"]])
-        os.remove(os.path.join(plantillas.DESCARGADAS, "prueba-dos.json"))
+        os.remove(descargado("plantillas", "prueba-dos"))
 
     def test_crear_rechaza(self):
         rojo, _ = self._clips()
@@ -724,18 +766,26 @@ class Plantillas(unittest.TestCase):
         entrada = {**bueno, "archivo": "plantillas/celebracion/tres.json", "sha256": huella, "bytes": len(crudo)}
         indice = {"formato": 1, "plantillas": [entrada, {**entrada, "id": "otra"}, {**entrada, "archivo": "efectos/filtro/tres.json"},
                                                {**entrada, "bytes": 10 ** 6}, {**entrada, "id": "x2", "archivo": "plantillas/celebracion/x2.json", "huecos": []}]}
-        self.assertEqual([e["id"] for e in plantillas.validar_indice(indice)], ["tres"])
-        self.assertTrue(self._instalar(bueno)["ok"])
-        self.assertEqual(plantillas.disponibles()["tres"]["origen"], "descargada")
+        ruta_indice = os.path.join(TMP, "indice.json")
+        with open(ruta_indice, "w", encoding="utf-8") as f:
+            json.dump(indice, f)
+        self.assertEqual([e["id"] for e in con_entrada("catalogo.py", "indice", {"tipo": "plantillas", "archivo": ruta_indice})["plantillas"]], ["tres"])
         archivo = os.path.join(TMP, "plantilla.json")
-        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", "sha256": "0" * 64})["ok"])
-        with open(archivo, "rb") as f:
-            huella = hashlib.sha256(f.read()).hexdigest()
-        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otra", "sha256": huella})["ok"])
-        for sin in ({}, {"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella + "0"}):
-            self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", **sin})["ok"], f"sin huella válida: {sin}")
+        with open(archivo, "wb") as f:
+            f.write(crudo)
+        instalar = lambda **x: con_entrada("catalogo.py", "instalar", {"tipo": "plantillas", "archivo": archivo, "id": "tres", "sha256": huella, **x})  # noqa: E731
+        self.assertFalse(instalar(sha256="0" * 64)["ok"])
+        self.assertFalse(instalar(id="otra")["ok"])
+        for sin in ({"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella + "0"}):
+            self.assertFalse(instalar(**sin)["ok"], f"sin huella válida: {sin}")
+        r = instalar()
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["plantilla"]["id"], "tres")
+        self.assertEqual(plantillas.disponibles()["tres"]["origen"], "descargado")
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", "sha256": huella})["ok"],
+                         "instalar ya no es de plantillas.py")
         self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "borrar_todo"})["ok"])
-        os.remove(os.path.join(plantillas.DESCARGADAS, "tres.json"))
+        os.remove(descargado("plantillas", "tres"))
 
     def test_mismo_formato_que_el_catalogo(self):
         otro = os.path.join(RAIZ, "..", "corta-catalogo", "herramientas", "plantilla_formato.py")
@@ -902,10 +952,10 @@ class Vocabulario(unittest.TestCase):
 
     def transcribir_con_vocabulario(self, transcriptor=None):
         """Transcribe el video ficticio con el vocabulario «Kalumi, Ana».
-        transcriptor: None (corta-transcribir, del PATH de las pruebas) o «whisper-cli» (en CORTA_PROGRAMAS, que gana)."""
-        os.makedirs(importar.MODELOS, exist_ok=True)
-        with open(os.path.join(importar.MODELOS, importar.ARCHIVOS_MODELO["turbo"]), "wb") as f:
-            f.write(b"modelo ficticio")
+        transcriptor: None (corta-transcribir, del PATH de las pruebas) o «whisper-cli» (en CORTA_PROGRAMAS)."""
+        for m in ("turbo", "vad"):  # ficticios, del tamaño de los de verdad (sin ocupar disco)
+            with open(transcribir.ruta_modelo(m), "wb") as f:
+                f.truncate(transcribir.MODELOS[m]["bytes"])
         con_entrada("vocabulario.py", "entrada", {"accion": "agregar", "de": "calumi", "a": "Kalumi"})
         con_entrada("vocabulario.py", "entrada", {"accion": "palabra", "palabra": "Ana"})
         recibido, registro = os.path.join(TMP, "prompt.txt"), os.path.join(TMP, "registro.json")
@@ -915,6 +965,9 @@ class Vocabulario(unittest.TestCase):
             shutil.copy(os.path.join(RAIZ, "pruebas", "transcriptor_falso.py"), os.path.join(propios, transcriptor))
             os.chmod(os.path.join(propios, transcriptor), 0o755)
             entorno["CORTA_PROGRAMAS"] = propios
+            # La pieza busca primero corta-transcribir en todas partes: sin el del PATH de las pruebas, queda whisper-cli.
+            entorno["PATH"] = os.pathsep.join(d for d in os.environ["PATH"].split(os.pathsep) if d != BIN_FALSO)
+        path = os.environ["PATH"]
         os.environ.update(entorno)
         try:
             carpeta = correr("importar.py", VIDEO)["carpeta"]
@@ -922,15 +975,20 @@ class Vocabulario(unittest.TestCase):
         finally:
             for k in entorno:
                 del os.environ[k]
+            os.environ["PATH"] = path
             con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
             con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
         self.assertTrue(r["ok"], r)
         self.assertEqual(" ".join(w["t"] for w in r["proyecto"]["palabras"]), "Hola, soy de Kalumi. Kalumi ayuda a Ana.")
+        # Los mismos tiempos que antes de la pieza para esta entrada fija (segundos del original, 3 decimales).
+        self.assertEqual([(w["i"], w["f"]) for w in r["proyecto"]["palabras"]], [(round(0.5 + 0.4 * k, 3), round(0.85 + 0.4 * k, 3)) for k in range(8)])
+
         self.assertEqual(r["corregidas"], 2)
         with open(recibido, encoding="utf-8") as f:
             self.assertEqual(f.read(), "Kalumi, Ana", "el vocabulario le llega al transcriptor en un archivo")
         with open(registro, encoding="utf-8") as f:
             reg = json.load(f)
+        self.assertNotIn("--vad", reg["opciones"], "sin detector de voz aunque esté descargado: puede recortar la palabra del borde")
         for a in reg["argv"]:
             for palabra in ("Kalumi", "Ana"):
                 self.assertNotIn(palabra, a, "el vocabulario nunca va en los argumentos del proceso (los ve cualquier programa)")
@@ -952,10 +1010,10 @@ class Vocabulario(unittest.TestCase):
         self.assertTrue(reg["argv"][0].startswith("@"))
 
     def test_vocabulario_en_una_sola_linea(self):
-        cmd, temporales = importar.comando_transcribir("/x/whisper-cli", ["-m", "m.bin"], "  \n ")
+        cmd, temporales = transcribir.comando("/x/whisper-cli", ["-m", "m.bin"], "  \n ")
         self.assertEqual((cmd, temporales), (["/x/whisper-cli", "-m", "m.bin"], []), "sin vocabulario no hay archivo")
         # Un salto de línea (vocabulario.json cambiado a mano) nunca cuela otra opción en el archivo de argumentos.
-        cmd, temporales = importar.comando_transcribir("/x/whisper-cli", ["-m", "m.bin"], "Kalumi\n-of\n/tmp/otra\r\nAna")
+        cmd, temporales = transcribir.comando("/x/whisper-cli", ["-m", "m.bin"], "Kalumi\n-of\n/tmp/otra\r\nAna")
         try:
             with open(temporales[0], encoding="utf-8") as f:
                 lineas = f.read().split("\n")

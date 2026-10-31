@@ -1,4 +1,5 @@
 import AppKit
+import PiezaCatalogo
 import ImageIO
 import UniformTypeIdentifiers
 import WebKit
@@ -393,30 +394,23 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
                 }
             }
         case "catalogoEfectos":
-            // Efectos de la comunidad: el índice se baja de un dominio fijo y lo valida bin/efectos.py (Catalogo.swift).
-            Catalogo.listar { Ventana.shared.llamar("catalogoListo", $0) }
+            // Efectos de la comunidad (pieza «catálogo»): el índice se baja de un dominio fijo y lo valida bin/catalogo.py.
+            Catalogo.listar("efectos") { Ventana.shared.llamar("catalogoListo", $0) }
         case "descargarEfecto":
-            let id = d["id"] as? String ?? ""
-            guard id.range(of: "^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$", options: .regularExpression) != nil else {
-                return llamar("efectoDescargado", ["ok": false, "id": "", "error": Idioma.t("Ese efecto no es válido.")])
-            }
-            Catalogo.descargar(id) { Ventana.shared.llamar("efectoDescargado", $0) }
+            // El id solo se busca en el último índice validado; la respuesta trae el efecto en «efecto» o {codigo, plantilla}.
+            Catalogo.descargar("efectos", d["id"] as? String ?? "") { Ventana.shared.llamar("efectoDescargado", $0) }
         case "catalogoPlantillas":
             // Plantillas de la comunidad (y el índice de efectos, para ofrecer los que una plantilla usa y la persona no tiene).
-            Catalogo.listar(tipo: .plantillas) { r in
+            Catalogo.listar("plantillas") { r in
                 guard r["ok"] as? Bool == true else { return Ventana.shared.llamar("catalogoPlantillasListo", r) }
-                Catalogo.listar(tipo: .efectos) { e in
+                Catalogo.listar("efectos") { e in
                     var x = r
                     x["efectos"] = e["efectos"] ?? [Any]()
                     Ventana.shared.llamar("catalogoPlantillasListo", x)
                 }
             }
         case "descargarPlantilla":
-            let id = d["id"] as? String ?? ""
-            guard id.range(of: "^[a-z0-9][a-z0-9-]{0,38}[a-z0-9]$", options: .regularExpression) != nil else {
-                return llamar("plantillaDescargada", ["ok": false, "id": "", "error": Idioma.t("Esa plantilla no es válida.")])
-            }
-            Catalogo.descargar(id, tipo: .plantillas) { Ventana.shared.llamar("plantillaDescargada", $0) }
+            Catalogo.descargar("plantillas", d["id"] as? String ?? "") { Ventana.shared.llamar("plantillaDescargada", $0) }
         case "elegirClips":
             // Una plantilla: la persona elige sus clips o fotos (van a los huecos en orden de nombre) y bin/plantillas.py arma el video.
             let id = d["plantilla"] as? String ?? ""

@@ -7,8 +7,11 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Corta",
+            dependencies: ["PiezaCatalogo"],
             path: "Sources/Corta"
         ),
+        // Pieza «catálogo» (de Pieza: no se edita a mano). Corta la configura con app.json (efectos y plantillas).
+        .target(name: "PiezaCatalogo", path: "Sources/PiezaCatalogo"),
         // whisper.cpp oficial (framework para Apple, usa Metal). La misma versión y huella que Graba y Minuta.
         .binaryTarget(
             name: "whisper",
