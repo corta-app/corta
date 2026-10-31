@@ -480,6 +480,7 @@
   "Salta los silencios: menos inventos y más rápido.": "Skips silences: fewer made-up lines and faster.",
   "Eso no es válido.": "That isn't valid.",
   "Llegó dañado. Intenta de nuevo.": "It arrived damaged. Please try again.",
-  "Ya no está en el catálogo. Vuelve a abrirlo.": "It's no longer in the catalog. Open it again."
+  "Ya no está en el catálogo. Vuelve a abrirlo.": "It's no longer in the catalog. Open it again.",
+  "La transcripción falló: {detalle}": "Transcription failed: {detalle}"
  }
 }

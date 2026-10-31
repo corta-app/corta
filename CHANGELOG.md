@@ -6,6 +6,10 @@ Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriore
 
 ## Sin publicar · Unreleased
 
+- Sin conexión, la galería de efectos y plantillas de la comunidad muestra la última lista que viste (para descargar, vuelve a
+  abrirla con conexión).
+  *When you're offline, the community effects and templates gallery shows the last list you saw (to download, open it again once
+  you're connected).*
 - Si el modelo de voz que elegiste no está descargado pero tienes el otro, Corta transcribe con ese en vez de detenerse. Además
   descarta más frases que whisper inventa en los silencios (como «Gracias por ver» o los créditos de subtítulos).
   *If the voice model you chose isn't downloaded but you have the other one, Corta transcribes with it instead of stopping. It also

@@ -77,7 +77,7 @@ def transcribir(carpeta):
     proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "transcribiendo", "texto": "Transcribiendo en tu computador…"})
     vocab = vocabulario.leer()
     try:
-        palabras = transcribir_.transcribir(audio, palabras=True, vad=False, idioma=cfg.get("idioma_audio") or "auto",
+        palabras = transcribir_.transcribir(audio, palabras=True, idioma=cfg.get("idioma_audio") or "auto",
                                             modelo=modelo, vocabulario=vocabulario.prompt(vocab))
     finally:
         if os.path.exists(audio):

@@ -42,7 +42,9 @@
     "max_bytes": 65536,
     "max_indice": 524288,
     "max_en_indice": 500,
-    "singular": "efecto"
+    "singular": "efecto",
+    "funcion": "validar_efecto",
+    "campos": "CLAVES"
    },
    "plantillas": {
     "validador": "plantilla_formato",
@@ -50,7 +52,9 @@
     "max_bytes": 65536,
     "max_indice": 524288,
     "max_en_indice": 500,
-    "singular": "plantilla"
+    "singular": "plantilla",
+    "funcion": "validar_plantilla",
+    "campos": "CLAVES"
    }
   }
  }

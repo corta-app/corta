@@ -233,8 +233,3 @@ def efectos_usados(d):
         r += h.get("efectos", []) + ([h["transicion"]] if "transicion" in h else [])
     r += d.get("efectos", [])
     return list(dict.fromkeys(r))
-
-
-# Para la pieza «catálogo» (bin/catalogo.py de la app): validar(obj) -> [problemas] y los campos que se guardan.
-validar = validar_plantilla
-CAMPOS = CLAVES
