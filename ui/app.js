@@ -50,7 +50,7 @@
   tema.aplicar(tema.elegir({}));  // antes del primer estado: ?tema= o el sistema, para que nada parpadee
   let avisosPendientes = [];      // avisos que llegan mientras la persona elige el idioma: se muestran después, ya traducidos
   const ui = window.PiezaComponentes.crear({
-    i18n, host, app: "Corta", repo: "corta-app/corta", pintar: () => pintar(), cerrar: () => cerrarDialogo(),
+    i18n, host, app: "Corta", repo: "corta-app/corta", version: () => E.version, pintar: () => pintar(), cerrar: () => cerrarDialogo(),
     elegirIA: (id) => { E.config.ia = id; host.enviar("config", { ia: id }); },
     retener: (texto, o) => { if (E.bv !== 0) return false; avisosPendientes.push([texto, o]); return true; },
   });
@@ -949,8 +949,8 @@
       : `<button class="pz-boton pz-principal" data-elegir-clips="${esc(pl.id)}" data-sin-traducir>${esc(Tp(pl.huecos.length === 1 ? "Elegir 1 clip o foto" : "Elegir {n} clips o fotos", { n: pl.huecos.length }))}</button>`;
     const bpm = pl.musica?.bpm ? ` · ${T("pensada para música de ~{b} BPM", { b: Math.round(pl.musica.bpm) })}` : "";
     // El nombre va de título del diálogo (T escapa el valor); «‹ Plantillas», «Atrás» y Esc vuelven a la lista.
-    return { titulo: "{x}", valores: { x: nombreFx(pl) }, cuerpo: `<button class="pz-boton pz-plano chico volver-pl" data-ver-pl="">‹ <span>Plantillas</span></button>
-      <div class="detalle-pl">${vistaPl(pl, true)}<div class="txt">
+    return { titulo: "{x}", valores: { x: nombreFx(pl) }, antes: `<button class="pz-boton pz-plano chico volver-pl" data-ver-pl="">‹ <span>Plantillas</span></button>`,
+      cuerpo: `<div class="detalle-pl">${vistaPl(pl, true)}<div class="txt">
         ${pl.descripcion ? `<p data-sin-traducir>${esc(enIdioma(pl.descripcion))}</p>` : ""}
         <small class="meta-pl" data-sin-traducir>${metaPl(pl)} · ${esc(pl.proporcion)}${bpm}${pl.autor ? ` · ${esc(Tp("por {x}", { x: pl.autor }))}` : ""}</small></div></div>
       <ol class="huecos-pl">${huecos}</ol>${faltaHTML}
@@ -1424,17 +1424,17 @@
     const x = E.exportar, p = P();
     if (x.paso === "listo") {
       return { titulo: "¡Listo para publicar! 🎉", cuerpo: frase("Tu video vertical de **{d}** quedó guardado en la carpeta del proyecto.", { d: reloj(x.duracion) }, "p"),
-        pie: `<button class="pz-boton" data-accion="mostrar-exportado">Mostrar en la carpeta</button><button class="pz-boton pz-principal" data-accion="cerrar" data-autofoco>Listo</button>` };
+        pie: `<button class="pz-boton" data-accion="mostrar-exportado">Mostrar en la carpeta</button><button class="pz-boton pz-principal" data-accion="cerrar">Listo</button>` };
     }
     if (x.paso === "error") return { titulo: "No se pudo exportar", cuerpo: `<p class="pz-error-texto" data-sin-traducir>${esc(x.error)}</p>`,
-      pie: `<button class="pz-boton" data-accion="cerrar">Cerrar</button><button class="pz-boton pz-principal" data-accion="exportar-ya" data-autofoco>Reintentar</button>` };
+      pie: `<button class="pz-boton" data-accion="cerrar">Cerrar</button><button class="pz-boton pz-principal" data-accion="exportar-ya">Reintentar</button>` };
     if (x.paso === "exportando") {
       // Mientras exporta no se cierra (ni con Esc ni tocando afuera): el avance llega por exportarProgreso.
       return { titulo: "Exportando…", cerrable: false, sinEsc: true, cuerpo: `${frase("Formato {l}, 1080 px, con subtítulos. Esto pasa en tu computador.", { l: p.lienzo }, "p")}
         <div class="barra-prog"><i style="width:${x.pct || 0}%"></i></div><p class="nota" data-sin-traducir>${T("{n} %", { n: x.pct || 0 })}</p>` };
     }
     return { titulo: "Exportar", cuerpo: frase("Queda un video de **{d}** en formato {l}, listo para subir.", { d: reloj(duracionFinal(p)), l: p.lienzo }, "p"),
-      pie: `<button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="exportar-ya" data-autofoco>Exportar video</button>` };
+      pie: `<button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="exportar-ya">Exportar video</button>` };
   }
   function dialogoAjustes() {
     return { titulo: "Ajustes", cuerpo: `<p>Todo se procesa en tu computador. La IA usa tu propia cuenta.</p>
@@ -1445,7 +1445,7 @@
         <div class="pz-fila"><div class="pz-txt"><b>Apariencia</b></div>${tema.selectorHTML()}</div>
         <div class="pz-fila"><div class="pz-txt"><b>Carpeta de tus videos</b><small data-sin-traducir>${esc(E.carpeta)}</small></div><button class="pz-boton" data-accion="abrir-carpeta">Abrir</button></div></div>
       <div class="seccion"><h3>Actualizaciones</h3>${ui.filaActualizacion()}</div>
-      <div class="seccion"><h3>Acerca de Corta</h3>${ui.acercaDe({ version: E.version, enlaces: { sitio: ENLACES.sitio, codigo: ENLACES.codigo, comunidad: ENLACES.comunidad } })}</div>`,
+      <div class="seccion"><h3>Acerca de Corta</h3>${ui.acercaDe({ enlaces: { sitio: ENLACES.sitio, codigo: ENLACES.codigo, comunidad: ENLACES.comunidad } })}</div>`,
       pie: `<button class="pz-boton pz-principal" data-accion="cerrar">Listo</button>` };
   }
   /** Palabras que Corta corrige sola al transcribir y que le enseña al transcriptor (~/Corta/vocabulario.json). */
@@ -2133,7 +2133,8 @@
       if (!E.config.bienvenida && E.bv === null && !E.bvCerrada) E.bv = 0;
       await cargarIdioma();
       if (e.aviso) toast(e.aviso);
-      ui.actualizacionDisponible(e.actualizacion);  // {hay, notas}: la fila de Ajustes; también vuelve a pintar
+      ui.actualizacionDisponible(e.actualizacion, { pintar: false });  // {hay, notas}: solo la anota para la fila de Ajustes
+      pintar();  // una sola vez (con la pantalla del idioma, solo ella)
     },
     proyectoActualizado(r) {
       const x = E.proyectos.find((y) => y.carpeta === r.carpeta);
@@ -2166,7 +2167,7 @@
     /** Avance de una actualización: {paso: "1"–"3" o "error", texto (ya traducido por la app), total, pct?}. El aviso de error lo da la pieza. */
     actualizacionProgreso(r) { ui.actualizacionProgreso(r); },
     /** {hay, notas, sinConexion}: la fila «Actualizaciones» de Ajustes (pieza «componentes»). */
-    actualizacionRevisada(r) { ui.actualizacionRevisada(r); },
+    actualizacionRevisada(r) { ui.actualizacionRevisada(r, { pintar: E.bv !== 0 }); },  // nada se pinta detrás del idioma
     /** Respuesta a `catalogoEfectos`: {ok, efectos} (ya validados por bin/efectos.py) o {ok: false, error}. */
     catalogoListo(r) {
       if (!E.catalogo) return;

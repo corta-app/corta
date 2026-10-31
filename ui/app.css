@@ -6,17 +6,44 @@
 @font-face { font-family: "Anton"; src: url("fuentes/Anton_400Regular.ttf"); font-display: block; }
 
 /* Colores: pieza «tema» (ui/tema.css, cargada antes). Cada color es un par claro/oscuro; con «Como el sistema» se ve como antes
-   (oscuro, o claro si el sistema está en claro). Lo propio de Corta (lateral, cortes, escenario, violeta, azul) también va con light-dark(). */
+   (oscuro, o claro si el sistema está en claro). Lo propio de Corta (lateral, cortes, escenario, violeta, azul) también. */
 :root {
   --fondo-claro: #f3f3ef; --fondo-oscuro: #0d0e10; --panel-claro: #ffffff; --panel-oscuro: #16171a; --panel-2-claro: #f6f6f2; --panel-2-oscuro: #1d1f23;
   --linea-claro: #deded8; --linea-oscuro: #2a2c31; --texto-claro: #141518; --texto-oscuro: #f4f4f0; --texto-suave-claro: #63656d; --texto-suave-oscuro: #9a9ca3;
   --acento-claro: #4f7a00; --acento-oscuro: #c6f432; --sobre-acento-oscuro: #111214;
   --rojo-claro: #c93636; --rojo-oscuro: #ff6b6b; --verde-claro: #4f7a00; --verde-oscuro: #c6f432;
-  --lateral: light-dark(#ebebe6, #121315);
-  --corte: repeating-linear-gradient(135deg, light-dark(rgba(201, 54, 54, .45), rgba(255, 107, 107, .5)) 0 4px, light-dark(rgba(201, 54, 54, .12), rgba(255, 107, 107, .18)) 4px 8px);
-  --escenario: light-dark(#dcdcd6, #08090a); --violeta: light-dark(#6a4fd6, #b8a2ff); --violeta-suave: light-dark(rgba(106, 79, 214, .14), rgba(184, 162, 255, .2));
-  --azul: light-dark(#1f78b4, #62c6ff); --azul-suave: light-dark(rgba(31, 120, 180, .22), rgba(98, 198, 255, .28));
+  /* Lo propio de Corta, también como pares: el token lo elige light-dark() y, sin él, el respaldo de abajo. */
+  --lateral-claro: #ebebe6; --lateral-oscuro: #121315; --escenario-claro: #dcdcd6; --escenario-oscuro: #08090a;
+  --corte-fuerte-claro: rgba(201, 54, 54, .45); --corte-fuerte-oscuro: rgba(255, 107, 107, .5);
+  --corte-suave-claro: rgba(201, 54, 54, .12); --corte-suave-oscuro: rgba(255, 107, 107, .18);
+  --violeta-claro: #6a4fd6; --violeta-oscuro: #b8a2ff; --violeta-suave-claro: rgba(106, 79, 214, .14); --violeta-suave-oscuro: rgba(184, 162, 255, .2);
+  --azul-claro: #1f78b4; --azul-oscuro: #62c6ff; --azul-suave-claro: rgba(31, 120, 180, .22); --azul-suave-oscuro: rgba(98, 198, 255, .28);
+  --lateral: light-dark(var(--lateral-claro), var(--lateral-oscuro)); --escenario: light-dark(var(--escenario-claro), var(--escenario-oscuro));
+  --corte-fuerte: light-dark(var(--corte-fuerte-claro), var(--corte-fuerte-oscuro)); --corte-suave: light-dark(var(--corte-suave-claro), var(--corte-suave-oscuro));
+  --violeta: light-dark(var(--violeta-claro), var(--violeta-oscuro)); --violeta-suave: light-dark(var(--violeta-suave-claro), var(--violeta-suave-oscuro));
+  --azul: light-dark(var(--azul-claro), var(--azul-oscuro)); --azul-suave: light-dark(var(--azul-suave-claro), var(--azul-suave-oscuro));
+  --corte: repeating-linear-gradient(135deg, var(--corte-fuerte) 0 4px, var(--corte-suave) 4px 8px);
+  /* Lo que se toca en el editor conserva sus tamaños (más compactos que los de la pieza); en los diálogos, en pantallas táctiles
+     y a 760 px o menos, la pieza «componentes» los sube a --pz-tactil (44 px). */
+  --pz-boton-alto: 0px; --pz-chip-alto: 0px;
   --fuente: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; font-size: 14px;
+}
+/* Sin light-dark() (Safari < 17.5, Chrome < 123; la demo en el navegador): los pares propios de Corta, como hace tema.css con los suyos. */
+@supports not (color: light-dark(#000, #fff)) {
+  :root, :root[data-pz-modo="claro"] {
+    --lateral: var(--lateral-claro); --escenario: var(--escenario-claro); --corte-fuerte: var(--corte-fuerte-claro); --corte-suave: var(--corte-suave-claro);
+    --violeta: var(--violeta-claro); --violeta-suave: var(--violeta-suave-claro); --azul: var(--azul-claro); --azul-suave: var(--azul-suave-claro);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-pz-modo="claro"]) {
+      --lateral: var(--lateral-oscuro); --escenario: var(--escenario-oscuro); --corte-fuerte: var(--corte-fuerte-oscuro); --corte-suave: var(--corte-suave-oscuro);
+      --violeta: var(--violeta-oscuro); --violeta-suave: var(--violeta-suave-oscuro); --azul: var(--azul-oscuro); --azul-suave: var(--azul-suave-oscuro);
+    }
+  }
+  :root[data-pz-modo="oscuro"] {
+    --lateral: var(--lateral-oscuro); --escenario: var(--escenario-oscuro); --corte-fuerte: var(--corte-fuerte-oscuro); --corte-suave: var(--corte-suave-oscuro);
+    --violeta: var(--violeta-oscuro); --violeta-suave: var(--violeta-suave-oscuro); --azul: var(--azul-oscuro); --azul-suave: var(--azul-suave-oscuro);
+  }
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
@@ -34,8 +61,8 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 .titulo-proy { font-weight: 650; color: var(--texto-suave); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1; }
 .titulo-proy b { color: var(--texto); }
 /* Selector segmentado (pieza «componentes», .pz-seg) con la forma de Corta: el de la barra (formato) y el de Plantillas. */
-.pz-seg { background: var(--panel); border-radius: 10px; padding: 3px; flex: none; flex-wrap: nowrap; }
-.pz-seg button { min-height: 0; padding: 5px 10px; border-radius: 7px; font-weight: 650; font-size: 12.5px; }
+.pz-seg { background: var(--panel); border-radius: 10px; padding: 3px; flex: none; }
+.pz-seg button { padding: 5px 10px; border-radius: 7px; font-weight: 650; font-size: 12.5px; }
 .pz-seg button[aria-pressed="true"] { background: var(--panel-2); box-shadow: 0 0 0 1px var(--linea); font-weight: 650; }
 
 .lateral { background: var(--lateral); border-right: 1px solid var(--linea); display: flex; flex-direction: column; min-height: 0; }
@@ -52,7 +79,7 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 
 /* Botones */
 /* Botones: .pz-boton de la pieza «componentes» con la forma de Corta (más redondos y firmes). .grande y .chico son de Corta. */
-.pz-boton { border-radius: 10px; padding: 8px 13px; font-weight: 650; gap: 7px; min-height: 0; }
+.pz-boton { border-radius: 10px; padding: 8px 13px; font-weight: 650; gap: 7px; }
 .pz-boton:hover { background: var(--panel); border-color: var(--texto-suave); }
 .pz-boton.pz-principal { border-color: transparent; font-weight: 650; }
 .pz-boton.pz-principal:hover { background: var(--acento); filter: brightness(1.06); }
@@ -200,7 +227,7 @@ select { width: auto; padding: 6px 8px; }
 textarea:focus, input.texto:focus { outline: 2px solid var(--acento); outline-offset: 0; }
 .ejemplos { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
 /* Chips (.pz-chip): en Corta son discretos y el elegido se pinta con el acento. */
-.pz-chip { background: transparent; padding: 5px 10px; font-size: 12.5px; color: var(--texto-suave); min-height: 0; }
+.pz-chip { background: transparent; padding: 5px 10px; font-size: 12.5px; color: var(--texto-suave); }
 .pz-chip:hover { color: var(--texto); border-color: var(--texto-suave); }
 .historial-ia { display: grid; gap: 8px; margin-top: 14px; }
 .cambio { padding: 10px 12px; border-radius: 10px; background: var(--panel-2); border: 1px solid var(--linea); line-height: 1.45; }
@@ -244,12 +271,9 @@ textarea:focus, input.texto:focus { outline: 2px solid var(--acento); outline-of
 .pz-dialogo h2 { font-size: 20px; margin-bottom: 6px; }
 .pz-dialogo > p { margin: 0 0 16px; line-height: 1.55; }
 .pz-dialogo p.nota { margin: 6px 0 0; }
-.pz-dialogo p.pz-error-texto { color: var(--rojo); }
 .pz-dialogo .nota-idioma { margin: 18px 0 0; }
-/* El editor conserva sus tamaños; en los diálogos (celular o pantalla táctil) cada botón mide al menos 44 px, como pide la pieza. */
-@media (pointer: coarse), (max-width: 760px) {
-  .pz-capa .pz-boton, .pz-capa .pz-chip, .pz-capa .pz-seg button { min-height: 44px; }
-}
+/* La ✕ de un diálogo mide lo de siempre en el escritorio (el alto de los botones de Corta es 0: ver :root). */
+.pz-cerrar { min-width: max(36px, var(--pz-boton-alto)); }
 @media (max-width: 760px) {
   .pz-dialogo { border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
   .pz-capa:has(.dialogo-pl) { padding: 0; }
@@ -265,7 +289,7 @@ textarea:focus, input.texto:focus { outline: 2px solid var(--acento); outline-of
 .idioma-bv h2 { font-size: 22px; margin-bottom: 20px; }
 .idioma-bv .punto { color: var(--texto-suave); }
 .opciones-idioma { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.opcion-idioma { flex-direction: column; gap: 4px; min-height: 104px; padding: 16px 14px; border-radius: 14px; white-space: normal; position: relative; border-width: 2px; }
+.opcion-idioma { flex-direction: column; gap: 4px; min-height: 104px; padding: 16px 14px; border-radius: 14px; position: relative; border-width: 2px; }
 .opcion-idioma b { font-size: 20px; }
 .opcion-idioma small { font-size: 13.5px; font-weight: 500; color: var(--texto-suave); }
 .opcion-idioma.pz-principal small { color: inherit; }

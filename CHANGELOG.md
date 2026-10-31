@@ -12,10 +12,12 @@ Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriore
   y tú decides si lo publicas.
   *You can now tell us about a bug or an idea from Settings → About → "Send feedback": GitHub opens with your message ready and you
   decide whether to post it.*
-- Los diálogos se manejan mejor con teclado: el foco entra al abrirlos, Tab no se sale, Esc o tocar afuera los cierra y el foco
+- Los diálogos se manejan mejor con teclado: el foco entra al abrirlos (en su título, así el lector de pantalla lo lee), Tab no se sale, Esc o tocar afuera los cierra y el foco
   vuelve a donde estaba. Los avisos esperan su turno en vez de taparse, y al actualizar ves en qué paso va.
-  *Dialogs work better with the keyboard: focus moves in when they open, Tab stays inside, Esc or clicking outside closes them and
+  *Dialogs work better with the keyboard: focus moves in when they open (to their title, so screen readers read it), Tab stays inside, Esc or clicking outside closes them and
   focus goes back where it was. Notices wait their turn instead of covering each other, and when updating you see which step it's on.*
+- En «Tu IA» solo se destaca un botón, y si una IA no está instalada puedes tocar «Revisar de nuevo» después de instalarla.
+  *In "Your AI" only one button stands out, and if an AI isn't installed you can tap "Check again" after installing it.*
 - Tu vocabulario (nombres y marcas) ahora también ayuda a transcribir con `whisper-cli`, y va siempre en un archivo privado que se
   borra al terminar: nunca queda en la carpeta del video ni a la vista de otros programas.
   *Your vocabulary (names and brands) now also helps transcribe with `whisper-cli`, and it always goes in a private file that is

@@ -40,15 +40,12 @@ escribir_json = nucleo.escribir_json
 
 #: Lo que vale si la persona aún no eligió nada. Las claves y valores permitidos están en app.json (nucleo.config los filtra).
 CONFIG_DEFECTO = {"ia": "claude", "idioma_ui": "", "idioma_audio": "auto", "modelo": "turbo"}
-#: idioma_audio va como `-l` del transcriptor: «auto» o un código de idioma, nada más (app.json solo dice «texto»).
-IDIOMA_AUDIO = re.compile(r"auto|[a-z]{2,3}")
 
 
 def config():
-    c = {**CONFIG_DEFECTO, **nucleo.config()}
-    if not IDIOMA_AUDIO.fullmatch(str(c.get("idioma_audio"))):
-        c["idioma_audio"] = "auto"
-    return c
+    """La config validada por app.json. idioma_audio va como `-l` del transcriptor: app.json solo deja «auto» o un código de
+    idioma (patrón), y lo que no calza se descarta y queda el de CONFIG_DEFECTO."""
+    return {**CONFIG_DEFECTO, **nucleo.config()}
 
 
 # ───────────── Programas (ffmpeg, ffprobe, transcriptor) ─────────────
