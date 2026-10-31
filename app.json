@@ -22,6 +22,14 @@
    "turbo",
    "small"
   ],
-  "idioma_audio": "texto"
+  "idioma_audio": {
+   "tipo": "texto",
+   "patron": "auto|[a-z]{2,3}"
+  },
+  "tema": [
+   "sistema",
+   "claro",
+   "oscuro"
+  ]
  }
 }

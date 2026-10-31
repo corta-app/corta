@@ -29,7 +29,7 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 | `efectos/` | Efectos incluidos (`<categoria>/<id>.json`, solo datos) y `README.md` con el formato. Los de la comunidad viven en el repo `corta-app/corta-catalogo`. |
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`, solo datos) y `README.md` con el formato. Las de la comunidad, en `corta-catalogo/plantillas/`. |
 | `app.json`, `piezas.json` | **Pieza** (ver «Piezas»): `app.json` describe la app para las piezas (id, nombre, datos, plataformas, claves de config); `piezas.json` lo escribe `pieza.py` (versión y huella de cada archivo copiado). |
-| `ui/` | Interfaz única (`app.js`, `app.css`, `i18n.js` de la pieza «i18n»), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros) + `demo/foto-1.jpg`, `demo/foto-2.jpg` (dibujos para llenar plantillas; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
+| `ui/` | Interfaz única (`app.js`, `app.css`; de Pieza: `i18n.js`, `host.js`, `tema.js`/`tema.css` y `componentes.js`/`componentes.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros) + `demo/foto-1.jpg`, `demo/foto-2.jpg` (dibujos para llenar plantillas; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
 | `docs/` | Página pública (GitHub Pages); `pagina.yml` publica también `ui/` en `/demo/`. |
 | `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `transiciones.mjs` (vista previa ↔ exportado, con `cuadros_transiciones.py`), `velocidad.mjs` (velocidad por tramo: cada cuadro y cada palabra exportados contra la vista previa, con `cuadros_velocidad.py`, y el costo de exportar), `contrato.py` (interfaz ↔ `Ventana.swift`), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
 | `CHANGELOG.md` | Lo que cambia para quien usa la app, en palabras simples (ver «Lo que rodea a un cambio»). |
@@ -38,11 +38,14 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 ## Piezas (de [Pieza](https://github.com/pieza-app/pieza))
 Corta usa piezas de Pieza, la base de la familia de apps: código probado que se copia a la app (modelo «copiar y adueñarse»).
 
-| Pieza | Archivos | Qué usa Corta |
-|---|---|---|
-| `nucleo` | `bin/nucleo.py` | `app.json`, carpeta de datos (`~/Corta/.corta`: `"datos": "visible"`; en las pruebas `CORTA_CARPETA` mueve `~/Corta` entero; `"privado": true` deja todo JSON en 0600, como antes), config validada por `app.json`, `leer_json`/`escribir_json` atómicos, `recursos()`. `proyecto.py` lo envuelve: `config()` suma lo de siempre (`CONFIG_DEFECTO`) y solo deja `idioma_audio` «auto» o un código de idioma (va como `-l` del transcriptor). Lo propio de Corta (`carpeta_valida`, `SOLO_ARCHIVOS`, `entrada`, `programa`) sigue en `proyecto.py`. |
-| `ia` | `bin/ia.py` | `preguntar`, `nombre`, `frase`, `probar`. Lo propio de Corta (prompts y operaciones JSON) sigue en `editar_ia.py`, que responde `{ok: false, error, codigo}` (`error_ia`: la frase de la pieza, o la de Corta en `FRASES_IA` cuando dice dónde se elige la IA). La app de Mac prueba la IA con `Procesador.conEntrada("ia.py", "probar", ["ia": id])` (ya no arma el comando en Swift) y la interfaz traduce el error con `tr()`. |
-| `i18n` | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` y `cargarIdioma` con `i18n.elegir` (elegido > `?idioma=` > config > sistema); se carga antes que `app.js`. `E.idioma` es una copia de `i18n.idioma`. `ui/idiomas/en.json` lleva `codigo` y `nombre` (los paquetes se validan). |
+| Pieza | Versión | Archivos | Qué usa Corta |
+|---|---|---|---|
+| `nucleo` | 0.7.0 | `bin/nucleo.py` | `app.json`, carpeta de datos (`~/Corta/.corta`: `"datos": "visible"`; en las pruebas `CORTA_CARPETA` mueve `~/Corta` entero; `"privado": true` deja todo JSON en 0600, como antes), config validada por `app.json`, `leer_json`/`escribir_json` atómicos, `recursos()`. `proyecto.py` lo envuelve: `config()` suma lo de siempre (`CONFIG_DEFECTO`); `idioma_audio` va como `-l` del transcriptor y `app.json` solo lo deja «auto» o un código de idioma (`"patron": "auto|[a-z]{2,3}"`). Lo propio de Corta (`carpeta_valida`, `SOLO_ARCHIVOS`, `entrada`, `programa`) sigue en `proyecto.py`. |
+| `ia` | 0.6.0 | `bin/ia.py` | `preguntar`, `nombre`, `frase`, `probar`. Lo propio de Corta (prompts y operaciones JSON) sigue en `editar_ia.py`, que responde `{ok: false, error, codigo}` (`error_ia`: la frase de la pieza, o la de Corta en `FRASES_IA` cuando dice dónde se elige la IA). La app de Mac prueba la IA con `Procesador.conEntrada("ia.py", "probar", ["ia": id])` (ya no arma el comando en Swift) y le pasa a la interfaz la respuesta tal cual; la fila de «Tu IA» (pieza «componentes») muestra el error traducido con su `plantilla` y `valores`. |
+| `i18n` | 0.3.0 | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` y `cargarIdioma` con `i18n.elegir` (elegido > `?idioma=` > config > sistema); se carga antes que `app.js`. `E.idioma` es una copia de `i18n.idioma`. `ui/idiomas/en.json` lleva `codigo` y `nombre` (los paquetes se validan). |
+| `host-ui` | 0.2.0 | `ui/host.js` | `host = PiezaHost.crearHost({nombre: "corta", global: "Corta", simular})`: `host.enviar` (Mac `webkit.messageHandlers.corta`, Electron `window.cortaEscritorio`, navegador `simular()`; los datos viajan como copia JSON también en la vista previa), `HOST = host.plataforma` y `<html data-host>`. Las respuestas van en `host.responder({…})` (quedan en `window.Corta`); `window.Corta._pruebas` va aparte porque no es una función. `simular` atiende lo propio y deja `probarIA`, `buscarActualizacion`, `actualizar` y `abrirEnlace` a `PiezaHost.simulacionesComunes()`. |
+| `tema` | 0.2.0 | `ui/tema.css`, `ui/tema.js` | Los tokens de color (`--fondo`, `--panel`, `--panel-2`, `--linea`, `--texto`, `--texto-suave`, `--acento`, `--sobre-acento`, `--rojo`, `--verde`, `--acento-suave`, `--rojo-suave`…) con `light-dark()`. `app.css` solo define los pares de Corta (`--x-claro`/`--x-oscuro`), también los de lo propio (`--lateral`, `--corte-fuerte`/`--corte-suave` para `--corte`, `--escenario`, `--violeta*`, `--azul*`), elegidos con `light-dark()` y con su respaldo `@supports` para navegadores sin él. El modo va en `<html data-pz-modo>`: se lee con `tema.valor`/`tema.resuelto()`, nunca del atributo. Ajustes → Apariencia (`tema.selectorHTML()`, config `tema`: sistema, claro u oscuro; «sistema» se ve igual que antes); `?tema=oscuro` para capturas. |
+| `componentes` | 0.2.0 | `ui/componentes.js`, `ui/componentes.css` | `ui = PiezaComponentes.crear({…})`: `ui.dialogo` (cada `dialogoX()` devuelve `{titulo, valores?, cuerpo, pie, cerrable?, sinEsc?}`; `cerrarDialogo()` es el ✕/Esc/velo; el detalle de una plantilla vuelve a la lista con Esc), `toast` = `ui.aviso` (en cola; mientras se elige el idioma esperan con `retener`), `ui.filasIA` (`probarIA {ia}`; al probar bien guarda `config.ia`), `ui.filaActualizacion` (`actualizacionDisponible`/`Revisada` con `{pintar: false}` para no pintar detrás del idioma) y `ui.acercaDe` (con «Enviar comentarios» → issue en GitHub; la versión llega por `crear({version: () => E.version})`). El foco de un diálogo parte en su título (`data-autofoco` solo en un campo, o en el idioma sugerido); `confirmar({peligro})` lo deja en «Cancelar». El detalle de una plantilla pone «‹ Plantillas» en `antes`. Clases `pz-`: `.pz-boton` (+ `.pz-principal`, `.pz-plano`, `.pz-peligro`; `.grande` y `.chico` son de Corta), `.pz-fila`/`.pz-txt`, `.pz-chip`, `.pz-seg`, `.pz-ok`, `.pz-error-texto`. `app.css` les da la forma de Corta; el editor conserva sus tamaños (`:root { --pz-boton-alto: 0px; --pz-chip-alto: 0px }`) y la pieza sube a `--pz-tactil` (44 px) lo de los diálogos en celular y pantallas táctiles. Llamar `ui.despuesDePintar()` al final de `pintar()` y `ui.capas()` dentro de lo pintado. |
 
 - **No edites a mano los archivos de una pieza.** Se actualizan con «Pieza al día» (`.github/workflows/pieza-al-dia.yml`, una vez por
   semana abre un PR o un issue) o con `python3 <pieza>/herramientas/pieza.py actualizar .`. Si hay que cambiar algo, el cambio va
@@ -50,6 +53,8 @@ Corta usa piezas de Pieza, la base de la familia de apps: código probado que se
 - `app.json` va dentro de la app (`herramientas/empaquetar.sh` lo copia a `Contents/Resources/corta/`): `bin/nucleo.py` lo busca junto
   a `bin/`. Las claves de config que acepta `Config.guardar` (Swift) son las de `app.json` (una prueba lo revisa).
 - `.gitignore` es una lista blanca: `app.json` y `piezas.json` están en ella.
+- La pantalla del idioma (paso 0 de la bienvenida) es de Corta: `.pz-capa.capa-idioma` con `data-pz-sin-esc` y `data-autofoco` en el
+  idioma sugerido, para que la pieza «componentes» le dé el foco sin dejar cerrarla.
 - No adoptadas todavía: `bienvenida` y `actualizaciones` (se están mejorando en Pieza; la bienvenida de Corta tiene su paso de
   transcriptor y su `Actualizaciones.swift` arma con `empaquetar.sh` en desarrollo).
 
@@ -119,7 +124,10 @@ devuelve los ajustes que nadie volvió a cambiar y conserva (sin `origen`) lo qu
 El resultado se guarda como cualquier edición (y se puede deshacer).
 
 ## Puente interfaz ↔ app
-La UI llama `host.enviar(accion, datos)` y la app responde con `window.Corta.<funcion>(json)`; en el navegador responde `simular()`.
+La UI llama `host.enviar(accion, datos)` (pieza «host-ui») y la app responde con `window.Corta.<funcion>(json)` (las de `host.responder`); en
+el navegador responde `simular()`. `probarIA` es `{ia}` → `iaProbada {ia, ok, codigo?, plantilla?, valores?, error?}` (lo que devuelve
+`ia.py probar`); `actualizacionRevisada` es `{hay, notas, sinConexion}` y `estado.actualizacion` es `{hay, notas}`. La pieza
+«componentes» también manda `probarIA`, `config`, `buscarActualizacion`, `actualizar` y `abrirEnlace` (`pruebas/contrato.py` las lee de `ui/componentes.js`).
 Acciones: `listo, config, guardarProyecto, deshacer, elegirVideo, soltarVideo, transcribir, limpiar, pedirIA, buscarShorts, crearShort,
 exportar, probarIA, descargarModelo, elegirMusica, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar, vocabulario, catalogoEfectos, descargarEfecto,
 catalogoPlantillas, descargarPlantilla, elegirClips, ajustarHueco, cambiarClip`. Respuestas: `estado,
@@ -182,7 +190,8 @@ transcriptor. Quien ya hizo la bienvenida no la repite; el idioma se cambia en A
   `ui/idiomas/en.json` en el mismo cambio, como frase completa con marcadores (`T("Listo: quedó **{s} s** más corto.", {s})`).
 - Contenido del usuario (títulos, palabras) con `esc()` y `data-sin-traducir`.
 - No cambies el formato de `proyecto.json` sin compatibilidad (subir `formato` y migrar).
-- Archivos de piezas (`bin/nucleo.py`, `bin/ia.py`, `ui/i18n.js`): no se editan aquí; ver «Piezas».
+- Archivos de piezas (`bin/nucleo.py`, `bin/ia.py`, `ui/i18n.js`, `ui/host.js`, `ui/tema.*`, `ui/componentes.*`): no se editan aquí; ver «Piezas».
+- Colores solo con los tokens de la pieza «tema» (`var(--texto-suave)`, `var(--panel-2)`…); un color nuevo que cambia con el modo va como par `--x-claro`/`--x-oscuro`, elegido con `light-dark()` y repetido en el respaldo `@supports` de `app.css`.
 - Antes de cerrar un cambio: `bash pruebas/correr.sh` y mirar la interfaz (`cd ui && python3 -m http.server 8765`, `?idioma=en`,
   `?bienvenida`, `?vacio`, `window.Corta._probar(E => …)`), también a ancho de celular y en modo claro y oscuro.
 - Privacidad: `bash herramientas/revisar_privacidad.sh` antes de cada commit. Nunca subas videos reales: `.gitignore` solo deja los de la demo.

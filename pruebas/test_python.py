@@ -1057,6 +1057,7 @@ class Piezas(unittest.TestCase):
             app = json.load(f)
         self.assertEqual((app["id"], app["nombre"], app["datos"]), ("corta", "Corta", "visible"), "~/Corta/.corta, igual que la app de Mac")
         self.assertTrue(app.get("privado"), "los JSON de Corta quedan 0600, como siempre")
+        self.assertEqual(app["config"]["idioma_audio"], {"tipo": "texto", "patron": "auto|[a-z]{2,3}"}, "va como -l del transcriptor")
         ruta = os.path.join(TMP, "permisos.json")
         with open(ruta, "w") as f:
             f.write("{}")
@@ -1083,6 +1084,9 @@ class Piezas(unittest.TestCase):
             self.assertNotIn("extra", c)
             proyecto.escribir_json(ruta, {"idioma_audio": "pt"})
             self.assertEqual(proyecto.config()["idioma_audio"], "pt")
+            for malo in ("ES", "espanol", "auto ", "-l", ""):  # el patrón de app.json: el valor entero tiene que calzar
+                proyecto.escribir_json(ruta, {"idioma_audio": malo})
+                self.assertEqual(proyecto.config()["idioma_audio"], "auto", malo)
         finally:
             if antes is None:
                 os.remove(ruta)

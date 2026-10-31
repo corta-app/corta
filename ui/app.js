@@ -3,13 +3,11 @@
 // La vista previa reproduce el video original saltando los cortes y dibuja los subtítulos con el mismo estilo que exporta ffmpeg.
 (() => {
   "use strict";
-  const HOST = window.CORTA_HOST || "web";
-  document.documentElement.dataset.host = HOST;
   const E = {
     proyectos: [], sel: null, estilos: [], config: {}, ias: [], modelos: { lista: [] }, version: "", carpeta: "", progreso: {},
     pestana: "texto", seleccion: null, ancla: null, ia: { texto: "", enviando: false, historial: [] }, shorts: null, buscandoShorts: false,
-    limpiando: false, ultimoAhorro: null, exportar: null, bv: null, bvCerrada: false, ajustes: false, probando: {}, resultadoIA: {},
-    descarga: null, actualizacion: { hay: false }, act: null, buscando: null, idioma: "es", soltar: false,  // idioma: copia de i18n.idioma
+    limpiando: false, ultimoAhorro: null, exportar: null, bv: null, bvCerrada: false, ajustes: false,
+    descarga: null, idioma: "es", soltar: false,  // idioma: copia de i18n.idioma
     lt: { zoom: 1, sel: null, ancho: 0, vel: false },  // línea de tiempo: zoom horizontal, tramo elegido ({lista, k}), ancho visible en px
                                                        // y si se ve la velocidad del tramo elegido
     vocabulario: { reemplazos: [], palabras: [] },
@@ -31,15 +29,11 @@
   const $ = (s, r = document) => r.querySelector(s);
   const esc = (t) => String(t ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-  // ───────────── Puente con la app ─────────────
-  const host = {
-    enviar(accion, datos = {}) {
-      const msg = { accion, datos };
-      if (window.webkit?.messageHandlers?.corta) return window.webkit.messageHandlers.corta.postMessage(msg);
-      if (window.cortaEscritorio) return window.cortaEscritorio.enviar(msg);
-      return simular(accion, datos);
-    },
-  };
+  // ───────────── Puente con la app: pieza «host-ui» (ui/host.js) ─────────────
+  // Mac (webkit.messageHandlers.corta), Windows/Linux (window.cortaEscritorio) o, en el navegador, simular() con demo.json.
+  // Las respuestas de la app quedan en window.Corta (host.responder, más abajo). <html data-host> lo pone la pieza.
+  const host = window.PiezaHost.crearHost({ nombre: "corta", global: "Corta", simular: (accion, d, c) => simular(accion, d, c) });
+  const HOST = host.plataforma;
 
   // ───────────── Idiomas: pieza «i18n» (ui/i18n.js; las claves son el texto en español) ─────────────
   // T escapa la frase y los valores (texto de afuera nunca entra como HTML); Thtml es solo para HTML armado aquí con esc().
@@ -50,6 +44,16 @@
     await i18n.cargar(i18n.elegir({ elegido, config: E.config.idioma_ui }));
     E.idioma = i18n.idioma;
   }
+
+  // ───────────── Tema (pieza «tema») y componentes comunes (pieza «componentes»: diálogos, avisos, Tu IA, actualizaciones) ─────────────
+  const tema = window.PiezaTema.crear({ guardar: (v) => { E.config.tema = v; host.enviar("config", { tema: v }); } });
+  tema.aplicar(tema.elegir({}));  // antes del primer estado: ?tema= o el sistema, para que nada parpadee
+  let avisosPendientes = [];      // avisos que llegan mientras la persona elige el idioma: se muestran después, ya traducidos
+  const ui = window.PiezaComponentes.crear({
+    i18n, host, app: "Corta", repo: "corta-app/corta", version: () => E.version, pintar: () => pintar(), cerrar: () => cerrarDialogo(),
+    elegirIA: (id) => { E.config.ia = id; host.enviar("config", { ia: id }); },
+    retener: (texto, o) => { if (E.bv !== 0) return false; avisosPendientes.push([texto, o]); return true; },
+  });
 
   // ───────────── Lógica del proyecto (la misma que bin/proyecto.py, limpiar.py y subtitulos.py; casos en pruebas/casos.json) ─────────────
   const r3 = (n) => Math.round(n * 1000) / 1000;
@@ -489,13 +493,8 @@
   const segundos = (s) => (Math.round(s * 10) / 10).toLocaleString(E.idioma === "es" ? "es-CL" : "en-US");
   const estilo = () => E.estilos.find((s) => s.id === P()?.subtitulos.estilo) || E.estilos[0];
   const nombreIA = () => E.ias.find((i) => i.id === E.config.ia)?.nombre || tr("tu IA");
-  let avisosPendientes = [];  // avisos que llegan mientras la persona elige el idioma: se muestran después, ya traducidos
-  /** Aviso breve. `traducido`: el texto ya viene en el idioma de la interfaz (armado con Tp). */
-  function toast(texto, traducido = false) {
-    if (E.bv === 0) { avisosPendientes.push(texto); return; }
-    const t = $("#toast"); t.textContent = traducido ? texto : tr(texto); t.classList.add("visible");
-    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("visible"), 2200);
-  }
+  /** Aviso breve (en cola, de la pieza «componentes»). `traducido`: el texto ya viene en el idioma de la interfaz (armado con Tp). */
+  const toast = (texto, traducido = false) => ui.aviso(texto, { traducido });
   let guardarLuego = null;  // al mover un borde con el teclado se guarda una vez, al soltar las flechas
   /** Guarda el proyecto (la app lo valida y deja respaldo para deshacer). */
   function guardar(p, aviso, traducido = false) {
@@ -513,9 +512,8 @@
     const viejo = $("#video");
     const activo = document.activeElement?.id;
     // En el primer uso lo primero es el idioma: hasta elegirlo no se pinta nada más (ni la app detrás, ni el video).
-    raiz.innerHTML = E.bv === 0 ? dialogos() : `<div class="app">${barra()}${lateral()}${principal()}</div>${sugerenciaHTML()}${dialogos()}`;
+    raiz.innerHTML = E.bv === 0 ? dialogos() : `<div class="app">${barra()}${lateral()}${principal()}</div>${sugerenciaHTML()}${dialogos()}${ui.capas()}`;
     traducirDOM(raiz);
-    if (E.bv === 0 && !document.activeElement?.closest?.(".dialogo")) $(".opcion-idioma.principal")?.focus();
     const cp = $(".cuerpo-panel"); if (cp) cp.scrollTop = scroll;
     const vl = $("#lt-vista"); if (vl) vl.scrollLeft = scrollLT;
     const nuevo = $("#video");
@@ -525,16 +523,17 @@
     ajustarEtiquetas();
     pintarMuestras();
     if (activo === "editar-palabra" || activo === "editar-sub") { const inp = document.getElementById(activo); inp?.setSelectionRange?.(inp.value.length, inp.value.length); }
+    ui.despuesDePintar();  // el foco entra al diálogo que se abrió (en el idioma: el sugerido), queda adentro y vuelve al cerrarlo
   }
 
   function barra() {
     const p = P();
     return `<header class="barra"><span class="marca">${LOGO}<span>Corta</span></span>
       <span class="titulo-proy" data-sin-traducir>${p ? `<b>${esc(p.titulo)}</b>` : ""}</span>
-      ${p && p.palabras ? `<div class="segmentado" role="group" aria-label="Formato">${Object.keys(LIENZOS).map((l) =>
+      ${p && p.palabras ? `<div class="pz-seg" role="group" aria-label="Formato">${Object.keys(LIENZOS).map((l) =>
         `<button data-lienzo="${l}" aria-pressed="${p.lienzo === l}" data-sin-traducir>${l}</button>`).join("")}</div>
         <button class="icono" data-accion="deshacer" title="Deshacer" aria-label="Deshacer">↶</button>
-        <button class="boton principal" data-accion="exportar">Exportar</button>` : ""}
+        <button class="pz-boton pz-principal" data-accion="exportar">Exportar</button>` : ""}
       <button class="icono solo-angosto" data-accion="plantillas" title="Plantillas" aria-label="Plantillas">▦</button>
       <button class="icono" data-accion="ajustes" title="Ajustes" aria-label="Ajustes">⚙︎</button></header>`;
   }
@@ -547,8 +546,8 @@
       return `<button class="item" data-sel="${esc(x.carpeta)}" aria-current="${x.carpeta === E.sel}">
         <span class="t" data-sin-traducir>${esc(p.titulo)}</span><span class="m">${meta}</span></button>`;
     }).join("");
-    return `<aside class="lateral"><div class="caja"><button class="boton principal grande" data-accion="nuevo">＋ <span>Nuevo video</span></button>
-      <button class="boton sutil grande" data-accion="plantillas">▦ <span>Usar una plantilla</span></button></div>
+    return `<aside class="lateral"><div class="caja"><button class="pz-boton pz-principal grande" data-accion="nuevo">＋ <span>Nuevo video</span></button>
+      <button class="pz-boton pz-plano grande" data-accion="plantillas">▦ <span>Usar una plantilla</span></button></div>
       <nav class="lista" aria-label="Videos">${E.proyectos.length ? `<h2>Tus videos</h2>${items}` : ""}</nav>
       <div class="pie-lateral"><span aria-hidden="true">🔒</span><span>Tus videos no salen de tu computador.</span></div></aside>`;
   }
@@ -571,8 +570,8 @@
       <h1>Corta tu primer video</h1>
       <p>Trae un video y Corta lo transcribe en tu computador. Después sacas silencios y muletillas, eliges subtítulos y lo exportas vertical para Shorts, Reels o TikTok.</p>
       <div class="soltar ${E.soltar ? "encima" : ""}" data-soltar><span style="font-size:30px" aria-hidden="true">🎬</span>
-        <button class="boton principal" data-accion="nuevo">Elegir video</button><small style="color:var(--suave)">MP4, MOV o WebM. También puedes arrastrarlo aquí.</small></div>
-      <p class="o-plantilla"><span>¿Sin video todavía?</span> <button class="boton" data-accion="plantillas">▦ <span>Usar una plantilla</span></button></p>
+        <button class="pz-boton pz-principal" data-accion="nuevo">Elegir video</button><small style="color:var(--texto-suave)">MP4, MOV o WebM. También puedes arrastrarlo aquí.</small></div>
+      <p class="o-plantilla"><span>¿Sin video todavía?</span> <button class="pz-boton" data-accion="plantillas">▦ <span>Usar una plantilla</span></button></p>
       <div class="pasos"><div><b>1</b><span>Corta escucha tu video y escribe cada palabra con su tiempo.</span></div>
         <div><b>2</b><span>Editas el texto: lo que borras, se borra del video.</span></div>
         <div><b>3</b><span>Tu IA corta, pone zooms y busca los mejores momentos para Shorts.</span></div></div></div></section>`;
@@ -614,7 +613,7 @@
     const p = P();
     if (!p.palabras.length) {
       return `<div class="tarjeta"><h3>Sin transcripción</h3><p class="nota">Este video todavía no tiene texto. Transcríbelo para editar por palabras y poner subtítulos.</p>
-        <div style="margin-top:12px"><button class="boton principal" data-accion="transcribir">Transcribir</button></div></div>`;
+        <div style="margin-top:12px"><button class="pz-boton pz-principal" data-accion="transcribir">Transcribir</button></div></div>`;
     }
     const cortes = unir(p.cortes), sel = E.seleccion;
     let html = "";
@@ -642,13 +641,13 @@
     const selCortada = sel && p.palabras.slice(sel[0], sel[1] + 1).every((w) => palabraCortada(p, w, cortes));
     return `<div class="tarjeta limpiar"><div class="txt"><b>Silencios y muletillas</b>
         <small>${E.ultimoAhorro != null ? frase("Listo: el video quedó **{s} s** más corto.", { s: segundos(E.ultimoAhorro) }) : "Saca las pausas largas y los «eh», «mmm» de una vez."}</small></div>
-        <button class="boton ${E.ultimoAhorro == null ? "principal" : ""}" data-accion="limpiar" ${E.limpiando ? "disabled" : ""}>${E.limpiando ? "Limpiando…" : E.ultimoAhorro == null ? "Limpiar" : "Otra vez"}</button></div>
+        <button class="pz-boton ${E.ultimoAhorro == null ? "pz-principal" : ""}" data-accion="limpiar" ${E.limpiando ? "disabled" : ""}>${E.limpiando ? "Limpiando…" : E.ultimoAhorro == null ? "Limpiar" : "Otra vez"}</button></div>
       ${nSel && !E.editar ? `<div class="acciones-sel">${frase(nSel === 1 ? "1 palabra elegida" : "{n} palabras elegidas", { n: nSel })}
-        <button class="boton sutil" data-accion="editar-sel" title="Corregir cómo se escribe (o tócala otra vez)">✎ <span>Corregir</span></button>
+        <button class="pz-boton pz-plano" data-accion="editar-sel" title="Corregir cómo se escribe (o tócala otra vez)">✎ <span>Corregir</span></button>
         ${nSel === 1 ? botonLinea(sel[0]) : ""}
-        <button class="boton" data-accion="${selCortada ? "restaurar-sel" : "cortar-sel"}">${selCortada ? "Volver a poner" : "Cortar"}</button>
-        <button class="boton sutil" data-accion="zoom-sel" title="Acercar la imagen mientras se dicen">🔍 <span>Zoom</span></button>
-        <button class="boton sutil" data-pestana="efectos" title="Un filtro o un efecto solo mientras se dicen">✨ <span>Efecto</span></button></div>`
+        <button class="pz-boton" data-accion="${selCortada ? "restaurar-sel" : "cortar-sel"}">${selCortada ? "Volver a poner" : "Cortar"}</button>
+        <button class="pz-boton pz-plano" data-accion="zoom-sel" title="Acercar la imagen mientras se dicen">🔍 <span>Zoom</span></button>
+        <button class="pz-boton pz-plano" data-pestana="efectos" title="Un filtro o un efecto solo mientras se dicen">✨ <span>Efecto</span></button></div>`
         : E.editar?.donde === "texto" ? `<p class="nota" style="margin:0 0 10px">Escribe cómo va. Enter guarda y Esc cancela; si la dejas vacía, sale del subtítulo (el video no se corta).</p>`
         : `<p class="nota" style="margin:0 0 10px">Toca una palabra para ir a ese momento y otra vez para corregirla. Elige varias (toca la primera y la última con Mayús) y presiona Borrar para sacarlas del video.</p>`}
       <div class="transcripcion" data-sin-traducir>${html}</div>`;
@@ -658,11 +657,11 @@
   function botonLinea(k) {
     const p = P(), w = p.palabras[k];
     if (!w || k === p.palabras.length - 1) return "";
-    if (w.linea) return `<button class="boton sutil" data-accion="linea-sel" data-valor="">${w.linea === "fin" ? "Unir de nuevo" : "Separar de nuevo"}</button>`;
+    if (w.linea) return `<button class="pz-boton pz-plano" data-accion="linea-sel" data-valor="">${w.linea === "fin" ? "Unir de nuevo" : "Separar de nuevo"}</button>`;
     const cortes = unir(p.cortes), grupos = lineas(p.palabras.filter((x) => !palabraCortada(p, x, cortes)), p.subtitulos.palabras_por_linea);
     const g = grupos.find((x) => x.includes(w)), ultima = g && g[g.length - 1] === w;
-    return ultima ? `<button class="boton sutil" data-accion="linea-sel" data-valor="sigue" title="La frase sigue con la siguiente">⁀ <span>Unir</span></button>`
-      : `<button class="boton sutil" data-accion="linea-sel" data-valor="fin" title="La frase se separa aquí">↵ <span>Separar</span></button>`;
+    return ultima ? `<button class="pz-boton pz-plano" data-accion="linea-sel" data-valor="sigue" title="La frase sigue con la siguiente">⁀ <span>Unir</span></button>`
+      : `<button class="pz-boton pz-plano" data-accion="linea-sel" data-valor="fin" title="La frase se separa aquí">↵ <span>Separar</span></button>`;
   }
   /** Empieza a corregir las palabras desde..hasta, en el panel de texto o sobre la vista previa. */
   function empezarEdicion(desde, hasta, donde) {
@@ -698,8 +697,8 @@
     const texto = s.n && !s.todo ? (s.n === 1 ? "¿Cambiar «{de}» por «{a}» en todo el video (1 vez)?" : "¿Cambiar «{de}» por «{a}» en todo el video ({n} veces)?")
       : s.todo ? (s.n === 1 ? "Listo: cambié «{de}» por «{a}» 1 vez más." : "Listo: cambié «{de}» por «{a}» {n} veces más.") : "Corregiste «{de}» por «{a}».";
     return `<div class="sugerencia" role="status"><span class="txt" data-sin-traducir>${T(texto, v)}</span><span class="acciones">
-      ${s.n && !s.todo ? `<button class="boton principal chico" data-accion="sug-todo">Cambiar en todo el video</button>` : ""}
-      ${s.recordado ? `<span class="ok">✓ Lo recordaré</span>` : `<button class="boton chico" data-accion="sug-recordar" title="Corta la corregirá sola al transcribir tus próximos videos">Recordar para próximos videos</button>`}
+      ${s.n && !s.todo ? `<button class="pz-boton pz-principal chico" data-accion="sug-todo">Cambiar en todo el video</button>` : ""}
+      ${s.recordado ? `<span class="pz-ok">✓ Lo recordaré</span>` : `<button class="pz-boton chico" data-accion="sug-recordar" title="Corta la corregirá sola al transcribir tus próximos videos">Recordar para próximos videos</button>`}
       <button class="icono" data-accion="sug-cerrar" title="Cerrar" aria-label="Cerrar">×</button></span></div>`;
   }
 
@@ -718,10 +717,10 @@
       <span class="muestra"><span style="${cssEstilo(e, (e.animacion === "palabra" ? 26 : 19) / (e.tamano / 100 * 1080))}font-size:${e.animacion === "palabra" ? 26 : 19}px;line-height:1.1;text-align:center;${e.fondo ? `background:${e.color_fondo};padding:3px 8px;border-radius:5px;` : ""}" data-sin-traducir>${
         e.animacion === "palabra" ? `<span style="color:${e.color_activo}">${esc(tr("Así"))}</span>` : `${esc(tr("Así se"))} <span style="color:${e.color_activo};${e.fondo ? "" : ""}">${esc(tr("ven"))}</span>`}</span></span>
       <span class="nombre" data-sin-traducir>${esc(e.nombre)}</span></button>`).join("");
-    return `<div class="tarjeta"><div class="fila"><div class="txt"><b>Subtítulos</b><small>Hechos con la transcripción, palabra por palabra.</small></div>
+    return `<div class="tarjeta"><div class="pz-fila"><div class="pz-txt"><b>Subtítulos</b><small>Hechos con la transcripción, palabra por palabra.</small></div>
         <input type="checkbox" class="interruptor" data-sub-activos ${s.activos ? "checked" : ""} aria-label="Mostrar subtítulos"></div>
-      <div class="fila"><div class="txt"><b>Palabras por línea</b></div><select data-sub-palabras>${[1, 2, 3, 4, 5].map((n) => `<option ${s.palabras_por_linea === n ? "selected" : ""}>${n}</option>`).join("")}</select></div>
-      <div class="fila"><div class="txt"><b>Altura</b><small>Más abajo o más al centro.</small></div><input type="range" min="0.3" max="0.9" step="0.01" value="${s.posicion}" data-sub-posicion aria-label="Altura de los subtítulos"></div></div>
+      <div class="pz-fila"><div class="pz-txt"><b>Palabras por línea</b></div><select data-sub-palabras>${[1, 2, 3, 4, 5].map((n) => `<option ${s.palabras_por_linea === n ? "selected" : ""}>${n}</option>`).join("")}</select></div>
+      <div class="pz-fila"><div class="pz-txt"><b>Altura</b><small>Más abajo o más al centro.</small></div><input type="range" min="0.3" max="0.9" step="0.01" value="${s.posicion}" data-sub-posicion aria-label="Altura de los subtítulos"></div></div>
       <div class="galeria">${tarjetas}</div>
       <p class="nota">¿Quieres otro estilo? Los estilos son archivos simples que cualquiera puede crear y compartir con la comunidad.</p>`;
   }
@@ -798,23 +797,23 @@
   function panelEfectos() {
     const p = P(), d = destinoEfecto(), aplicados = p.efectos || [];
     const destino = d ? `<div class="tarjeta fx-destino"><div class="txt"><b>${frase("Al tramo de {a} a {b}", { a: relojFino(d.i), b: relojFino(d.f) })}</b>
-        ${d.texto ? `<small data-sin-traducir>«${esc(d.texto)}»</small>` : ""}</div><button class="boton sutil chico" data-accion="fx-todo">Todo el video</button></div>`
+        ${d.texto ? `<small data-sin-traducir>«${esc(d.texto)}»</small>` : ""}</div><button class="pz-boton pz-plano chico" data-accion="fx-todo">Todo el video</button></div>`
       : `<p class="nota" style="margin:0 0 10px">Se aplica a todo el video. Para un solo momento, elige palabras en Texto o un tramo en la línea de tiempo.</p>`;
     const filas = aplicados.map((ap, k) => {
       const ef = efectoPorId(ap.efecto), nombre = ef ? nombreFx(ef) : ap.efecto;
       const donde = "i" in ap ? T("{a} a {b}", { a: relojFino(ap.i), b: relojFino(ap.f) }) : esc(tr("Todo el video"));
-      return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(nombre)}</b><small data-sin-traducir>${donde}</small></div>
-        <button class="boton sutil chico" data-quitar-fx="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: nombre }))}" data-sin-traducir>${esc(tr("Quitar"))}</button></div>`;
+      return `<div class="pz-fila"><div class="pz-txt"><b data-sin-traducir>${esc(nombre)}</b><small data-sin-traducir>${donde}</small></div>
+        <button class="pz-boton pz-plano chico" data-quitar-fx="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: nombre }))}" data-sin-traducir>${esc(tr("Quitar"))}</button></div>`;
     }).join("");
     const lista = E.efectos.filter((ef) => coincideFx(ef, E.fx.categoria, E.fx.busqueda));
     const tarjetas = lista.map((ef) => `<button class="fx" data-fx="${esc(ef.id)}" aria-pressed="${aplicados.some((ap) => ap.efecto === ef.id && mismoAlcance(ap, d))}" title="${esc(descripcionFx(ef))}" data-sin-traducir>
       ${muestraFx(ef)}<span class="nombre">${esc(nombreFx(ef))}</span></button>`).join("");
     return `${destino}${filas ? `<div class="tarjeta"><h3>En este video</h3>${filas}</div>` : ""}
-      <div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_FX.map(([id, n]) => `<button class="chip" data-fx-cat="${id}" aria-pressed="${E.fx.categoria === id}">${n}</button>`).join("")}</div>
+      <div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_FX.map(([id, n]) => `<button class="pz-chip" data-fx-cat="${id}" aria-pressed="${E.fx.categoria === id}">${n}</button>`).join("")}</div>
       <input class="texto buscar-fx" id="buscar-fx" type="search" placeholder="Buscar efectos" value="${esc(E.fx.busqueda)}" autocomplete="off">
       ${tarjetas ? `<div class="galeria-fx">${tarjetas}</div>` : `<p class="nota">No hay efectos con eso. Prueba en la comunidad.</p>`}
       <div class="tarjeta comunidad"><div class="txt"><b>Más efectos de la comunidad</b><small>Gratis y hechos por personas como tú. Son solo datos: Corta los revisa antes de usarlos.</small></div>
-        <button class="boton" data-accion="explorar-fx">Explorar</button></div>`;
+        <button class="pz-boton" data-accion="explorar-fx">Explorar</button></div>`;
   }
   function aplicarEfecto(id) {
     const p = P(), ef = efectoPorId(id);
@@ -830,22 +829,21 @@
     const c = E.catalogo;
     let cuerpo;
     if (c.estado === "cargando") cuerpo = `<p class="nota">Buscando efectos…</p><div class="barra-prog indef"><i></i></div>`;
-    else if (c.estado === "error") cuerpo = `<p class="error-txt" data-sin-traducir>${esc(c.error || tr("No pude conectarme. Revisa tu conexión."))}</p><div class="pie-dialogo"><button class="boton" data-accion="explorar-fx">Reintentar</button></div>`;
+    else if (c.estado === "error") cuerpo = `<p class="pz-error-texto" data-sin-traducir>${esc(c.error || tr("No pude conectarme. Revisa tu conexión."))}</p><p><button class="pz-boton" data-accion="explorar-fx">Reintentar</button></p>`;
     else {
       const lista = c.efectos.filter((ef) => coincideFx(ef, c.categoria, c.busqueda));
-      cuerpo = `<div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_FX.map(([id, n]) => `<button class="chip" data-cat-cat="${id}" aria-pressed="${c.categoria === id}">${n}</button>`).join("")}</div>
+      cuerpo = `<div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_FX.map(([id, n]) => `<button class="pz-chip" data-cat-cat="${id}" aria-pressed="${c.categoria === id}">${n}</button>`).join("")}</div>
         <input class="texto buscar-fx" id="buscar-cat" type="search" placeholder="Buscar efectos" value="${esc(c.busqueda)}" autocomplete="off">
         <div class="lista-cat">${lista.map((ef) => {
           const propio = efectoPorId(ef.id), bajando = c.bajando[ef.id];
-          const accion = propio ? `<span class="ok">${propio.origen === "incluido" ? esc(tr("Incluido")) : esc(tr("✓ Descargado"))}</span>`
-            : `<button class="boton chico" data-bajar-fx="${esc(ef.id)}" ${bajando ? "disabled" : ""}>${esc(tr(bajando ? "Descargando…" : "Descargar"))}</button>`;
+          const accion = propio ? `<span class="pz-ok">${propio.origen === "incluido" ? esc(tr("Incluido")) : esc(tr("✓ Descargado"))}</span>`
+            : `<button class="pz-boton chico" data-bajar-fx="${esc(ef.id)}" ${bajando ? "disabled" : ""}>${esc(tr(bajando ? "Descargando…" : "Descargar"))}</button>`;
           return `<div class="item-cat" data-sin-traducir>${muestraFx(ef, 72)}<div class="txt"><b>${esc(nombreFx(ef))}</b><small>${esc(descripcionFx(ef))}</small>
             ${ef.autor ? `<small class="autor">${esc(Tp("por {x}", { x: ef.autor }))}</small>` : ""}</div>${accion}</div>`;
         }).join("") || `<p class="nota" data-sin-traducir>${esc(tr("No hay efectos con eso."))}</p>`}</div>`;
     }
-    return `<h2 id="t-cat">Efectos de la comunidad</h2><p>Gratis y abiertos. Cualquiera puede crear uno sin programar y compartirlo.</p>
-      ${cuerpo}
-      <div class="pie-dialogo"><button class="boton izq" data-enlace="${ENLACES.catalogo}">Crear el tuyo</button><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
+    return { titulo: "Efectos de la comunidad", cuerpo: `<p>Gratis y abiertos. Cualquiera puede crear uno sin programar y compartirlo.</p>${cuerpo}`,
+      pie: `<button class="pz-boton pz-izq" data-enlace="${ENLACES.catalogo}">Crear el tuyo</button><button class="pz-boton pz-principal" data-accion="cerrar">Listo</button>` };
   }
 
   // ───────────── Plantillas: elegir una, poner tus clips y retocar (solo datos; bin/plantillas.py arma el video) ─────────────
@@ -918,25 +916,25 @@
   function dialogoPlantillas() {
     const x = E.pl;
     if (x.armando) {
-      return `<h2 id="t-pl">Armando tu video…</h2><p>Cada clip va a su hueco con sus efectos y textos. Esto pasa en tu computador.</p><div class="barra-prog indef"><i></i></div>`;
+      return { titulo: "Armando tu video…", cerrable: false, sinEsc: true, cuerpo: `<p>Cada clip va a su hueco con sus efectos y textos. Esto pasa en tu computador.</p><div class="barra-prog indef"><i></i></div>` };
     }
     const comunidad = x.fuente === "comunidad", cat = x.catalogo;
     const lista = comunidad ? cat?.plantillas || [] : E.plantillas;
     const verla = x.ver && (lista.find((p) => p.id === x.ver) || plantillaPorId(x.ver));
     if (verla) return detallePlantilla(verla);
-    const cabeza = `<h2 id="t-pl">Plantillas</h2><p>Elige una, pon tus clips o fotos y se arma sola. Después la retocas como cualquier video.</p>
-      <div class="segmentado ancho" role="group" aria-label="Origen"><button data-pl-fuente="corta" aria-pressed="${!comunidad}">En Corta</button><button data-pl-fuente="comunidad" aria-pressed="${comunidad}">De la comunidad</button></div>`;
+    const cabeza = `<p>Elige una, pon tus clips o fotos y se arma sola. Después la retocas como cualquier video.</p>
+      <div class="pz-seg ancho" role="group" aria-label="Origen"><button data-pl-fuente="corta" aria-pressed="${!comunidad}">En Corta</button><button data-pl-fuente="comunidad" aria-pressed="${comunidad}">De la comunidad</button></div>`;
     let cuerpo;
     if (comunidad && (!cat || cat.estado === "cargando")) cuerpo = `<p class="nota">Buscando plantillas…</p><div class="barra-prog indef"><i></i></div>`;
-    else if (comunidad && cat.estado === "error") cuerpo = `<p class="error-txt" data-sin-traducir>${esc(cat.error || tr("No pude conectarme. Revisa tu conexión."))}</p><div class="pie-dialogo"><button class="boton" data-pl-fuente="comunidad">Reintentar</button></div>`;
+    else if (comunidad && cat.estado === "error") cuerpo = `<p class="pz-error-texto" data-sin-traducir>${esc(cat.error || tr("No pude conectarme. Revisa tu conexión."))}</p><p><button class="pz-boton" data-pl-fuente="comunidad">Reintentar</button></p>`;
     else {
       const visibles = lista.filter((p) => coincidePl(p, x.categoria, x.busqueda));
-      cuerpo = `<div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_PL.map(([id, n]) => `<button class="chip" data-pl-cat="${id}" aria-pressed="${x.categoria === id}">${n}</button>`).join("")}</div>
+      cuerpo = `<div class="chips-fx" role="group" aria-label="Categorías">${CATEGORIAS_PL.map(([id, n]) => `<button class="pz-chip" data-pl-cat="${id}" aria-pressed="${x.categoria === id}">${n}</button>`).join("")}</div>
         <input class="texto buscar-fx" id="buscar-pl" type="search" placeholder="Buscar plantillas" value="${esc(x.busqueda)}" autocomplete="off">
         ${visibles.length ? `<div class="galeria-pl">${visibles.map(tarjetaPl).join("")}</div>` : `<p class="nota">No hay plantillas con eso.</p>`}`;
     }
-    return `${cabeza}${cuerpo}
-      <div class="pie-dialogo"><button class="boton izq" data-enlace="${ENLACES.plantillas}">Crear la tuya</button><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
+    return { titulo: "Plantillas", cuerpo: cabeza + cuerpo,
+      pie: `<button class="pz-boton pz-izq" data-enlace="${ENLACES.plantillas}">Crear la tuya</button><button class="pz-boton pz-principal" data-accion="cerrar">Listo</button>` };
   }
   function detallePlantilla(pl) {
     const x = E.pl, propia = plantillaPorId(pl.id), faltan = faltanPl(pl), catEf = x.catalogo?.efectos || E.catalogo?.efectos || [];
@@ -944,19 +942,20 @@
       <small data-sin-traducir>${esc(tr({ video: "Video", foto: "Foto", cualquiera: "Video o foto" }[h.tipo]))} · ${T("{s} s", { s: segundosPl(durHueco(h)) })}${h.velocidad ? ` · ⏱ ${esc(nombreVel(h.velocidad))}` : ""}</small></li>`).join("");
     const faltaHTML = faltan.length ? `<div class="tarjeta falta-pl"><b>Usa efectos de la comunidad que no tienes</b>${faltan.map((id) => {
         const ef = catEf.find((e) => e.id === id), bajando = x.bajando[id];
-        return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(ef ? nombreFx(ef) : id)}</b></div>
-          <button class="boton chico" data-pl-bajar-fx="${esc(id)}" ${bajando ? "disabled" : ""} data-sin-traducir>${esc(tr(bajando ? "Descargando…" : "Descargar"))}</button></div>`;
+        return `<div class="pz-fila"><div class="pz-txt"><b data-sin-traducir>${esc(ef ? nombreFx(ef) : id)}</b></div>
+          <button class="pz-boton chico" data-pl-bajar-fx="${esc(id)}" ${bajando ? "disabled" : ""} data-sin-traducir>${esc(tr(bajando ? "Descargando…" : "Descargar"))}</button></div>`;
       }).join("")}<p class="nota">Sin ellos la plantilla igual funciona, pero sin esos efectos.</p></div>` : "";
-    const accion = !propia ? `<button class="boton principal" data-bajar-pl="${esc(pl.id)}" ${x.bajando[pl.id] ? "disabled" : ""}>${x.bajando[pl.id] ? "Descargando…" : "Descargar plantilla"}</button>`
-      : `<button class="boton principal" data-elegir-clips="${esc(pl.id)}" data-sin-traducir>${esc(Tp(pl.huecos.length === 1 ? "Elegir 1 clip o foto" : "Elegir {n} clips o fotos", { n: pl.huecos.length }))}</button>`;
+    const accion = !propia ? `<button class="pz-boton pz-principal" data-bajar-pl="${esc(pl.id)}" ${x.bajando[pl.id] ? "disabled" : ""}>${x.bajando[pl.id] ? "Descargando…" : "Descargar plantilla"}</button>`
+      : `<button class="pz-boton pz-principal" data-elegir-clips="${esc(pl.id)}" data-sin-traducir>${esc(Tp(pl.huecos.length === 1 ? "Elegir 1 clip o foto" : "Elegir {n} clips o fotos", { n: pl.huecos.length }))}</button>`;
     const bpm = pl.musica?.bpm ? ` · ${T("pensada para música de ~{b} BPM", { b: Math.round(pl.musica.bpm) })}` : "";
-    return `<button class="boton sutil chico volver-pl" data-ver-pl="">‹ <span>Plantillas</span></button>
-      <div class="detalle-pl">${vistaPl(pl, true)}<div class="txt"><h2 id="t-pl" data-sin-traducir>${esc(nombreFx(pl))}</h2>
+    // El nombre va de título del diálogo (T escapa el valor); «‹ Plantillas», «Atrás» y Esc vuelven a la lista.
+    return { titulo: "{x}", valores: { x: nombreFx(pl) }, antes: `<button class="pz-boton pz-plano chico volver-pl" data-ver-pl="">‹ <span>Plantillas</span></button>`,
+      cuerpo: `<div class="detalle-pl">${vistaPl(pl, true)}<div class="txt">
         ${pl.descripcion ? `<p data-sin-traducir>${esc(enIdioma(pl.descripcion))}</p>` : ""}
         <small class="meta-pl" data-sin-traducir>${metaPl(pl)} · ${esc(pl.proporcion)}${bpm}${pl.autor ? ` · ${esc(Tp("por {x}", { x: pl.autor }))}` : ""}</small></div></div>
       <ol class="huecos-pl">${huecos}</ol>${faltaHTML}
-      <p class="nota">Si eliges menos, se repiten; si eliges más, sobran. Después puedes cambiar cada uno y elegir qué parte de cada video se usa.</p>
-      <div class="pie-dialogo"><button class="boton" data-ver-pl="">Atrás</button>${accion}</div>`;
+      <p class="nota">Si eliges menos, se repiten; si eliges más, sobran. Después puedes cambiar cada uno y elegir qué parte de cada video se usa.</p>`,
+      pie: `<button class="pz-boton" data-ver-pl="">Atrás</button>${accion}` };
   }
   /** Un clip o una foto de la plantilla, para verlo en el panel: por corta:// en la app; en la vista previa, la ruta de la demo. */
   const fuenteClip = (carpeta, archivo) => (HOST === "web" ? archivo : `corta://video/${encodeURIComponent(carpeta + "/" + archivo)}`);
@@ -967,12 +966,12 @@
       const pista = enIdioma(pl?.huecos?.[k]?.pista);
       const mini = h.tipo === "foto" ? `<img class="mini-clip" src="${esc(fuenteClip(E.sel, h.archivo))}" alt="">`
         : `<video class="mini-clip" src="${esc(fuenteClip(E.sel, h.archivo))}" muted playsinline preload="metadata" data-mini="${k}" data-desde="${h.desde}"></video>`;
-      const control = este ? `<small class="ok">${esc(tr("Armando…"))}</small>`
+      const control = este ? `<small class="pz-ok">${esc(tr("Armando…"))}</small>`
         : max > 0.05 ? `<label class="desde"><input type="range" min="0" max="${max}" step="0.1" value="${h.desde}" data-hueco-desde="${k}" ${ocupado ? "disabled" : ""} aria-label="${esc(Tp("Desde qué segundo del clip {n}", { n: k + 1 }))}">
             <output id="desde-${k}">${T("desde {t}", { t: relojFino(h.desde) })}</output></label>` : "";
       return `<div class="hueco-fila" data-sin-traducir><span class="num">${k + 1}</span>${mini}<div class="txt"><b>${esc(pista || Tp("Clip {n}", { n: k + 1 }))}</b>
           <small>${esc(tr(h.tipo === "foto" ? "Foto" : "Video"))} · ${T("{a} a {b}", { a: relojFino(ini[k]), b: relojFino(ini[k + 1]) })}</small>${control}</div>
-        <button class="boton chico" data-cambiar-clip="${k}" ${ocupado ? "disabled" : ""}>${esc(tr("Cambiar"))}</button></div>`;
+        <button class="pz-boton chico" data-cambiar-clip="${k}" ${ocupado ? "disabled" : ""}>${esc(tr("Cambiar"))}</button></div>`;
     }).join("");
     return `<div class="tarjeta"><h3>Tus clips</h3>
       <p class="nota" style="margin:0 0 10px">${pl ? frase("Plantilla «{x}». Cambia un clip o mueve la barra para elegir qué parte del video va en su hueco.", { x: nombreFx(pl) })
@@ -988,18 +987,18 @@
     if (!m) {
       return `<div class="tarjeta"><h3>Música de fondo</h3>
         <p class="nota" style="margin:0 0 12px">Elige una canción de tu computador. Suena bajo tu voz y baja sola cuando hablas, para que siempre se entienda lo que dices.</p>
-        <button class="boton principal" data-accion="elegir-musica">♪ <span>Elegir música</span></button>
+        <button class="pz-boton pz-principal" data-accion="elegir-musica">♪ <span>Elegir música</span></button>
         <p class="nota">MP3, M4A, WAV, OGG o FLAC. Si es más corta que el video, se repite.</p></div>${derechos}`;
     }
     const nombre = m.archivo.split(/[\\/]/).pop();
     const vol = Math.round(m.volumen * 100);
     return `<div class="tarjeta"><h3>Música de fondo</h3>
-      <div class="fila archivo-m"><span class="disco" aria-hidden="true">♪</span><div class="txt"><b data-sin-traducir title="${esc(nombre)}">${esc(nombre)}</b><small>Se repite si es más corta que el video.</small></div>
-        <span class="acciones-m"><button class="boton chico" data-accion="elegir-musica">Cambiar</button><button class="boton sutil chico" data-accion="quitar-musica">Quitar</button></span></div>
-      <div class="fila"><div class="txt"><b>Volumen</b><small>Cuando no hablas. Al hablar, baja sola.</small></div>
+      <div class="pz-fila archivo-m"><span class="disco" aria-hidden="true">♪</span><div class="pz-txt"><b data-sin-traducir title="${esc(nombre)}">${esc(nombre)}</b><small>Se repite si es más corta que el video.</small></div>
+        <span class="acciones-m"><button class="pz-boton chico" data-accion="elegir-musica">Cambiar</button><button class="pz-boton pz-plano chico" data-accion="quitar-musica">Quitar</button></span></div>
+      <div class="pz-fila"><div class="pz-txt"><b>Volumen</b><small>Cuando no hablas. Al hablar, baja sola.</small></div>
         <input type="range" min="0" max="1" step="0.01" value="${m.volumen}" data-musica-volumen aria-label="Volumen de la música"><output id="musica-vol" class="num" data-sin-traducir>${vol} %</output></div>
       <div class="medidor"><div class="barra-prog"><i id="musica-nivel" style="width:100%"></i></div><small id="musica-ahora">Volumen normal</small></div>
-      <button class="boton grande" data-accion="escuchar-musica">▶ <span>Escuchar cómo queda</span></button>
+      <button class="pz-boton grande" data-accion="escuchar-musica">▶ <span>Escuchar cómo queda</span></button>
       ${!p.palabras.length ? `<p class="nota">Sin transcripción, la vista previa no baja la música mientras hablas. Al exportar sí baja.</p>` : ""}
       ${!fuenteMusica(p) ? `<p class="nota">Esta música está fuera de la carpeta del proyecto: no suena en la vista previa, pero sí al exportar. Elígela de nuevo para traerla a la carpeta.</p>` : ""}</div>${derechos}`;
   }
@@ -1023,7 +1022,7 @@
     const cambios = [...(p.cambios_ia || [])].reverse().map((c) => {
       const pie = c.estado === "quitado"
         ? `<span class="estado-cambio">${c.conservados ? frase(c.conservados === 1 ? "Quitado. Dejé 1 cosa que cambiaste a mano." : "Quitado. Dejé {n} cosas que cambiaste a mano.", { n: c.conservados }) : "Quitado"}</span>`
-        : `<button class="boton chico" data-quitar-ia="${esc(c.id)}" data-sin-traducir>${esc(etiquetaQuitar(c))}</button>`;
+        : `<button class="pz-boton chico" data-quitar-ia="${esc(c.id)}" data-sin-traducir>${esc(etiquetaQuitar(c))}</button>`;
       return `<div class="cambio ${c.estado === "quitado" ? "quitado" : ""}">${c.pedido ? `<span class="pedido" data-sin-traducir>«${esc(c.pedido)}»</span>` : ""}
         <span data-sin-traducir>${esc(c.resumen || tr("Listo."))}</span><div class="pie-cambio">${pie}</div></div>`;
     }).join("");
@@ -1031,8 +1030,8 @@
       <span data-sin-traducir>${esc(c.error || c.resumen)}</span></div>`).join("") + cambios;
     return `<div class="tarjeta"><h3>${frase("Dile a {ia} qué cambiar", { ia: nombre })}</h3>
       <textarea id="pedido-ia" rows="3" placeholder="${esc(tr("Ej.: corta desde «te muestro» hasta «cómo» y pon zoom en «publicar»"))}" ${ia.enviando ? "disabled" : ""} data-sin-traducir>${esc(ia.texto)}</textarea>
-      <div class="ejemplos">${EJEMPLOS_IA.map((e) => `<button class="chip" data-ejemplo="${esc(tr(e))}">${esc(e)}</button>`).join("")}</div>
-      <button class="boton principal grande" data-accion="pedir-ia" ${ia.enviando ? "disabled" : ""}>${ia.enviando ? frase("{ia} está editando…", { ia: nombre }) : "Aplicar"}</button>
+      <div class="ejemplos">${EJEMPLOS_IA.map((e) => `<button class="pz-chip" data-ejemplo="${esc(tr(e))}">${esc(e)}</button>`).join("")}</div>
+      <button class="pz-boton pz-principal grande" data-accion="pedir-ia" ${ia.enviando ? "disabled" : ""}>${ia.enviando ? frase("{ia} está editando…", { ia: nombre }) : "Aplicar"}</button>
       <p class="nota">${frase("{ia} usa tu cuenta y solo ve el texto con sus tiempos, nunca el video. Puedes quitar cada cambio, aunque hayas seguido editando.", { ia: nombre })}</p></div>
       <div class="historial-ia">${historial}</div>`;
   }
@@ -1042,16 +1041,16 @@
     const largo = p.fuente.duracion >= 90;
     let cuerpo;
     if (E.buscandoShorts) cuerpo = `<div class="tarjeta">${frase("{ia} está buscando los mejores momentos…", { ia: nombre }, "p")}<div class="barra-prog indef"><i></i></div></div>`;
-    else if (E.shorts?.error) cuerpo = `<p class="error-txt" data-sin-traducir>${esc(E.shorts.error)}</p>`;
+    else if (E.shorts?.error) cuerpo = `<p class="pz-error-texto" data-sin-traducir>${esc(E.shorts.error)}</p>`;
     else if (E.shorts?.lista) {
       cuerpo = E.shorts.lista.map((s, k) => `<article class="short"><span class="meta" data-sin-traducir>${T("#{n} · {s} s", { n: k + 1, s: Math.round(s.duracion) })}</span>
         <h4 data-sin-traducir>${esc(s.titulo)}</h4><p data-sin-traducir>${s.gancho ? `<q>${esc(s.gancho)}</q><br>` : ""}${esc(s.por_que)}</p>
-        <div class="acciones"><button class="boton" data-ver-short="${k}">▶ <span>Ver</span></button><button class="boton principal" data-crear-short="${k}">Crear este Short</button></div></article>`).join("");
+        <div class="acciones"><button class="pz-boton" data-ver-short="${k}">▶ <span>Ver</span></button><button class="pz-boton pz-principal" data-crear-short="${k}">Crear este Short</button></div></article>`).join("");
     } else cuerpo = "";
     return `<div class="tarjeta"><h3>Shorts desde un video largo</h3>
       <p class="nota" style="margin-top:0">${frase("{ia} lee la transcripción y elige los momentos de 20 a 60 segundos que se entienden solos y enganchan desde el principio. Cada uno queda como un video nuevo, vertical y con subtítulos.", { ia: nombre })}</p>
       ${!largo ? `<p class="nota">Este video es corto: funciona mejor con videos de más de un minuto y medio (una clase, un podcast, un live).</p>` : ""}
-      <div style="margin-top:12px"><button class="boton ${largo ? "principal" : ""}" data-accion="buscar-shorts" ${E.buscandoShorts || !p.palabras.length ? "disabled" : ""}>✨ <span>Buscar los mejores momentos</span></button></div></div>${cuerpo}`;
+      <div style="margin-top:12px"><button class="pz-boton ${largo ? "pz-principal" : ""}" data-accion="buscar-shorts" ${E.buscandoShorts || !p.palabras.length ? "disabled" : ""}>✨ <span>Buscar los mejores momentos</span></button></div></div>${cuerpo}`;
   }
 
   // ───────────── Línea de tiempo con pistas: video (cortes y zooms), subtítulos, textos y música ─────────────
@@ -1133,7 +1132,7 @@
   }
   function panelVelocidad(p, tr_) {
     const e = velTramo(p, tr_), v = e?.v ?? 1, rampa = !!e?.rampa, sale = lento(velocidades(p), tr_.i, tr_.f);
-    const chips = VELOCIDADES_LT.map((x) => `<button class="chip" data-vel="${x}" aria-pressed="${!rampa && v === x}" data-sin-traducir>${esc(numVel(x))}×</button>`).join("");
+    const chips = VELOCIDADES_LT.map((x) => `<button class="pz-chip" data-vel="${x}" aria-pressed="${!rampa && v === x}" data-sin-traducir>${esc(numVel(x))}×</button>`).join("");
     const lenta = v < 1 && (v <= 0.5 || rampa), muda = e && audioDe(e) === "silencio";
     // Las explicaciones van en el título (al pasar o mantener el dedo): en la pantalla, solo el nombre de cada opción.
     const op = (dato, marcado, texto, ayuda = "") => `<label class="op-vel"${ayuda ? ` title="${ayuda}"` : ""}><input type="checkbox" class="interruptor" ${dato} ${marcado ? "checked" : ""}><span>${texto}</span></label>`;
@@ -1257,7 +1256,7 @@
     const niveles = ZOOMS_LT.filter((z) => z <= zoomMax(dur));
     return `<div class="lt" id="lt">
       <div class="lt-herr"><div class="lt-info" id="lt-sel">${infoSel()}</div>
-        <button class="boton sutil chico" data-accion="dividir" title="Divide el video en el cabezal (⌘B)">✂ <span>Dividir</span></button>
+        <button class="pz-boton pz-plano chico" data-accion="dividir" title="Divide el video en el cabezal (⌘B)">✂ <span>Dividir</span></button>
         <div class="lt-zoom" role="group" aria-label="Zoom de la línea de tiempo">
           <button class="icono" data-lt-zoom="-1" title="Alejar" aria-label="Alejar" ${E.lt.zoom <= 1 ? "disabled" : ""}>−</button>
           <span class="num" data-sin-traducir>${esc(String(E.lt.zoom).replace(".", E.idioma === "es" ? "," : "."))}×</span>
@@ -1301,14 +1300,14 @@
     const v = { a: relojFino(o.i), b: relojFino(o.f) };
     if (s.lista === "tramos") {
       const e = velTramo(p, o);
-      return `${frase("Tramo de {a} a {b}", v, "b")}<span class="herr-tramo"><button class="boton sutil chico" data-tramo="inicio" title="Recorta desde el inicio del tramo hasta el cabezal">⇤ <span>Recortar</span></button>
-        <button class="boton sutil chico" data-tramo="fin" title="Recorta desde el cabezal hasta el final del tramo"><span>Recortar</span> ⇥</button>
-        <button class="boton sutil chico ${E.lt.vel || e ? "activo" : ""}" data-accion="velocidad" aria-expanded="${!!E.lt.vel}">⏱ ${e ? `<span data-sin-traducir>${esc(nombreVel(e))}</span>` : "<span>Velocidad</span>"}</button>
-        <button class="boton sutil chico" data-pestana="efectos">✨ <span>Efecto</span></button><button class="boton chico peligro" data-tramo="borrar">Borrar</button></span>
+      return `${frase("Tramo de {a} a {b}", v, "b")}<span class="herr-tramo"><button class="pz-boton pz-plano chico" data-tramo="inicio" title="Recorta desde el inicio del tramo hasta el cabezal">⇤ <span>Recortar</span></button>
+        <button class="pz-boton pz-plano chico" data-tramo="fin" title="Recorta desde el cabezal hasta el final del tramo"><span>Recortar</span> ⇥</button>
+        <button class="pz-boton pz-plano chico ${E.lt.vel || e ? "activo" : ""}" data-accion="velocidad" aria-expanded="${!!E.lt.vel}">⏱ ${e ? `<span data-sin-traducir>${esc(nombreVel(e))}</span>` : "<span>Velocidad</span>"}</button>
+        <button class="pz-boton pz-plano chico" data-pestana="efectos">✨ <span>Efecto</span></button><button class="pz-boton chico pz-peligro" data-tramo="borrar">Borrar</button></span>
         ${E.lt.vel ? panelVelocidad(p, o) : ""}`;
     }
     const txt = { cortes: "Corte de {a} a {b}", zooms: "Zoom de {a} a {b}", textos: "Texto de {a} a {b}", efectos: "Efecto de {a} a {b}" }[s.lista];
-    return `${frase(txt, v, "b")}<button class="boton sutil chico" data-accion="lt-quitar">${s.lista === "cortes" ? "Volver a poner" : "Quitar"}</button>`;
+    return `${frase(txt, v, "b")}<button class="pz-boton pz-plano chico" data-accion="lt-quitar">${s.lista === "cortes" ? "Volver a poner" : "Quitar"}</button>`;
   }
   function pintarInfo() { const el = $("#lt-sel"); if (el) { el.innerHTML = infoSel(); traducirDOM(el); } }
   function seleccionar(lista, k) {
@@ -1409,70 +1408,61 @@
     sincronizarMusica();  // dentro del clic, para que el navegador deje sonar la música
   }
 
-  // ───────────── Diálogos ─────────────
-  function filasIA() {
-    return E.ias.map((ia) => {
-      const enUso = E.config.ia === ia.id, probando = E.probando[ia.id], r = E.resultadoIA[ia.id];
-      const estado = !ia.instalada ? `<small>No está instalada · <a href="#" data-enlace="${ENLACES.guiaIA}#${ia.id}">Cómo instalarla</a></small>`
-        : r && !r.ok ? `<small class="error-txt" data-sin-traducir>${esc(tr(r.texto || "No respondió."))}</small>` : `<small>Instalada</small>`;
-      const accion = enUso ? `<span class="ok">✓ En uso</span>` : ia.instalada ? `<button class="boton" data-probar="${esc(ia.id)}" ${probando ? "disabled" : ""}>${probando ? "Probando…" : "Usar"}</button>` : "";
-      return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(ia.nombre)}</b>${estado}</div>${accion}</div>`;
-    }).join("");
-  }
+  // ───────────── Diálogos (los arma la pieza «componentes»: foco adentro, Esc y el velo cierran, el foco vuelve) ─────────────
+  // Cada diálogo devuelve sus partes ({titulo, valores?, cuerpo, pie, …}); dialogos() los pasa a ui.dialogo.
+  const filasIA = () => ui.filasIA({ ias: E.ias, elegida: E.config.ia, guia: ENLACES.guiaIA });
   function filasModelo() {
     return (E.modelos.lista || []).map((m) => {
       const enUso = (E.config.modelo || "turbo") === m.id && m.listo, bajando = E.descarga?.id === m.id;
-      const accion = enUso ? `<span class="ok">✓ En uso</span>` : m.listo ? `<button class="boton" data-modelo-usar="${esc(m.id)}">Usar</button>`
+      const accion = enUso ? `<span class="pz-ok">✓ En uso</span>` : m.listo ? `<button class="pz-boton" data-modelo-usar="${esc(m.id)}">Usar</button>`
         : bajando ? `<div style="width:120px"><div class="barra-prog"><i style="width:${Math.round(E.descarga.pct * 100)}%"></i></div></div>`
-          : `<button class="boton" data-modelo="${esc(m.id)}" ${E.descarga ? "disabled" : ""}>${frase("Descargar · {mb} MB", { mb: m.mb })}</button>`;
-      return `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(tr(m.nombre))}</b><small data-sin-traducir>${esc(tr(m.detalle))}</small></div>${accion}</div>`;
+          : `<button class="pz-boton" data-modelo="${esc(m.id)}" ${E.descarga ? "disabled" : ""}>${frase("Descargar · {mb} MB", { mb: m.mb })}</button>`;
+      return `<div class="pz-fila"><div class="pz-txt"><b data-sin-traducir>${esc(tr(m.nombre))}</b><small data-sin-traducir>${esc(tr(m.detalle))}</small></div>${accion}</div>`;
     }).join("");
   }
   function dialogoExportar() {
     const x = E.exportar, p = P();
     if (x.paso === "listo") {
-      return `<h2 id="t-exp">¡Listo para publicar! 🎉</h2>${frase("Tu video vertical de **{d}** quedó guardado en la carpeta del proyecto.", { d: reloj(x.duracion) }, "p")}
-        <div class="pie-dialogo"><button class="boton" data-accion="mostrar-exportado">Mostrar en la carpeta</button><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
+      return { titulo: "¡Listo para publicar! 🎉", cuerpo: frase("Tu video vertical de **{d}** quedó guardado en la carpeta del proyecto.", { d: reloj(x.duracion) }, "p"),
+        pie: `<button class="pz-boton" data-accion="mostrar-exportado">Mostrar en la carpeta</button><button class="pz-boton pz-principal" data-accion="cerrar">Listo</button>` };
     }
-    if (x.paso === "error") return `<h2 id="t-exp">No se pudo exportar</h2><p class="error-txt" data-sin-traducir>${esc(x.error)}</p><div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cerrar</button><button class="boton principal" data-accion="exportar-ya">Reintentar</button></div>`;
+    if (x.paso === "error") return { titulo: "No se pudo exportar", cuerpo: `<p class="pz-error-texto" data-sin-traducir>${esc(x.error)}</p>`,
+      pie: `<button class="pz-boton" data-accion="cerrar">Cerrar</button><button class="pz-boton pz-principal" data-accion="exportar-ya">Reintentar</button>` };
     if (x.paso === "exportando") {
-      return `<h2 id="t-exp">Exportando…</h2>${frase("Formato {l}, 1080 px, con subtítulos. Esto pasa en tu computador.", { l: p.lienzo }, "p")}
-        <div class="barra-prog"><i style="width:${x.pct || 0}%"></i></div><p class="nota" data-sin-traducir>${T("{n} %", { n: x.pct || 0 })}</p>`;
+      // Mientras exporta no se cierra (ni con Esc ni tocando afuera): el avance llega por exportarProgreso.
+      return { titulo: "Exportando…", cerrable: false, sinEsc: true, cuerpo: `${frase("Formato {l}, 1080 px, con subtítulos. Esto pasa en tu computador.", { l: p.lienzo }, "p")}
+        <div class="barra-prog"><i style="width:${x.pct || 0}%"></i></div><p class="nota" data-sin-traducir>${T("{n} %", { n: x.pct || 0 })}</p>` };
     }
-    return `<h2 id="t-exp">Exportar</h2>${frase("Queda un video de **{d}** en formato {l}, listo para subir.", { d: reloj(duracionFinal(p)), l: p.lienzo }, "p")}
-      <div class="pie-dialogo"><button class="boton" data-accion="cerrar">Cancelar</button><button class="boton principal" data-accion="exportar-ya">Exportar video</button></div>`;
+    return { titulo: "Exportar", cuerpo: frase("Queda un video de **{d}** en formato {l}, listo para subir.", { d: reloj(duracionFinal(p)), l: p.lienzo }, "p"),
+      pie: `<button class="pz-boton" data-accion="cerrar">Cancelar</button><button class="pz-boton pz-principal" data-accion="exportar-ya">Exportar video</button>` };
   }
   function dialogoAjustes() {
-    const actualizando = E.act && E.act.paso !== "error";  // la app de escritorio manda el avance (actualizacionProgreso)
-    return `<h2 id="t-aj">Ajustes</h2><p>Todo se procesa en tu computador. La IA usa tu propia cuenta.</p>
+    return { titulo: "Ajustes", cuerpo: `<p>Todo se procesa en tu computador. La IA usa tu propia cuenta.</p>
       <div class="seccion"><h3>Tu IA</h3>${filasIA()}</div>
       <div class="seccion"><h3>Transcripción</h3>${filasModelo()}</div>
       <div class="seccion"><h3>Vocabulario</h3>${seccionVocabulario()}</div>
-      <div class="seccion"><h3>General</h3><div class="fila"><div class="txt"><b>Idioma de la app</b></div><select data-config="idioma_ui"><option value="es" ${E.idioma === "es" ? "selected" : ""}>Español</option><option value="en" ${E.idioma === "en" ? "selected" : ""}>English</option></select></div>
-        <div class="fila"><div class="txt"><b>Carpeta de tus videos</b><small data-sin-traducir>${esc(E.carpeta)}</small></div><button class="boton" data-accion="abrir-carpeta">Abrir</button></div></div>
-      <div class="seccion"><h3>Acerca de Corta</h3><p style="margin:0 0 8px;color:var(--suave)">${frase("Corta {v} · Gratis y de código abierto (AGPL-3.0).", { v: E.version })}</p>
-        <div class="fila"><div class="txt"><b>Actualizaciones</b>${actualizando ? `<small data-sin-traducir>${esc(E.act.texto || "")}</small>`
-          : `<small>${E.buscando === "buscando" ? "Buscando…" : E.buscando === "alDia" ? "Estás en la última versión." : E.buscando === "sinConexion" ? "No pude revisar. Revisa tu conexión." : E.actualizacion?.hay ? "Hay una versión nueva." : "Corta revisa sola cada 6 horas."}</small>`}</div>
-          ${actualizando ? `<div style="width:120px"><div class="barra-prog ${E.act.pct == null ? "indef" : ""}"><i style="width:${E.act.pct ?? 0}%"></i></div></div>`
-            : E.actualizacion?.hay ? `<button class="boton principal" data-accion="actualizar">Actualizar</button>` : `<button class="boton" data-accion="buscar-act" ${E.buscando === "buscando" ? "disabled" : ""}>Buscar actualizaciones</button>`}</div>
-        <div class="enlaces"><a href="#" data-enlace="${ENLACES.sitio}">Sitio web</a><a href="#" data-enlace="${ENLACES.codigo}">Código</a><a href="#" data-enlace="${ENLACES.comunidad}">Comunidad</a></div></div>
-      <div class="pie-dialogo"><button class="boton principal" data-accion="cerrar">Listo</button></div>`;
+      <div class="seccion"><h3>General</h3><div class="pz-fila"><div class="pz-txt"><b>Idioma de la app</b></div><select data-config="idioma_ui"><option value="es" ${E.idioma === "es" ? "selected" : ""}>Español</option><option value="en" ${E.idioma === "en" ? "selected" : ""}>English</option></select></div>
+        <div class="pz-fila"><div class="pz-txt"><b>Apariencia</b></div>${tema.selectorHTML()}</div>
+        <div class="pz-fila"><div class="pz-txt"><b>Carpeta de tus videos</b><small data-sin-traducir>${esc(E.carpeta)}</small></div><button class="pz-boton" data-accion="abrir-carpeta">Abrir</button></div></div>
+      <div class="seccion"><h3>Actualizaciones</h3>${ui.filaActualizacion()}</div>
+      <div class="seccion"><h3>Acerca de Corta</h3>${ui.acercaDe({ enlaces: { sitio: ENLACES.sitio, codigo: ENLACES.codigo, comunidad: ENLACES.comunidad } })}</div>`,
+      pie: `<button class="pz-boton pz-principal" data-accion="cerrar">Listo</button>` };
   }
   /** Palabras que Corta corrige sola al transcribir y que le enseña al transcriptor (~/Corta/vocabulario.json). */
   function seccionVocabulario() {
-    const v = E.vocabulario, filas = v.reemplazos.map((r, k) => `<div class="fila"><div class="txt"><b data-sin-traducir>${esc(r.de)} <span class="flecha" aria-hidden="true">→</span> ${esc(r.a)}</b></div>
-      <button class="boton sutil chico" data-vocab-quitar="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: r.de }))}" data-sin-traducir>${esc(tr("Quitar"))}</button></div>`).join("");
+    const v = E.vocabulario, filas = v.reemplazos.map((r, k) => `<div class="pz-fila"><div class="pz-txt"><b data-sin-traducir>${esc(r.de)} <span class="flecha" aria-hidden="true">→</span> ${esc(r.a)}</b></div>
+      <button class="pz-boton pz-plano chico" data-vocab-quitar="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: r.de }))}" data-sin-traducir>${esc(tr("Quitar"))}</button></div>`).join("");
     const chips = v.palabras.map((w, k) => `<span class="chip-vocab"><span data-sin-traducir>${esc(w)}</span><button class="icono" data-vocab-quitar-palabra="${k}" aria-label="${esc(Tp("Quitar «{x}»", { x: w }))}" data-sin-traducir>×</button></span>`).join("");
     return `<p class="nota" style="margin:0 0 6px">Corta corrige estas palabras al transcribir tus próximos videos y se las enseña al transcriptor, para que reconozca nombres y marcas.</p>
       ${filas || chips ? "" : `<p class="nota" style="margin:0 0 6px">Todavía no hay nada. Cuando corrijas una palabra del subtítulo, toca «Recordar para próximos videos».</p>`}
       ${filas}${chips ? `<div class="chips-vocab">${chips}</div>` : ""}
-      <div class="fila"><input class="texto" id="vocab-nueva" maxlength="60" placeholder="Un nombre o una marca" autocomplete="off"><button class="boton" data-accion="vocab-agregar">Agregar</button></div>`;
+      <div class="pz-fila"><input class="texto" id="vocab-nueva" maxlength="60" placeholder="Un nombre o una marca" autocomplete="off"><button class="pz-boton" data-accion="vocab-agregar">Agregar</button></div>`;
   }
   /** Paso 0 de la bienvenida: el idioma, antes que cualquier otra cosa. Cada opción va escrita en su propio idioma (no se traduce)
    *  y la del sistema (o la ya guardada) queda marcada como sugerida y con el foco. */
   function pasoIdioma() {
     const sugerido = E.idioma === "en" ? "en" : "es";
-    const opcion = (codigo, nombre, detalle, etiqueta) => `<button class="boton opcion-idioma${codigo === sugerido ? " principal" : ""}" id="idioma-${codigo}" lang="${codigo}" data-elegir-idioma="${codigo}">
+    const opcion = (codigo, nombre, detalle, etiqueta) => `<button class="pz-boton opcion-idioma${codigo === sugerido ? " pz-principal" : ""}" id="idioma-${codigo}" lang="${codigo}" data-elegir-idioma="${codigo}"${codigo === sugerido ? " data-autofoco" : ""}>
       <b>${nombre}</b><small>${detalle}</small>${codigo === sugerido ? `<em class="sugerido">${etiqueta}</em>` : ""}</button>`;
     return `<div class="idioma-bv" data-sin-traducir>${LOGO}
       <h2 id="t-bv" tabindex="-1"><span lang="es">Elige tu idioma</span> <span class="punto" aria-hidden="true">·</span> <span lang="en">Choose your language</span></h2>
@@ -1485,14 +1475,13 @@
     await cargarIdioma(codigo);
     E.bv = 1;
     pintar();
-    $("#t-bv")?.focus();
     const avisos = avisosPendientes; avisosPendientes = [];
-    if (avisos.length) toast(avisos[avisos.length - 1]);
+    if (avisos.length) ui.aviso(...avisos[avisos.length - 1]);
   }
+  /** Pasos 1–3 de la bienvenida. No se cierra con Esc ni tocando afuera: se sale con «Lo hago después» o «Empezar». */
   function bienvenida() {
     const paso = E.bv;
     const puntos = `<div class="pasos-bv" aria-hidden="true">${[0, 1, 2, 3].map((i) => `<i class="${i <= paso ? "hecho" : ""}"></i>`).join("")}</div>`;
-    if (paso === 0) return puntos + pasoIdioma();
     const modeloListo = (E.modelos.lista || []).some((m) => m.listo);
     const pasos = [
       null,  // 0: el idioma (pasoIdioma)
@@ -1501,19 +1490,24 @@
       ["Descarga el transcriptor", `<p>Convierte la voz en texto dentro de tu computador. Se descarga una sola vez.</p><div class="seccion">${filasModelo()}</div>`, modeloListo],
     ];
     const [titulo, cuerpo, puede] = pasos[paso];
-    return `${puntos}<h2 id="t-bv" tabindex="-1">${titulo}</h2>${cuerpo}
-      <div class="pie-dialogo"><button class="boton izq" data-bv="${paso - 1}">Atrás</button><button class="boton" data-accion="bv-fin">Lo hago después</button>
-        ${paso < pasos.length - 1 ? `<button class="boton principal" data-bv="${paso + 1}" ${puede ? "" : "disabled"}>Siguiente</button>` : `<button class="boton principal" data-accion="bv-fin">Empezar</button>`}</div>`;
+    return { titulo, cerrable: false, sinEsc: true, cuerpo: puntos + cuerpo,
+      pie: `<button class="pz-boton pz-izq" data-bv="${paso - 1}">Atrás</button><button class="pz-boton" data-accion="bv-fin">Lo hago después</button>
+        ${paso < pasos.length - 1 ? `<button class="pz-boton pz-principal" data-bv="${paso + 1}" ${puede ? "" : "disabled"}>Siguiente</button>` : `<button class="pz-boton pz-principal" data-accion="bv-fin">Empezar</button>`}` };
   }
   function dialogos() {
-    const capa = (id, html) => `<div class="capa"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="${id}">${html}</div></div>`;
-    if (E.exportar) return capa("t-exp", dialogoExportar());
-    if (E.bv === 0) return `<div class="capa capa-idioma"><div class="dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv">${bienvenida()}</div></div>`;
-    if (E.bv !== null) return capa("t-bv", bienvenida());
-    if (E.ajustes) return capa("t-aj", dialogoAjustes());
-    if (E.catalogo) return capa("t-cat", dialogoCatalogo());
-    if (E.pl) return capa("t-pl", dialogoPlantillas()).replace('class="dialogo"', 'class="dialogo dialogo-pl"');
-    return "";
+    // El idioma va sobre fondo liso y sin nada detrás (no se cierra; el foco parte en el idioma sugerido).
+    if (E.bv === 0) return `<div class="pz-capa capa-idioma"><div class="pz-dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv" tabindex="-1" data-pz-sin-esc>
+      <div class="pasos-bv" aria-hidden="true">${[0, 1, 2, 3].map((i) => `<i class="${i === 0 ? "hecho" : ""}"></i>`).join("")}</div>${pasoIdioma()}</div></div>`;
+    const [id, d] = E.exportar ? ["t-exp", dialogoExportar()] : E.bv !== null ? ["t-bv", bienvenida()] : E.ajustes ? ["t-aj", dialogoAjustes()]
+      : E.catalogo ? ["t-cat", dialogoCatalogo()] : E.pl ? ["t-pl", { clase: "dialogo-pl", ...dialogoPlantillas() }] : [];
+    return id ? ui.dialogo({ id, ...d }) : "";
+  }
+  /** ✕, Esc o tocar afuera: cierra el diálogo de arriba (una exportación en curso o un video que se está armando siguen). */
+  function cerrarDialogo() {
+    if (E.exportar?.paso !== "exportando") E.exportar = null;
+    E.ajustes = false; E.catalogo = null;
+    if (!E.pl?.armando) E.pl = null;
+    pintar();
   }
 
   // ───────────── Vista previa: saltar cortes, subtítulos, zoom y encuadre ─────────────
@@ -1823,7 +1817,9 @@
     guardar(p);
   }
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-probar],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo],[data-ver-pl],[data-pl-cat],[data-pl-fuente],[data-bajar-pl],[data-pl-bajar-fx],[data-elegir-clips],[data-cambiar-clip],[data-vel]");
+    if (ui.manejarClic(ev)) return;              // diálogos (✕, velo), Tu IA, actualizaciones, Acerca de y comentarios
+    if (tema.manejarClic(ev)) return pintar();   // Ajustes → Apariencia
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo],[data-ver-pl],[data-pl-cat],[data-pl-fuente],[data-bajar-pl],[data-pl-bajar-fx],[data-elegir-clips],[data-cambiar-clip],[data-vel]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
     if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
@@ -1884,7 +1880,6 @@
     if (d.ejemplo) { E.ia.texto = d.ejemplo; pintar(); return $("#pedido-ia")?.focus(); }
     if (d.verShort != null) { const s = E.shorts.lista[Number(d.verShort)]; E.rango = { i: s.i, f: s.f }; if (v) { v.currentTime = s.i; v.play(); } return; }
     if (d.crearShort != null) { const s = E.shorts.lista[Number(d.crearShort)]; host.enviar("crearShort", { carpeta: E.sel, desde: s.i, hasta: s.f, titulo: s.titulo }); return toast("Creando el Short…"); }
-    if (d.probar) { E.probando[d.probar] = true; delete E.resultadoIA[d.probar]; host.enviar("probarIA", { id: d.probar }); return pintar(); }
     if (d.modelo) { E.descarga = { id: d.modelo, pct: 0 }; host.enviar("descargarModelo", { id: d.modelo }); return pintar(); }
     if (d.modeloUsar) { E.config.modelo = d.modeloUsar; host.enviar("config", { modelo: d.modeloUsar }); return pintar(); }
     if (d.bv) { E.bv = Number(d.bv); return pintar(); }
@@ -1944,11 +1939,9 @@
       case "exportar-ya": E.exportar = { paso: "exportando", pct: 0 }; host.enviar("exportar", { carpeta: E.sel }); return pintar();
       case "mostrar-exportado": return host.enviar("abrirCarpeta", { ruta: E.exportar?.archivo || E.sel });
       case "ajustes": E.ajustes = true; return pintar();
-      case "cerrar": if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; if (!E.pl?.armando) E.pl = null; return pintar();
+      case "cerrar": return cerrarDialogo();
       case "plantillas": if ($("#video")) $("#video").pause(); E.pl = { fuente: "corta", categoria: "todas", busqueda: "", ver: null, armando: false, bajando: {}, catalogo: E.pl?.catalogo || null }; return pintar();
       case "abrir-carpeta": return host.enviar("abrirCarpeta", {});
-      case "actualizar": E.act = { paso: 1, texto: tr("Preparando…") }; host.enviar("actualizar"); return pintar();
-      case "buscar-act": E.buscando = "buscando"; host.enviar("buscarActualizacion"); return pintar();
       case "bv-fin": E.bv = null; E.bvCerrada = true; host.enviar("config", { bienvenida: true }); return pintar();
     }
   });
@@ -2016,6 +2009,9 @@
   });
   document.addEventListener("keydown", (ev) => {
     const escribiendo = ev.target.closest?.("input, textarea, select, [contenteditable]");
+    // En el detalle de una plantilla, Esc vuelve a la lista (✕ y tocar afuera cierran todo).
+    if (ev.key === "Escape" && E.pl?.ver && !E.pl.armando && !E.exportar && E.bv === null) { ev.preventDefault(); E.pl.ver = null; return pintar(); }
+    if (ui.manejarTecla(ev)) return;  // Esc cierra el diálogo de arriba y Tab no se sale de él
     if (E.bv !== null) return;  // con la bienvenida abierta, los atajos del editor no corren detrás
     if (ev.target.id === "editar-palabra" || ev.target.id === "editar-sub") {
       if (ev.key === "Enter") { ev.preventDefault(); terminarEdicion(true); }
@@ -2023,7 +2019,7 @@
       return;
     }
     if (ev.target.id === "vocab-nueva" && ev.key === "Enter") { ev.preventDefault(); return $("[data-accion=vocab-agregar]")?.click(); }
-    if (ev.key === "Escape") { if (E.exportar?.paso !== "exportando") E.exportar = null; E.ajustes = false; E.catalogo = null; if (E.pl?.ver) { E.pl.ver = null; return pintar(); } if (!E.pl?.armando) E.pl = null; E.seleccion = null; E.lt.sel = null; E.sugerencia = null; return pintar(); }
+    if (ev.key === "Escape") { if (document.querySelector(".pz-dialogo")) return; E.seleccion = null; E.lt.sel = null; E.sugerencia = null; return pintar(); }
     if (teclaLinea(ev)) return;
     if (escribiendo) { if (ev.key === "Enter" && (ev.metaKey || ev.ctrlKey) && ev.target.id === "pedido-ia") $("[data-accion=pedir-ia]")?.click(); return; }
     if ((ev.key === "Backspace" || ev.key === "Delete") && E.seleccion) { ev.preventDefault(); return cortarSeleccion(); }
@@ -2125,18 +2121,20 @@
   }
 
   // ───────────── Lo que manda la app ─────────────
-  window.Corta = {
+  host.responder({
     async estado(e) {
       Object.assign(E, { proyectos: e.proyectos || [], estilos: e.estilos || [], config: e.config || {}, ias: e.ias || [], modelos: e.modelos || { lista: [] },
         vocabulario: e.vocabulario || { reemplazos: [], palabras: [] }, efectos: e.efectos || [], plantillas: e.plantillas || [],
-        version: e.version || "", carpeta: e.carpeta || "", progreso: e.progreso || {}, actualizacion: e.actualizacion || { hay: false } });
+        version: e.version || "", carpeta: e.carpeta || "", progreso: e.progreso || {} });
+      tema.aplicar(tema.elegir({ config: E.config.tema }));
       if (e.seleccionar) E.sel = e.seleccionar;
       if (E.sel && !E.proyectos.some((x) => x.carpeta === E.sel)) E.sel = null;
       if (!E.sel && E.proyectos.length) E.sel = E.proyectos[0].carpeta;
       if (!E.config.bienvenida && E.bv === null && !E.bvCerrada) E.bv = 0;
       await cargarIdioma();
       if (e.aviso) toast(e.aviso);
-      pintar();
+      ui.actualizacionDisponible(e.actualizacion, { pintar: false });  // {hay, notas}: solo la anota para la fila de Ajustes
+      pintar();  // una sola vez (con la pantalla del idioma, solo ella)
     },
     proyectoActualizado(r) {
       const x = E.proyectos.find((y) => y.carpeta === r.carpeta);
@@ -2155,9 +2153,10 @@
       if (r.ok && r.proyecto) window.Corta.proyectoActualizado({ carpeta: E.sel, proyecto: r.proyecto }); else pintar();
     },
     shortsListos(r) { E.buscandoShorts = false; E.shorts = r.ok ? { lista: r.shorts } : { error: r.error }; pintar(); },
-    exportarProgreso(r) { if (E.exportar) { E.exportar.pct = r.pct; const b = $(".dialogo .barra-prog i"); if (b) { b.style.width = r.pct + "%"; $(".dialogo .nota").textContent = r.pct + " %"; } else pintar(); } },
+    exportarProgreso(r) { if (E.exportar) { E.exportar.pct = r.pct; const b = $(".pz-dialogo .barra-prog i"); if (b) { b.style.width = r.pct + "%"; $(".pz-dialogo .nota").textContent = r.pct + " %"; } else pintar(); } },
     exportado(r) { E.exportar = r.ok ? { paso: "listo", ...r } : { paso: "error", error: r.error }; pintar(); },
-    iaProbada(r) { delete E.probando[r.id]; E.resultadoIA[r.id] = r; if (r.ok) { E.config.ia = r.id; toast("Lista para usar"); } pintar(); },
+    /** probarIA {ia} → {ia, ok, plantilla?, valores?, error?}: la fila y el aviso los pone la pieza «componentes». */
+    iaProbada(r) { ui.iaProbada(r); },
     modeloProgreso(r) { E.descarga = { id: r.id, pct: r.pct }; pintar(); },
     modeloListo(r) { E.descarga = null; if (r.ok) { const m = E.modelos.lista.find((x) => x.id === r.id); if (m) m.listo = true; E.config.modelo = r.id; toast("Descargado"); } else toast(r.error || "No se pudo descargar"); pintar(); },
     /** Respuesta a elegirMusica: {ok, carpeta, proyecto} o {ok: false, error} ({ok: false} sin error si la persona canceló). */
@@ -2165,9 +2164,10 @@
       if (r.ok) return window.Corta.proyectoActualizado({ carpeta: r.carpeta, proyecto: r.proyecto, aviso: r.aviso || "Música lista" });
       if (r.error) toast(r.error);
     },
-    /** Avance de una actualización: {paso: 1–3 o "error", texto (ya traducido por la app), pct?}. */
-    actualizacionProgreso(r) { E.act = r; if (r.paso === "error") toast(r.texto || "No se pudo actualizar"); pintar(); },
-    actualizacionRevisada(r) { E.buscando = r.hay ? null : r.sinConexion ? "sinConexion" : "alDia"; if (r.hay) E.actualizacion = r; pintar(); },
+    /** Avance de una actualización: {paso: "1"–"3" o "error", texto (ya traducido por la app), total, pct?}. El aviso de error lo da la pieza. */
+    actualizacionProgreso(r) { ui.actualizacionProgreso(r); },
+    /** {hay, notas, sinConexion}: la fila «Actualizaciones» de Ajustes (pieza «componentes»). */
+    actualizacionRevisada(r) { ui.actualizacionRevisada(r, { pintar: E.bv !== 0 }); },  // nada se pinta detrás del idioma
     /** Respuesta a `catalogoEfectos`: {ok, efectos} (ya validados por bin/efectos.py) o {ok: false, error}. */
     catalogoListo(r) {
       if (!E.catalogo) return;
@@ -2212,16 +2212,19 @@
     /** Respuesta a `vocabulario`: {ok, vocabulario} o {ok: false, error}. */
     vocabularioActualizado(r) { if (r.ok) E.vocabulario = r.vocabulario; else toast(r.error || "No pude guardar."); pintar(); },
     _probar(f) { f(E); pintar(); },
-    _pruebas: { conservados, aSalida, duracionFinal, lento, velocidadEn, ponerVelocidad, audioDe, velocidades, ltX, ltT, durHueco, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
-      tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, llenar, aplicarPlantilla, iniciosHuecos, segmentosZoom, segmentosCapa, valorEn, cssColor, ventanasPaso, segmentosPaso, segmentosExposicion, cortesInterferencia, franjasInterferencia, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config, demoCatalogoPl: () => clonar(DEMO?.catalogo_plantillas || []) },
-  };
+  });
+  // Para las pruebas (pruebas/interfaz.mjs): la lógica que se compara con Python. No es una función: va aparte de host.responder.
+  window.Corta._pruebas = { conservados, aSalida, duracionFinal, lento, velocidadEn, ponerVelocidad, audioDe, velocidades, ltX, ltT, durHueco, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
+      tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, llenar, aplicarPlantilla, iniciosHuecos, segmentosZoom, segmentosCapa, valorEn, cssColor, ventanasPaso, segmentosPaso, segmentosExposicion, cortesInterferencia, franjasInterferencia, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config, demoCatalogoPl: () => clonar(DEMO?.catalogo_plantillas || []) };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
   let DEMO = null;
   const clonar = (o) => JSON.parse(JSON.stringify(o));
   const demoProy = (c) => DEMO.proyectos.find((x) => x.carpeta === c);
   const historial = {};
-  function simular(accion, d) {
+  /** probarIA, buscarActualizacion, actualizar y abrirEnlace (solo https) responden igual en todas las apps (pieza «host-ui»). */
+  const COMUNES = window.PiezaHost.simulacionesComunes();
+  function simular(accion, d, c) {
     if (!DEMO) return;
     const A = window.Corta, luego = (ms, f) => setTimeout(f, ms);
     switch (accion) {
@@ -2290,7 +2293,6 @@
       });
       case "elegirVideo": case "soltarVideo": return toast("En la app, aquí eliges un video de tu computador");
       case "transcribir": return toast("En la app, aquí se transcribe el video");
-      case "probarIA": return luego(500, () => { DEMO.config.ia = d.id; A.iaProbada({ id: d.id, ok: true }); });
       case "descargarModelo": { let p = 0; const iv = setInterval(() => { p += 0.25; A.modeloProgreso({ id: d.id, pct: Math.min(p, 1) }); if (p >= 1) { clearInterval(iv); A.modeloListo({ id: d.id, ok: true }); } }, 300); return; }
       case "vocabulario": return luego(150, () => {  // en la app queda en ~/Corta/vocabulario.json (bin/vocabulario.py)
         const v = DEMO.vocabulario ||= { formato: 1, reemplazos: [], palabras: [] }, clave = (t) => String(t).split(/\s+/).map(normalizar).filter(Boolean).join(" ");
@@ -2340,10 +2342,8 @@
         DEMO.efectos = [...(DEMO.efectos || []).filter((x) => x.id !== d.id), efecto];
         A.efectoDescargado({ ok: true, efecto: clonar(efecto) });
       });
-      case "abrirEnlace": return window.open(d.url, "_blank", "noopener");
       case "abrirCarpeta": return toast("En la app, aquí se abre la carpeta");
-      case "buscarActualizacion": return luego(500, () => A.actualizacionRevisada({ hay: false }));
-      case "actualizar": return luego(400, () => A.actualizacionProgreso({ paso: "error", texto: tr("En la vista previa no hay nada que actualizar.") }));
+      default: return Object.hasOwn(COMUNES, accion) ? COMUNES[accion](d, c) : undefined;
     }
   }
 

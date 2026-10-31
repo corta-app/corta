@@ -66,6 +66,7 @@ enum Config {
             case "idioma_audio":
                 if let s = v as? String, s == "auto" || s.range(of: "^[a-z]{2,3}$", options: .regularExpression) != nil { d[k] = s }
             case "bienvenida": if let b = v as? Bool { d[k] = b }
+            case "tema": if let s = v as? String, ["sistema", "claro", "oscuro"].contains(s) { d[k] = s }
             default: break
             }
         }
@@ -134,12 +135,15 @@ enum IA {
 
     /// Prueba real: le pide una palabra. Así sabemos que está instalada y con la sesión iniciada. La corre bin/ia.py (pieza «ia»),
     /// con las mismas protecciones que cuando edita: la IA va en un archivo de entrada ({"ia": id}), nunca como argumento.
-    /// Responde (ok, texto): sin éxito, `texto` es la frase en español de la pieza (la interfaz la traduce con tr()).
-    static func probar(_ id: String, _ fin: @escaping @MainActor (Bool, String) -> Void) {
-        guard conocidas.contains(where: { $0.id == id }) else { fin(false, "No conozco esa IA."); return }
+    /// Responde lo que da `ia.py probar` tal cual ({ia, ok, codigo?, plantilla?, valores?, error?}): la interfaz (pieza «componentes»)
+    /// muestra el error traducido con su plantilla y valores.
+    static func probar(_ id: String, _ fin: @escaping @MainActor ([String: Any]) -> Void) {
+        guard conocidas.contains(where: { $0.id == id }) else { fin(["ia": id, "ok": false, "error": "No conozco esa IA."]); return }
         Procesador.conEntrada("ia.py", "probar", ["ia": id]) { r in
-            let ok = r["ok"] as? Bool == true
-            fin(ok, ok ? "listo" : (r["error"] as? String ?? "No respondió."))
+            var x = r
+            x["ia"] = id
+            if x["ok"] as? Bool != true, x["error"] == nil { x["error"] = "No respondió." }
+            fin(x)
         }
     }
 }

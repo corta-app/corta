@@ -360,10 +360,11 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
                 Ventana.shared.llamar("exportado", x)
             }
         case "probarIA":
-            let id = d["id"] as? String ?? ""
-            IA.probar(id) { ok, texto in
-                if ok { Config.guardar(["ia": id]) }
-                Ventana.shared.llamar("iaProbada", ["id": id, "ok": ok, "texto": texto])
+            // Como en todas las apps de la familia (pieza «host-ui»): {ia} → iaProbada {ia, ok, codigo?, plantilla?, valores?, error?}.
+            let id = d["ia"] as? String ?? ""
+            IA.probar(id) { r in
+                if r["ok"] as? Bool == true { Config.guardar(["ia": id]) }
+                Ventana.shared.llamar("iaProbada", r)
             }
         case "descargarModelo":
             let id = d["id"] as? String ?? ""
@@ -469,7 +470,8 @@ final class Ventana: NSObject, NSWindowDelegate, WKScriptMessageHandler, WKNavig
             if let u = Rutas.dentro(d["ruta"]) { NSWorkspace.shared.activateFileViewerSelecting([u]) } else { abrirCarpetaDatos() }
         case "buscarActualizacion":
             Actualizaciones.revisar { hay, detalle in
-                Ventana.shared.llamar("actualizacionRevisada", ["hay": hay, "detalle": detalle, "sinConexion": detalle == Actualizaciones.sinConexion])
+                let sinConexion = detalle == Actualizaciones.sinConexion
+                Ventana.shared.llamar("actualizacionRevisada", ["hay": hay, "notas": hay ? detalle : "", "sinConexion": sinConexion])
             }
         case "actualizar":
             // Nunca en medio de una transcripción o una exportación: cerrar la app las cortaría.
