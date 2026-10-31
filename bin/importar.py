@@ -1,8 +1,8 @@
 """Traer un video a Corta y transcribirlo en tu computador. Solo biblioteca estándar.
 
   importar.py <video> <salida.json>                 crea ~/Corta/<nombre>/ con proyecto.json (vertical por defecto)
-  importar.py transcribir <carpeta> <salida.json>   transcribe con whisper (palabra por palabra) y guarda las palabras,
-                                                    ya corregidas con el vocabulario de la persona (bin/vocabulario.py)
+  importar.py transcribir <carpeta> <salida.json>   transcribe con whisper (palabra por palabra, pieza «transcribir») y guarda
+                                                    las palabras, ya corregidas con el vocabulario de la persona (bin/vocabulario.py)
 
 El video se copia a la carpeta del proyecto (nunca se modifica). El avance queda en <carpeta>/estado.json.
 """
@@ -12,17 +12,12 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import proyecto  # noqa: E402
+import transcribir as transcribir_  # noqa: E402
 import vocabulario  # noqa: E402
-
-MODELOS = os.path.join(proyecto.INTERNO, "modelos")
-ARCHIVOS_MODELO = {"turbo": "ggml-large-v3-turbo-q5_0.bin", "small": "ggml-small-q5_1.bin"}
-# Lo que whisper inventa cuando hay silencio o música (créditos de los videos con que se entrenó).
-ALUCINACIONES = {"thank you", "thanks for watching", "gracias", "gracias por ver", "suscríbete", "amara.org", "subtítulos realizados por la comunidad de amara.org"}
 
 
 def info(video):
@@ -64,92 +59,34 @@ def importar(video):
     return {"ok": True, "carpeta": carpeta, "proyecto": p}
 
 
-def palabras_de_whisper(datos):
-    """whisper.cpp con -ml 1 -sow -oj: cada segmento es una palabra. Se descartan marcas ([música]) e inventos en silencio."""
-    r = []
-    for s in datos.get("transcription", []):
-        t = (s.get("text") or "").strip()
-        if not t or re.fullmatch(r"[\[(].*[\])]", t):
-            continue
-        i, f = s["offsets"]["from"] / 1000, s["offsets"]["to"] / 1000
-        if r and not re.match(r"^[\wáéíóúñü¿¡]", t, re.I):  # puntuación suelta: va pegada a la palabra anterior
-            r[-1]["t"] += t
-            r[-1]["f"] = max(r[-1]["f"], f)
-            continue
-        if f > i:
-            r.append({"t": t, "i": round(i, 3), "f": round(f, 3)})
-    texto = " ".join(w["t"] for w in r).lower().strip(" .")
-    return [] if texto in ALUCINACIONES else r
-
-
-def _archivo_privado(contenido, sufijo):
-    """Un temporal que solo puede leer la persona (0600, lo crea así mkstemp), fuera de la carpeta del proyecto. Quien lo pide lo borra."""
-    fd, ruta = tempfile.mkstemp(prefix="corta-", suffix=sufijo)
-    with os.fdopen(fd, "wb") as f:
-        f.write(contenido)
-    return ruta
-
-
-def comando_transcribir(binario, opciones, vocab):
-    """El comando del transcriptor y los temporales que hay que borrar al terminar.
-
-    El vocabulario de la persona (nombres, marcas) ayuda a whisper a reconocerlos, pero **nunca** va como argumento: otros programas
-    ven los argumentos en la lista de procesos. corta-transcribir (Mac) lo lee con --prompt-archivo; whisper-cli (v1.7.4+), con su
-    archivo de argumentos oficial `whisper-cli @archivo` (una opción por línea). Va en una sola línea, así un salto de línea en lo
-    que escribió la persona no puede colar otra opción."""
-    prompt = " ".join(str(vocab or "").split())
-    if not prompt:
-        return [binario] + opciones, []
-    if os.path.basename(binario).startswith("corta-transcribir"):
-        archivo = _archivo_privado(prompt.encode("utf-8"), ".vocabulario.txt")
-        return [binario] + opciones + ["--prompt-archivo", archivo], [archivo]
-    # whisper-cli: las rutas como las abre el sistema y el prompt en UTF-8 (lo que espera el tokenizador de whisper). Una ruta con
-    # un salto de línea partiría su línea en dos: no se transcribe así.
-    lineas = [os.fsencode(x) for x in opciones] + [b"--prompt", prompt.encode("utf-8")]
-    if any(b"\n" in x or b"\r" in x for x in lineas):
-        raise RuntimeError("No puedo transcribir un video en una carpeta con saltos de línea en el nombre.")
-    archivo = _archivo_privado(b"\n".join(lineas) + b"\n", ".argumentos.txt")
-    return [binario, "@" + archivo], [archivo]
-
-
 def transcribir(carpeta):
+    """Palabra por palabra con la pieza «transcribir» ({t, i, f} en segundos del original). Sin VAD: el detector de voz puede
+    recortar la primera o la última palabra de una frase y aquí cada palabra es un borde de corte."""
     p = proyecto.cargar(carpeta)
     cfg = proyecto.config()
-    modelo = os.path.join(MODELOS, ARCHIVOS_MODELO.get(cfg["modelo"], ARCHIVOS_MODELO["turbo"]))
-    if not os.path.exists(modelo):
-        raise RuntimeError("Falta el modelo de transcripción: descárgalo en Ajustes.")
-    # En Mac viene dentro de la app (corta-transcribir, whisper.cpp con Metal y las mismas opciones); en desarrollo, whisper-cli.
-    binario = proyecto.programa("corta-transcribir", "whisper-cli")
-    if not os.path.isfile(binario):
-        raise RuntimeError("No encontré el transcriptor (whisper-cli).")
+    modelo = transcribir_.modelo_elegido(cfg["modelo"])
+    if not modelo:
+        raise transcribir_.ErrorTranscribir("sin_modelo")
+    if not transcribir_.transcriptor():
+        raise transcribir_.ErrorTranscribir("sin_transcriptor")
     audio = os.path.join(carpeta, "audio.wav")
     proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "audio", "texto": "Preparando el audio…"})
     subprocess.run([proyecto.programa("ffmpeg"), "-hide_banner", "-y", "-loglevel", "error", *proyecto.SOLO_ARCHIVOS,
                     "-i", proyecto.entrada(os.path.join(carpeta, p["fuente"]["archivo"])),
                     "-vn", "-ac", "1", "-ar", "16000", audio], check=True)
     proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "transcribiendo", "texto": "Transcribiendo en tu computador…"})
-    hilos = str(max(2, min(8, (os.cpu_count() or 4) - 1)))
-    salida = os.path.join(carpeta, "transcripcion")
-    opciones = ["-m", modelo, "-l", cfg.get("idioma_audio") or "auto", "-t", hilos, "-f", audio,
-                "-ml", "1", "-sow", "-oj", "-of", salida, "-np"]
     vocab = vocabulario.leer()
-    args, temporales = comando_transcribir(binario, opciones, vocabulario.prompt(vocab))
     try:
-        r = subprocess.run(args, capture_output=True, text=True, timeout=4 * 3600)
+        palabras = transcribir_.transcribir(audio, palabras=True, vad=False, idioma=cfg.get("idioma_audio") or "auto",
+                                            modelo=modelo, vocabulario=vocabulario.prompt(vocab))
     finally:
-        for x in [audio] + temporales:
-            if os.path.exists(x):
-                os.remove(x)
-    if r.returncode != 0 or not os.path.exists(salida + ".json"):
-        raise RuntimeError("La transcripción falló: " + (r.stderr or "")[-300:])
+        if os.path.exists(audio):
+            os.remove(audio)
     p = proyecto.cargar(carpeta)
-    p["palabras"], corregidas = vocabulario.reemplazar_todo(palabras_de_whisper(proyecto.leer_json(salida + ".json", {})),
-                                                          vocabulario.pares(vocab))
-    os.remove(salida + ".json")
+    p["palabras"], corregidas = vocabulario.reemplazar_todo(palabras, vocabulario.pares(vocab))
     proyecto.guardar(carpeta, p)
     os.remove(os.path.join(carpeta, "estado.json"))
     return {"ok": True, "palabras": len(p["palabras"]), "corregidas": corregidas, "proyecto": p}
-
 
 if __name__ == "__main__":
     a = sys.argv[1:]
@@ -161,6 +98,8 @@ if __name__ == "__main__":
         else:
             print(__doc__)
             sys.exit(2)
+    except transcribir_.ErrorTranscribir as e:
+        r = {"ok": False, "error": str(e), "codigo": e.codigo}
     except (OSError, ValueError, RuntimeError, subprocess.CalledProcessError) as e:
         r = {"ok": False, "error": str(e)}
     proyecto.escribir_json(a[-1], r)

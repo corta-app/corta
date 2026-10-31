@@ -6,6 +6,10 @@ Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriore
 
 ## Sin publicar · Unreleased
 
+- Si el modelo de voz que elegiste no está descargado pero tienes el otro, Corta transcribe con ese en vez de detenerse. Además
+  descarta más frases que whisper inventa en los silencios (como «Gracias por ver» o los créditos de subtítulos).
+  *If the voice model you chose isn't downloaded but you have the other one, Corta transcribes with it instead of stopping. It also
+  drops more phrases whisper makes up in silences (like "Thanks for watching" or subtitle credits).*
 - Ahora eliges la apariencia en Ajustes: como el sistema, clara u oscura. Con «Como el sistema» Corta se ve igual que antes.
   *You can now choose the appearance in Settings: match system, light or dark. With "Match system" Corta looks the same as before.*
 - Ahora puedes contarnos un error o una idea desde Ajustes → Acerca de → «Enviar comentarios»: se abre GitHub con tu mensaje listo

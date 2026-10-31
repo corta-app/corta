@@ -32,7 +32,7 @@ if os.environ.get("CORTA_PRUEBA_PROMPT"):
         f.write(prompt)
 if os.environ.get("CORTA_PRUEBA_REGISTRO"):
     with open(os.environ["CORTA_PRUEBA_REGISTRO"], "w", encoding="utf-8") as f:
-        json.dump({"argv": argv, "archivos": archivos}, f)
+        json.dump({"argv": argv, "opciones": a, "archivos": archivos}, f)
 palabras = [" Hola,", " soy", " de", " calumi.", " Calumi", " ayuda", " a", " Ana."]
 segmentos = [{"text": t, "offsets": {"from": 500 + 400 * k, "to": 850 + 400 * k}} for k, t in enumerate(palabras)]
 with open(salida + ".json", "w", encoding="utf-8") as f:

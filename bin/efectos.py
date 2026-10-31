@@ -1,12 +1,9 @@
 """Efectos y filtros: solo datos (formato en bin/efecto_formato.py y efectos/README.md), convertidos a ffmpeg por el código.
 
-  efectos.py indice <indice.json> <salida.json>     valida el índice del catálogo que bajó la app → {"ok", "efectos": [...]}
-  efectos.py entrada <entrada.json> <salida.json>   {"accion": "instalar", "archivo", "id", "sha256"}: valida el efecto
-                                                    descargado y lo deja en ~/Corta/.corta/efectos/<id>.json → {"ok", "efecto"}
-
 Dónde están: incluidos en la app (`efectos/<categoria>/<id>.json`) y descargados del catálogo de la comunidad
-(`~/Corta/.corta/efectos/<id>.json`, ganan sobre los incluidos con el mismo id). En el proyecto, `efectos` es una lista de
-efectos aplicados con sus pasos copiados (el proyecto se exporta igual aunque después borres el efecto):
+(`~/Corta/.corta/efectos/<id>.json`, ganan sobre los incluidos con el mismo id). Leerlos, validar el índice e instalar lo que
+baja la app es de la pieza «catálogo» (bin/catalogo.py, tipo «efectos» en app.json, validador bin/efecto_formato.py).
+En el proyecto, `efectos` es una lista de efectos aplicados con sus pasos copiados (el proyecto se exporta igual aunque después borres el efecto):
   {"efecto": "calido", "pasos": [...], "i"?: s, "f"?: s, "origen"?: "ia-…"}     sin i/f = todo el video
 
 Todo pasa en el tiempo del video EXPORTADO, después de unir las piezas y antes de los subtítulos (que nunca se desenfocan ni se
@@ -28,56 +25,22 @@ Lista blanca de filtros de ffmpeg (solo estos, con números que salen de rangos 
   eq                              la exposición del destello (brillo multiplicado, en YUV)
 Las transiciones solo trabajan en su ventana alrededor de cada unión (`enable`): fuera de ella el video pasa sin costo.
 """
-import hashlib
-import json
 import math
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import catalogo  # noqa: E402
 import efecto_formato  # noqa: E402
 import proyecto  # noqa: E402
 
-DESCARGADOS = os.path.join(proyecto.INTERNO, "efectos")
-MAX_BYTES = 64 * 1024
-ARCHIVO_CATALOGO = re.compile(r"efectos/([a-z]+)/([a-z0-9][a-z0-9-]{0,38}[a-z0-9])\.json")
 FPS = 30
 
 
-def incluidos_dir():
-    return os.path.join(proyecto.RECURSOS, "efectos")
-
-
-def _leer_efecto(ruta):
-    try:
-        if os.path.getsize(ruta) > MAX_BYTES:
-            return None
-    except OSError:
-        return None
-    d = proyecto.leer_json(ruta, None)
-    return d if d is not None and not efecto_formato.validar_efecto(d, ruta) else None
-
-
 def disponibles():
-    """Todos los efectos válidos, por id: los incluidos y los descargados (estos ganan). Cada uno con `origen`."""
-    todos = {}
-    base = incluidos_dir()
-    for categoria in sorted(os.listdir(base)) if os.path.isdir(base) else []:
-        carpeta = os.path.join(base, categoria)
-        if not os.path.isdir(carpeta):
-            continue
-        for n in sorted(os.listdir(carpeta)):
-            if n.endswith(".json"):
-                d = _leer_efecto(os.path.join(carpeta, n))
-                if d and d["categoria"] == categoria:
-                    todos[d["id"]] = {**d, "origen": "incluido"}
-    for n in sorted(os.listdir(DESCARGADOS)) if os.path.isdir(DESCARGADOS) else []:
-        if n.endswith(".json"):
-            d = _leer_efecto(os.path.join(DESCARGADOS, n))
-            if d:
-                todos[d["id"]] = {**d, "origen": "descargado"}
-    return todos
+    """Todos los efectos válidos, por id: los incluidos y los descargados (estos ganan). Cada uno con `origen`
+    («incluido» o «descargado»)."""
+    return {e["id"]: e for e in catalogo.listar("efectos")}
 
 
 # ───────────── Tiempos (la misma lógica que ui/app.js) ─────────────
@@ -538,58 +501,3 @@ def cadena(p, ancho, alto, entrada="[vc]"):
 
 
 # ───────────── Catálogo (lo descarga la app; aquí solo se valida) ─────────────
-def validar_indice(d):
-    """Del índice del catálogo, solo las entradas válidas: {…efecto, archivo, sha256, bytes}. Lo demás se descarta."""
-    lista = d.get("efectos") if isinstance(d, dict) else None
-    r, vistos = [], set()
-    for x in lista if isinstance(lista, list) else []:
-        if not isinstance(x, dict):
-            continue
-        efecto = {k: v for k, v in x.items() if k in efecto_formato.CLAVES}
-        m = ARCHIVO_CATALOGO.fullmatch(str(x.get("archivo", "")))
-        if (efecto_formato.validar_efecto(efecto) or not m or m.group(1) != efecto["categoria"] or m.group(2) != efecto["id"]
-                or not re.fullmatch(r"[0-9a-f]{64}", str(x.get("sha256", ""))) or not isinstance(x.get("bytes"), int)
-                or not 0 < x["bytes"] <= MAX_BYTES or efecto["id"] in vistos):
-            continue
-        vistos.add(efecto["id"])
-        r.append({**efecto, "archivo": x["archivo"], "sha256": x["sha256"], "bytes": x["bytes"]})
-    return r[:500]
-
-
-def instalar(d):
-    """Un efecto que bajó la app: se valida otra vez (huella, id y formato) antes de guardarlo."""
-    if not isinstance(d, dict) or not isinstance(d.get("archivo"), str) or not isinstance(d.get("id"), str) \
-            or not re.fullmatch(r"[0-9a-f]{64}", str(d.get("sha256", ""))):
-        # La huella es obligatoria: sin ella cualquier archivo pasaría por uno del catálogo.
-        raise ValueError("No pude leer el efecto.")
-    with open(d["archivo"], "rb") as f:
-        crudo = f.read(MAX_BYTES + 1)
-    if len(crudo) > MAX_BYTES or hashlib.sha256(crudo).hexdigest() != d["sha256"]:
-        raise ValueError("El efecto llegó dañado. Intenta de nuevo.")
-    try:
-        efecto = json.loads(crudo.decode("utf-8"))
-    except (UnicodeDecodeError, ValueError):
-        raise ValueError("Ese efecto no es válido.") from None
-    if efecto_formato.validar_efecto(efecto) or efecto["id"] != d["id"]:
-        raise ValueError("Ese efecto no es válido.")
-    proyecto.escribir_json(os.path.join(DESCARGADOS, efecto["id"] + ".json"), efecto)
-    return {"ok": True, "efecto": {**efecto, "origen": "descargado"}}
-
-
-if __name__ == "__main__":
-    a = sys.argv[1:]
-    try:
-        if len(a) == 3 and a[0] == "indice":
-            r = {"ok": True, "efectos": validar_indice(proyecto.leer_json(a[1], None))}
-        elif len(a) == 3 and a[0] == "entrada":
-            datos = proyecto.leer_json(a[1], None)
-            if not isinstance(datos, dict) or datos.get("accion") != "instalar":
-                raise ValueError("No sé hacer eso.")
-            r = instalar(datos)
-        else:
-            print(__doc__)
-            sys.exit(2)
-    except (OSError, ValueError) as e:
-        r = {"ok": False, "error": str(e)}
-    proyecto.escribir_json(a[-1], r)
-    print(json.dumps({"ok": r["ok"]}, ensure_ascii=False))
