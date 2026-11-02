@@ -33,9 +33,15 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
   unos días de espera (`.github/dependabot.yml`).
 - Python solo con biblioteca estándar; la interfaz y el motor no tienen dependencias de npm.
 - La interfaz tiene una Content-Security-Policy sin `unsafe-eval` ni scripts en línea; todo lo que viene de afuera se valida y se escapa.
-- En la app de Mac, la ventana solo carga la interfaz que viene adentro, el puente solo le responde a ella y los videos se sirven por
-  `corta://` solo desde los proyectos de `~/Corta`. ffmpeg solo abre archivos locales (`-protocol_whitelist file`), la IA corre sin
-  herramientas y lo que se descarga al armar la app (Python, ffmpeg, whisper.cpp) o al usarla (modelos) tiene su huella SHA-256 fija.
+- En la app de Mac (la pieza «host-mac» de Pieza, en `app/Sources/PiezaHost/`), la ventana solo carga la interfaz que viene adentro,
+  el puente solo le responde al marco principal con una página de `ui/` y los videos se sirven por `corta://` solo desde los proyectos
+  de `~/Corta`. Lo que manda la interfaz se valida con un esquema cerrado (`acciones.json`) antes de correr un script, va en un archivo
+  de entrada (nunca como argumento) y la carpeta de un proyecto se revisa dos veces (en la app y en `bin/`). Cada script tiene límite
+  de tiempo (los trabajos largos, mientras laten) y no recibe variables `CORTA_*` de afuera; al salir de la app se corta lo que siga
+  corriendo. ffmpeg solo abre archivos locales (`-protocol_whitelist file`), la IA corre sin herramientas y lo que se descarga al armar
+  la app (Python, ffmpeg, whisper.cpp) o al usarla (modelos) tiene su huella SHA-256 fija.
+- Las versiones nuevas (pieza «actualizaciones») se bajan solo de los Releases de `github.com/corta-app/corta`, siguiendo la
+  redirección de GitHub solo por https, y se instalan solo si su SHA-256 es el del `.sha256` publicado; nunca con algo corriendo.
 - Los efectos de la comunidad son solo datos: la app los baja solo de `raw.githubusercontent.com/corta-app/corta-catalogo`, sin seguir
   redirecciones y con tamaño máximo, compara la huella SHA-256 del índice y los valida con el mismo formato que el catálogo antes de
   guardarlos. Ningún texto de un efecto llega a ffmpeg: el código arma los filtros (de una lista blanca) con sus números.
@@ -51,6 +57,10 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
 [**Report a vulnerability**](https://github.com/corta-app/corta/security/advisories/new). Include what happens, how to reproduce it (with
 **fictional data only**), the version or commit and your OS. We reply within **7 days**, keep you posted, publish a GitHub Security
 Advisory with the fix and credit you if you want. Please don't disclose details until a fix is out (90 days at most as a general rule).
+
+The Mac app is Pieza's generic host (`app/Sources/PiezaHost/`): the bridge only answers the main frame with a page from `ui/`, UI data is
+validated against a closed schema (`acciones.json`) before any script runs, scripts have a time limit and never inherit outside
+`CORTA_*` variables, and updates come only from this repo's Releases, checked against their published SHA-256.
 
 In scope: code execution, file access outside the project folder, ffmpeg command or UI (XSS) injection through projects, caption styles, catalog effects or templates, or AI responses; anything that makes media or text leave the computer; CI/build issues that let code slip in. Out of scope: bugs in your own AI CLI or in ffmpeg or whisper.cpp, attacks that already require full control of the
 device, and headers GitHub Pages can't set.

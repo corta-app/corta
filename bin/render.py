@@ -23,6 +23,7 @@ import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import efectos  # noqa: E402
 import proyecto  # noqa: E402
+import trabajos  # noqa: E402
 import subtitulos  # noqa: E402
 
 FUENTES = os.path.join(proyecto.RECURSOS, "ui", "fuentes")
@@ -251,6 +252,8 @@ if __name__ == "__main__":
     if len(sys.argv) != 3:
         print(__doc__)
         sys.exit(2)
+    # Pieza «trabajos»: late para el host mientras corre (una acción sin tope de tiempo; sin el host, no hace nada).
+    trabajos.mantener_vivo()
     try:
         r = exportar(sys.argv[1])
     except (OSError, ValueError, RuntimeError) as e:

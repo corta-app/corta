@@ -7,10 +7,13 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Corta",
-            dependencies: ["PiezaCatalogo"],
+            dependencies: ["PiezaHost", "PiezaActualizaciones", "PiezaCatalogo"],
             path: "Sources/Corta"
         ),
-        // Pieza «catálogo» (de Pieza: no se edita a mano). Corta la configura con app.json (efectos y plantillas).
+        // Piezas de Pieza (no se editan a mano): la app de Mac genérica («host-mac»: ventana, puente, config, idioma, menús, scripts
+        // con límite y acciones declaradas en acciones.json), las actualizaciones y el catálogo (Corta lo configura con app.json).
+        .target(name: "PiezaHost", path: "Sources/PiezaHost"),
+        .target(name: "PiezaActualizaciones", path: "Sources/PiezaActualizaciones"),
         .target(name: "PiezaCatalogo", path: "Sources/PiezaCatalogo"),
         // whisper.cpp oficial (framework para Apple, usa Metal). La misma versión y huella que Graba y Minuta.
         .binaryTarget(

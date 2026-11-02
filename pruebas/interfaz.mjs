@@ -181,7 +181,7 @@ navegador.newPage = async (opciones) => {
   malos.forEach((x) => falla("lógica distinta a Python: " + x));
   if (!malos.length) console.log("  ✓ Misma lógica que Python (pruebas/casos.json)");
   // 6) Editar por texto: elegir palabras y borrar las saca del video
-  await p.evaluate(() => window.Corta._probar((E) => { E.bv = null; }));
+  await p.evaluate(() => window.Corta._pruebas.bienvenida(null));
   await p.click('[data-w="4"]'); await p.click('[data-w="8"]', { modifiers: ["Shift"] }); await p.keyboard.press("Backspace");
   const cortadas = await p.$$eval(".w.cortada", (els) => els.map((e) => e.dataset.w));
   if (!["4", "5", "6", "7", "8"].every((k) => cortadas.includes(k))) falla("borrar palabras elegidas no las cortó: " + cortadas.join(","));
@@ -201,7 +201,7 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
       await p.addInitScript(() => { window._faltantes = new Set(); });
       await p.goto(BASE + "?" + [consulta, bv ? "bienvenida" : ""].filter(Boolean).join("&"));
       await p.waitForFunction((sel) => window.Corta && document.querySelector(sel), bv ? ".pz-capa" : ".app");
-      const pasos = bv ? [0, 1, 2, 3].map((n) => [`bienvenida-${n}`, `E=>{E.bv=${n}}`]) : VISTAS;
+      const pasos = bv ? [0, 1, 2, 3].map((n) => [`bienvenida-${n}`, `()=>window.Corta._pruebas.bienvenida(${n})`]) : VISTAS;
       for (const [nombre, f] of pasos) {
         await p.evaluate(`window.Corta._probar(${f})`);
         await p.waitForTimeout(80);
@@ -245,7 +245,7 @@ for (const [idioma, consulta] of [["español", "idioma=es"], ["inglés", "idioma
   malos.forEach((x) => falla("línea de tiempo: " + x));
   if (!malos.length) console.log("  ✓ Bordes con límites y música que baja con la voz (lógica)");
   const proyecto = () => p.evaluate(() => { let r; window.Corta._probar((E) => { r = JSON.parse(JSON.stringify(E.proyectos[0].proyecto)); }); return r; });
-  await p.evaluate(() => window.Corta._probar((E) => { E.bv = null; const q = E.proyectos[0].proyecto; q.cortes = [{ i: 3.3, f: 4.6, motivo: "muletilla" }]; q.textos = [{ i: 8, f: 10, texto: "Hola", y: 0.2 }]; }));
+  await p.evaluate(() => window.Corta._probar((E) => { const q = E.proyectos[0].proyecto; q.cortes = [{ i: 3.3, f: 4.6, motivo: "muletilla" }]; q.textos = [{ i: 8, f: 10, texto: "Hola", y: 0.2 }]; }));
   // Mouse: arrastrar el fin del corte 40 px a la derecha
   const caja = await p.locator("#lt-cortes-0-f").boundingBox();
   await p.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2); await p.mouse.down();
@@ -618,21 +618,21 @@ for (const [esquema, ancho] of [["light", 1360], ["dark", 390]]) {
   await p.goto(BASE + "?bienvenida"); await p.waitForSelector(".pz-capa");
   const primera = await p.evaluate(() => ({
     titulo: document.querySelector("#t-bv")?.textContent.replace(/\s+/g, " ").trim(), detras: !!document.querySelector(".app, video"),
-    opciones: [...document.querySelectorAll("[data-elegir-idioma]")].map((b) => b.querySelector("b").textContent), foco: document.activeElement?.id,
+    opciones: [...document.querySelectorAll("[data-bv-idioma]")].map((b) => b.querySelector("b").textContent), foco: document.activeElement?.id,
     ancho: document.documentElement.scrollWidth }));
   if (primera.titulo !== "Elige tu idioma · Choose your language" || primera.detras || primera.opciones.join() !== "Español,English")
     falla("la primera pantalla de la bienvenida no es la del idioma: " + JSON.stringify(primera));
-  else if (primera.foco !== "idioma-es") falla("el idioma del sistema no quedó enfocado: " + primera.foco);
+  else if (primera.foco !== "bv-idioma-es") falla("el idioma del sistema no quedó enfocado: " + primera.foco);
   else if (primera.ancho > ancho + 2) falla(`la pantalla del idioma se sale a ${ancho}px (${primera.ancho}px)`);
   // Con teclado: Tab hasta «English» (foco visible) y Enter
   await p.keyboard.press("Tab");
   const foco = await p.evaluate(() => [document.activeElement?.id, getComputedStyle(document.activeElement).outlineStyle]);
-  if (foco[0] !== "idioma-en" || foco[1] === "none") falla("Tab no llevó a «English» con foco visible: " + JSON.stringify(foco));
+  if (foco[0] !== "bv-idioma-en" || foco[1] === "none") falla("Tab no llevó a «English» con foco visible: " + JSON.stringify(foco));
   await p.keyboard.press("Enter");
   await p.waitForFunction(() => document.querySelector("#t-bv")?.textContent === "Hi, this is Corta", null, { timeout: 3000 })
     .catch(() => falla("después de elegir English el siguiente paso no salió en inglés"));
   const despues = await p.evaluate(() => ({ guardado: window.Corta._pruebas.demoConfig()?.idioma_ui, lang: document.documentElement.lang,
-    boton: document.querySelector('.pz-pie [data-bv="2"]')?.textContent }));
+    boton: document.querySelector('.pz-pie [data-bv-ir="2"]')?.textContent }));
   if (despues.guardado !== "en" || despues.lang !== "en" || despues.boton !== "Next") falla("elegir English no guardó idioma_ui o no cambió la app: " + JSON.stringify(despues));
   else if (esquema === "light") console.log("  ✓ Primer uso: lo primero es el idioma; con teclado se elige English, se guarda idioma_ui y lo que sigue sale en inglés");
   await p.close();

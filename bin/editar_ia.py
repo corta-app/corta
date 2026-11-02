@@ -3,9 +3,11 @@
   editar_ia.py pedir <carpeta> "<lo que quieres>" <salida.json>   aplica los cambios (con respaldo para deshacer)
   editar_ia.py shorts <carpeta> <salida.json>                      propone los mejores momentos (no guarda nada)
   editar_ia.py crear_short <carpeta> <desde> <hasta> "<título>" <salida.json>   crea un proyecto nuevo con ese tramo
-  editar_ia.py entrada <entrada.json> <salida.json>   lo mismo, con lo que manda la app en un archivo (nunca texto de la persona
-                                                      como argumento): {"accion": "pedir"|"shorts"|"crear_short", "carpeta",
-                                                      "texto"?, "desde"?, "hasta"?, "titulo"?}; la carpeta tiene que ser de ~/Corta
+  editar_ia.py entrada [pedir|shorts|crear_short] <entrada.json> <salida.json>
+                                                      lo mismo, con lo que manda la app en un archivo (nunca texto de la persona
+                                                      como argumento): {"accion"?, "carpeta", "texto"?, "desde"?, "hasta"?,
+                                                      "titulo"?}; la acción va como argumento (así la declara app.json) o en
+                                                      «accion»; la carpeta tiene que ser de ~/Corta
 
 La IA nunca toca el proyecto directo: responde una lista de operaciones en JSON, se validan una por una y solo se aplican las
 válidas. Ve la transcripción con números de palabra y tiempos, nunca el video.
@@ -336,13 +338,17 @@ def crear_short(carpeta, desde, hasta, titulo):
     return {"ok": True, "carpeta": destino, "proyecto": q}
 
 
-def desde_entrada(ruta):
-    """Lo que manda la app (la interfaz) llega en un JSON: se revisa cada campo antes de usarlo."""
+ACCIONES = ("pedir", "shorts", "crear_short")
+
+
+def desde_entrada(ruta, accion=None):
+    """Lo que manda la app (la interfaz) llega en un JSON: se revisa cada campo antes de usarlo. `accion` (del argumento, como la
+    declara app.json para el host) gana sobre la del archivo."""
     d = proyecto.leer_json(ruta, None)
     if not isinstance(d, dict):
         raise ValueError("No pude leer el pedido.")
     carpeta = proyecto.carpeta_valida(d.get("carpeta"))
-    accion = d.get("accion")
+    accion = accion or d.get("accion")
     if accion == "pedir":
         texto = d.get("texto")
         if not isinstance(texto, str) or not texto.strip():
@@ -363,6 +369,8 @@ if __name__ == "__main__":
     try:
         if len(a) == 3 and a[0] == "entrada":
             r = desde_entrada(a[1])
+        elif len(a) == 4 and a[0] == "entrada" and a[1] in ACCIONES:
+            r = desde_entrada(a[2], a[1])
         elif len(a) == 4 and a[0] == "pedir":
             r = pedir(a[1], a[2])
         elif len(a) == 3 and a[0] == "shorts":

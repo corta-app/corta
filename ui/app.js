@@ -6,7 +6,7 @@
   const E = {
     proyectos: [], sel: null, estilos: [], config: {}, ias: [], modelos: { lista: [] }, version: "", carpeta: "", progreso: {},
     pestana: "texto", seleccion: null, ancla: null, ia: { texto: "", enviando: false, historial: [] }, shorts: null, buscandoShorts: false,
-    limpiando: false, ultimoAhorro: null, exportar: null, bv: null, bvCerrada: false, ajustes: false,
+    limpiando: false, ultimoAhorro: null, exportar: null, bvCerrada: false, ajustes: false,
     descarga: null, idioma: "es", soltar: false,  // idioma: copia de i18n.idioma
     lt: { zoom: 1, sel: null, ancho: 0, vel: false },  // línea de tiempo: zoom horizontal, tramo elegido ({lista, k}), ancho visible en px
                                                        // y si se ve la velocidad del tramo elegido
@@ -48,12 +48,26 @@
   // ───────────── Tema (pieza «tema») y componentes comunes (pieza «componentes»: diálogos, avisos, Tu IA, actualizaciones) ─────────────
   const tema = window.PiezaTema.crear({ guardar: (v) => { E.config.tema = v; host.enviar("config", { tema: v }); } });
   tema.aplicar(tema.elegir({}));  // antes del primer estado: ?tema= o el sistema, para que nada parpadee
-  let avisosPendientes = [];      // avisos que llegan mientras la persona elige el idioma: se muestran después, ya traducidos
   const ui = window.PiezaComponentes.crear({
     i18n, host, app: "Corta", repo: "corta-app/corta", version: () => E.version, pintar: () => pintar(), cerrar: () => cerrarDialogo(),
     elegirIA: (id) => { E.config.ia = id; host.enviar("config", { ia: id }); },
-    retener: (texto, o) => { if (E.bv !== 0) return false; avisosPendientes.push([texto, o]); return true; },
+    retener: (texto, o) => bv.retener(texto, o),  // mientras se elige el idioma, los avisos esperan (y sale el último, ya traducido)
   });
+  // ───────────── Primer uso (pieza «bienvenida»): el idioma siempre primero; después Hola, Tu IA y el transcriptor ─────────────
+  // No se cierra con Esc ni tocando afuera: se sale con «Lo hago después» o «Empezar». Quien ya eligió el idioma y la dejó a medias
+  // sigue desde «Hola»; quien la terminó no la repite (el idioma se cambia en Ajustes).
+  const bv = window.PiezaBienvenida.crear({
+    i18n, pintar: () => pintar(), listo: false, mostrarAviso: (texto, o) => ui.aviso(texto, o),
+    guardarIdioma: (codigo) => { E.config.idioma_ui = codigo; host.enviar("config", { idioma_ui: codigo }); },  // el mismo camino que Ajustes
+    cargarIdioma: (codigo) => cargarIdioma(codigo),
+    terminar: () => { E.bvCerrada = true; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); },
+  });
+  bv.sumarPaso({ id: "hola", orden: 10, titulo: "Hola, esto es Corta",
+    cuerpo: () => `<p>Un editor para Shorts, Reels y TikTok que funciona en tu computador. Lo transcribe todo, editas el texto y tu propia IA hace el trabajo pesado. Gratis y sin marca de agua.</p>` });
+  bv.sumarPaso({ id: "ia", orden: 20, titulo: "Elige tu IA", puede: () => !!E.config.ia,
+    cuerpo: () => `<p>Corta usa la IA que ya tienes, con tu cuenta. La probamos con una pregunta corta.</p><div class="seccion">${filasIA()}</div>` });
+  bv.sumarPaso({ id: "transcriptor", orden: 30, titulo: "Descarga el transcriptor", puede: () => (E.modelos.lista || []).some((m) => m.listo),
+    cuerpo: () => `<p>Convierte la voz en texto dentro de tu computador. Se descarga una sola vez.</p><div class="seccion">${filasModelo()}</div>` });
 
   // ───────────── Lógica del proyecto (la misma que bin/proyecto.py, limpiar.py y subtitulos.py; casos en pruebas/casos.json) ─────────────
   const r3 = (n) => Math.round(n * 1000) / 1000;
@@ -512,7 +526,7 @@
     const viejo = $("#video");
     const activo = document.activeElement?.id;
     // En el primer uso lo primero es el idioma: hasta elegirlo no se pinta nada más (ni la app detrás, ni el video).
-    raiz.innerHTML = E.bv === 0 ? dialogos() : `<div class="app">${barra()}${lateral()}${principal()}</div>${sugerenciaHTML()}${dialogos()}${ui.capas()}`;
+    raiz.innerHTML = bv.soloIdioma ? dialogos() : `<div class="app">${barra()}${lateral()}${principal()}</div>${sugerenciaHTML()}${dialogos()}${ui.capas()}`;
     traducirDOM(raiz);
     const cp = $(".cuerpo-panel"); if (cp) cp.scrollTop = scroll;
     const vl = $("#lt-vista"); if (vl) vl.scrollLeft = scrollLT;
@@ -1461,47 +1475,13 @@
       ${filas}${chips ? `<div class="chips-vocab">${chips}</div>` : ""}
       <div class="pz-fila"><input class="texto" id="vocab-nueva" maxlength="60" placeholder="Un nombre o una marca" autocomplete="off"><button class="pz-boton" data-accion="vocab-agregar">Agregar</button></div>`;
   }
-  /** Paso 0 de la bienvenida: el idioma, antes que cualquier otra cosa. Cada opción va escrita en su propio idioma (no se traduce)
-   *  y la del sistema (o la ya guardada) queda marcada como sugerida y con el foco. */
-  function pasoIdioma() {
-    const sugerido = E.idioma === "en" ? "en" : "es";
-    const opcion = (codigo, nombre, detalle, etiqueta) => `<button class="pz-boton opcion-idioma${codigo === sugerido ? " pz-principal" : ""}" id="idioma-${codigo}" lang="${codigo}" data-elegir-idioma="${codigo}"${codigo === sugerido ? " data-autofoco" : ""}>
-      <b>${nombre}</b><small>${detalle}</small>${codigo === sugerido ? `<em class="sugerido">${etiqueta}</em>` : ""}</button>`;
-    return `<div class="idioma-bv" data-sin-traducir>${LOGO}
-      <h2 id="t-bv" tabindex="-1"><span lang="es">Elige tu idioma</span> <span class="punto" aria-hidden="true">·</span> <span lang="en">Choose your language</span></h2>
-      <div class="opciones-idioma">${opcion("es", "Español", "Continuar en español", "Sugerido")}${opcion("en", "English", "Continue in English", "Suggested")}</div>
-      <p class="nota-idioma"><span lang="es">Puedes cambiarlo cuando quieras en Ajustes.</span> <span lang="en">You can change it anytime in Settings.</span></p></div>`;
-  }
-  async function elegirIdioma(codigo) {
-    E.config.idioma_ui = codigo;
-    host.enviar("config", { idioma_ui: codigo });  // el mismo camino que el selector de Ajustes
-    await cargarIdioma(codigo);
-    E.bv = 1;
-    pintar();
-    const avisos = avisosPendientes; avisosPendientes = [];
-    if (avisos.length) ui.aviso(...avisos[avisos.length - 1]);
-  }
-  /** Pasos 1–3 de la bienvenida. No se cierra con Esc ni tocando afuera: se sale con «Lo hago después» o «Empezar». */
-  function bienvenida() {
-    const paso = E.bv;
-    const puntos = `<div class="pasos-bv" aria-hidden="true">${[0, 1, 2, 3].map((i) => `<i class="${i <= paso ? "hecho" : ""}"></i>`).join("")}</div>`;
-    const modeloListo = (E.modelos.lista || []).some((m) => m.listo);
-    const pasos = [
-      null,  // 0: el idioma (pasoIdioma)
-      ["Hola, esto es Corta", `<p>Un editor para Shorts, Reels y TikTok que funciona en tu computador. Lo transcribe todo, editas el texto y tu propia IA hace el trabajo pesado. Gratis y sin marca de agua.</p>`, true],
-      ["Elige tu IA", `<p>Corta usa la IA que ya tienes, con tu cuenta. La probamos con una pregunta corta.</p><div class="seccion">${filasIA()}</div>`, !!E.config.ia],
-      ["Descarga el transcriptor", `<p>Convierte la voz en texto dentro de tu computador. Se descarga una sola vez.</p><div class="seccion">${filasModelo()}</div>`, modeloListo],
-    ];
-    const [titulo, cuerpo, puede] = pasos[paso];
-    return { titulo, cerrable: false, sinEsc: true, cuerpo: puntos + cuerpo,
-      pie: `<button class="pz-boton pz-izq" data-bv="${paso - 1}">Atrás</button><button class="pz-boton" data-accion="bv-fin">Lo hago después</button>
-        ${paso < pasos.length - 1 ? `<button class="pz-boton pz-principal" data-bv="${paso + 1}" ${puede ? "" : "disabled"}>Siguiente</button>` : `<button class="pz-boton pz-principal" data-accion="bv-fin">Empezar</button>`}` };
-  }
   function dialogos() {
-    // El idioma va sobre fondo liso y sin nada detrás (no se cierra; el foco parte en el idioma sugerido).
-    if (E.bv === 0) return `<div class="pz-capa capa-idioma"><div class="pz-dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv" tabindex="-1" data-pz-sin-esc>
-      <div class="pasos-bv" aria-hidden="true">${[0, 1, 2, 3].map((i) => `<i class="${i === 0 ? "hecho" : ""}"></i>`).join("")}</div>${pasoIdioma()}</div></div>`;
-    const [id, d] = E.exportar ? ["t-exp", dialogoExportar()] : E.bv !== null ? ["t-bv", bienvenida()] : E.ajustes ? ["t-aj", dialogoAjustes()]
+    // El idioma va sobre fondo liso y sin nada detrás (no se cierra; el foco parte en el idioma sugerido). Cada opción va escrita
+    // en su propio idioma (no se traduce).
+    if (bv.soloIdioma) return `<div class="pz-capa capa-idioma"><div class="pz-dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv" tabindex="-1" data-pz-sin-esc>
+      ${LOGO}${bv.html().replace('class="opcion-idioma sugerido"', 'class="opcion-idioma sugerido" data-autofoco')}</div></div>`;
+    if (bv.activa && !E.exportar) return ui.envolver(bv.html(), { id: "t-bv", sinEsc: true });
+    const [id, d] = E.exportar ? ["t-exp", dialogoExportar()] : E.ajustes ? ["t-aj", dialogoAjustes()]
       : E.catalogo ? ["t-cat", dialogoCatalogo()] : E.pl ? ["t-pl", { clase: "dialogo-pl", ...dialogoPlantillas() }] : [];
     return id ? ui.dialogo({ id, ...d }) : "";
   }
@@ -1821,11 +1801,11 @@
   }
   document.addEventListener("click", (ev) => {
     if (ui.manejarClic(ev)) return;              // diálogos (✕, velo), Tu IA, actualizaciones, Acerca de y comentarios
+    if (bv.manejarClic(ev)) return;              // la bienvenida: el idioma, Atrás, Siguiente, Lo hago después y Empezar
     if (tema.manejarClic(ev)) return pintar();   // Ajustes → Apariencia
-    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-modelo],[data-modelo-usar],[data-bv],[data-enlace],[data-lt-zoom],[data-elegir-idioma],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo],[data-ver-pl],[data-pl-cat],[data-pl-fuente],[data-bajar-pl],[data-pl-bajar-fx],[data-elegir-clips],[data-cambiar-clip],[data-vel]");
+    const el = ev.target.closest("[data-accion],[data-sel],[data-pestana],[data-w],[data-pausa],[data-lienzo],[data-estilo],[data-ejemplo],[data-ver-short],[data-crear-short],[data-modelo],[data-modelo-usar],[data-enlace],[data-lt-zoom],[data-sub-w],[data-vocab-quitar],[data-vocab-quitar-palabra],[data-quitar-ia],[data-fx],[data-fx-cat],[data-cat-cat],[data-bajar-fx],[data-quitar-fx],[data-tramo],[data-ver-pl],[data-pl-cat],[data-pl-fuente],[data-bajar-pl],[data-pl-bajar-fx],[data-elegir-clips],[data-cambiar-clip],[data-vel]");
     if (!el) return;
     const d = el.dataset, p = P(), v = $("#video");
-    if (d.elegirIdioma) return elegirIdioma(d.elegirIdioma === "en" ? "en" : "es");
     if (d.ltZoom != null) return cambiarZoom(Number(d.ltZoom));
     if (d.enlace) { ev.preventDefault(); return host.enviar("abrirEnlace", { url: d.enlace }); }
     if (d.sel) { E.sel = d.sel; E.seleccion = null; E.shorts = null; E.ultimoAhorro = null; E.lt.sel = null; E.editar = null; E.sugerencia = null; return pintar(); }
@@ -1885,7 +1865,6 @@
     if (d.crearShort != null) { const s = E.shorts.lista[Number(d.crearShort)]; host.enviar("crearShort", { carpeta: E.sel, desde: s.i, hasta: s.f, titulo: s.titulo }); return toast("Creando el Short…"); }
     if (d.modelo) { E.descarga = { id: d.modelo, pct: 0 }; host.enviar("descargarModelo", { id: d.modelo }); return pintar(); }
     if (d.modeloUsar) { E.config.modelo = d.modeloUsar; host.enviar("config", { modelo: d.modeloUsar }); return pintar(); }
-    if (d.bv) { E.bv = Number(d.bv); return pintar(); }
     switch (d.accion) {
       case "nuevo": return host.enviar("elegirVideo");
       case "play": case "escuchar-musica": if (v) { if (v.paused) reproducir(); else v.pause(); } return;
@@ -1945,7 +1924,6 @@
       case "cerrar": return cerrarDialogo();
       case "plantillas": if ($("#video")) $("#video").pause(); E.pl = { fuente: "corta", categoria: "todas", busqueda: "", ver: null, armando: false, bajando: {}, catalogo: E.pl?.catalogo || null }; return pintar();
       case "abrir-carpeta": return host.enviar("abrirCarpeta", {});
-      case "bv-fin": E.bv = null; E.bvCerrada = true; host.enviar("config", { bienvenida: true }); return pintar();
     }
   });
   document.addEventListener("input", (ev) => {
@@ -2013,9 +1991,10 @@
   document.addEventListener("keydown", (ev) => {
     const escribiendo = ev.target.closest?.("input, textarea, select, [contenteditable]");
     // En el detalle de una plantilla, Esc vuelve a la lista (✕ y tocar afuera cierran todo).
-    if (ev.key === "Escape" && E.pl?.ver && !E.pl.armando && !E.exportar && E.bv === null) { ev.preventDefault(); E.pl.ver = null; return pintar(); }
+    if (ev.key === "Escape" && E.pl?.ver && !E.pl.armando && !E.exportar && !bv.activa) { ev.preventDefault(); E.pl.ver = null; return pintar(); }
     if (ui.manejarTecla(ev)) return;  // Esc cierra el diálogo de arriba y Tab no se sale de él
-    if (E.bv !== null) return;  // con la bienvenida abierta, los atajos del editor no corren detrás
+    if (bv.manejarTecla(ev)) return;  // en el idioma: 1 y 2 eligen, las flechas pasan de una opción a otra
+    if (bv.activa) return;  // con la bienvenida abierta, los atajos del editor no corren detrás
     if (ev.target.id === "editar-palabra" || ev.target.id === "editar-sub") {
       if (ev.key === "Enter") { ev.preventDefault(); terminarEdicion(true); }
       else if (ev.key === "Escape") { ev.preventDefault(); terminarEdicion(false); }
@@ -2116,7 +2095,7 @@
     document.addEventListener(tipo, (ev) => {
       if (!ev.dataTransfer?.types?.includes("Files")) return;
       ev.preventDefault();
-      if (E.bv === 0) return;  // mientras se elige el idioma no se importa nada
+      if (bv.soloIdioma) return;  // mientras se elige el idioma no se importa nada
       const encima = tipo === "dragover";
       if (E.soltar !== encima) { E.soltar = encima; const z = $("[data-soltar]"); if (z) z.classList.toggle("encima", encima); }
       if (tipo === "drop") host.enviar("soltarVideo", { nombres: [...ev.dataTransfer.files].map((f) => f.name) });
@@ -2133,7 +2112,7 @@
       if (e.seleccionar) E.sel = e.seleccionar;
       if (E.sel && !E.proyectos.some((x) => x.carpeta === E.sel)) E.sel = null;
       if (!E.sel && E.proyectos.length) E.sel = E.proyectos[0].carpeta;
-      if (!E.config.bienvenida && E.bv === null && !E.bvCerrada) E.bv = 0;
+      if (!E.config.bienvenida && !bv.activa && !E.bvCerrada) bv.abrir({ config: E.config });
       await cargarIdioma();
       if (e.aviso) toast(e.aviso);
       ui.actualizacionDisponible(e.actualizacion, { pintar: false });  // {hay, notas}: solo la anota para la fila de Ajustes
@@ -2146,6 +2125,19 @@
       if (r.aviso) toast(r.aviso);
       pintar();
     },
+    /** guardarProyecto (acción declarada: bin/guardar.py) → {ok, carpeta}. La interfaz ya pintó el cambio; si no se pudo guardar,
+     *  se avisa y se vuelve a pedir el estado (lo que quedó en el disco). */
+    proyectoGuardado(r) { if (!r.ok) { toast(r.error || "No pude guardar."); host.enviar("listo"); } },
+    /** deshacer (declarada) → {ok, deshecho, carpeta, proyecto}. */
+    deshecho(r) { if (r.ok && r.proyecto) window.Corta.proyectoActualizado({ carpeta: r.carpeta, proyecto: r.proyecto, aviso: tr(r.deshecho ? "Deshecho" : "No hay nada que deshacer") }); },
+    /** crearShort (declarada: bin/editar_ia.py) → {ok, carpeta, proyecto} del Short nuevo, o {ok: false, error}. */
+    shortCreado(r) {
+      if (r.ok && r.carpeta && r.proyecto) { E.shorts = null; return window.Corta.proyectoActualizado({ carpeta: r.carpeta, proyecto: r.proyecto, seleccionar: true, aviso: tr("Short creado") }); }
+      toast(r.error || "No pude crear el Short."); pintar();
+    },
+    /** Un ítem de los menús de la app de Mac que atiende la interfaz (pieza «host-mac»: Ajustes… y, al cerrar, «guardar»: Corta
+     *  guarda cada cambio al hacerlo, no queda nada pendiente). Nada mientras se elige el idioma. */
+    menu(r) { if (r.accion === "ajustes" && !bv.soloIdioma) { E.ajustes = true; pintar(); } },
     progreso(r) { if (r.listo) delete E.progreso[r.carpeta]; else E.progreso[r.carpeta] = r; pintar(); },
     limpiado(r) { E.limpiando = false; if (r.ok) { E.ultimoAhorro = r.ahorro; window.Corta.proyectoActualizado({ carpeta: E.sel, proyecto: r.proyecto }); } else { toast(r.error || "No se pudo limpiar"); pintar(); } },
     iaRespondio(r) {
@@ -2170,7 +2162,7 @@
     /** Avance de una actualización: {paso: "1"–"3" o "error", texto (ya traducido por la app), total, pct?}. El aviso de error lo da la pieza. */
     actualizacionProgreso(r) { ui.actualizacionProgreso(r); },
     /** {hay, notas, sinConexion}: la fila «Actualizaciones» de Ajustes (pieza «componentes»). */
-    actualizacionRevisada(r) { ui.actualizacionRevisada(r, { pintar: E.bv !== 0 }); },  // nada se pinta detrás del idioma
+    actualizacionRevisada(r) { ui.actualizacionRevisada(r, { pintar: !bv.soloIdioma }); },  // nada se pinta detrás del idioma
     /** Respuesta a `catalogoEfectos`: {ok, tipo, efectos} (ya validados por bin/catalogo.py) o {ok: false, codigo, frase}.
      *  Sin conexión llega la última lista validada con `sin_conexion: true`: se ve, pero descargar pide conexión. */
     catalogoListo(r) {
@@ -2221,7 +2213,14 @@
     _probar(f) { f(E); pintar(); },
   });
   // Para las pruebas (pruebas/interfaz.mjs): la lógica que se compara con Python. No es una función: va aparte de host.responder.
-  window.Corta._pruebas = { conservados, aSalida, duracionFinal, lento, velocidadEn, ponerVelocidad, audioDe, velocidades, ltX, ltT, durHueco, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
+  /** Para las pruebas y las capturas: la bienvenida en el paso n (0 = el idioma), o cerrada (null). */
+  function abrirBienvenida(n) {
+    if (n === null) { bv.terminar(); return pintar(); }
+    bv.abrir({ config: n === 0 ? {} : { idioma_ui: E.idioma }, forzar: n === 0 });
+    while (bv.paso < n && bv.ir(bv.paso + 1));
+    pintar();
+  }
+  window.Corta._pruebas = { bienvenida: abrirBienvenida, conservados, aSalida, duracionFinal, lento, velocidadEn, ponerVelocidad, audioDe, velocidades, ltX, ltT, durHueco, cortarPalabras, restaurar, cortesPorPalabras, lineas, unir, limitesBorde, moverBorde,
       tramosVoz, cuantoBaja, textoQueCabe, normalizar, intervalosSalida, uniones, llenar, aplicarPlantilla, iniciosHuecos, segmentosZoom, segmentosCapa, valorEn, cssColor, ventanasPaso, segmentosPaso, segmentosExposicion, cortesInterferencia, franjasInterferencia, tramosEdicion, partes, editarPalabras, reemplazarTodo, quitarCambioIA, musica: () => musicaAudio, ganancia: () => gananciaMusica, demoConfig: () => DEMO?.config, demoCatalogoPl: () => clonar(DEMO?.catalogo_plantillas || []) };
 
   // ───────────── Vista previa en el navegador (datos ficticios de demo.json) ─────────────
@@ -2237,8 +2236,8 @@
     switch (accion) {
       case "listo": return A.estado(clonar(DEMO));
       case "config": Object.assign(DEMO.config, d); return;
-      case "guardarProyecto": { const x = demoProy(d.carpeta); (historial[d.carpeta] ||= []).push(clonar(x.proyecto)); x.proyecto = clonar(d.proyecto); return; }
-      case "deshacer": { const h = historial[d.carpeta]; if (!h?.length) return toast("No hay nada que deshacer"); const x = demoProy(d.carpeta); x.proyecto = h.pop(); return A.proyectoActualizado({ carpeta: d.carpeta, proyecto: clonar(x.proyecto), aviso: "Deshecho" }); }
+      case "guardarProyecto": { const x = demoProy(d.carpeta); (historial[d.carpeta] ||= []).push(clonar(x.proyecto)); x.proyecto = clonar(d.proyecto); return A.proyectoGuardado({ ok: true, carpeta: d.carpeta }); }
+      case "deshacer": { const h = historial[d.carpeta], x = demoProy(d.carpeta); if (h?.length) x.proyecto = h.pop(); return A.deshecho({ ok: true, deshecho: !!h?.length, carpeta: d.carpeta, proyecto: clonar(x.proyecto) }); }
       case "limpiar": return luego(600, () => {
         const x = demoProy(d.carpeta), p = x.proyecto, antes = duracionFinal(p);
         (historial[d.carpeta] ||= []).push(clonar(p));
@@ -2288,8 +2287,7 @@
         if (d.desde > 0.05) q.cortes.push({ i: 0, f: r3(d.desde), motivo: "fuera" });
         if (d.hasta < q.fuente.duracion - 0.05) q.cortes.push({ i: r3(d.hasta), f: q.fuente.duracion, motivo: "fuera" });
         DEMO.proyectos.unshift({ carpeta, proyecto: q });
-        E.shorts = null;
-        A.proyectoActualizado({ carpeta, proyecto: clonar(q), seleccionar: true, aviso: "Short creado" });
+        A.shortCreado({ ok: true, carpeta, proyecto: clonar(q) });
       });
       case "exportar": { let pct = 0; const iv = setInterval(() => { pct += 9; if (pct >= 100) { clearInterval(iv); A.exportado({ ok: true, duracion: duracionFinal(demoProy(d.carpeta).proyecto), archivo: "exportado-9x16.mp4" }); } else A.exportarProgreso({ pct }); }, 220); return; }
       case "elegirMusica": return luego(300, () => {  // la demo usa una música hecha con código (herramientas/generar_demo.py)
