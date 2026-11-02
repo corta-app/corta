@@ -1,6 +1,6 @@
 #!/bin/bash
 # Arma dist/Corta.app (autosuficiente) y dist/Corta-macOS.zip + .sha256, sin instalar nada. Solo en un Mac (Apple Silicon).
-# Lo usan build.sh (en tu Mac) y, cuando exista, la acción de GitHub que publica cada versión.
+# Lo usan build.sh (en tu Mac) y .github/workflows/publicar.yml (la acción de GitHub que publica cada versión).
 # Dentro van: la app; corta-transcribir + whisper.framework (whisper.cpp oficial, con Metal); ffmpeg y ffprobe; Python portátil;
 # y el código (bin/, ui/, estilos/, efectos/, plantillas/, app.json y acciones.json) en Contents/Resources/corta. Los videos y proyectos de la persona quedan en ~/Corta.
 # Todo lo que se descarga tiene su huella SHA-256 fija aquí: si no coincide, no se usa y el armado se detiene.

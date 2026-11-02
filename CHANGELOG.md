@@ -1,11 +1,16 @@
 # Cambios · Changelog
 
-Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriores a este archivo están en
+Lo que cambia para quien usa Corta, en palabras simples. Cada versión, con su descarga y su huella SHA-256, está en
 [Releases](https://github.com/corta-app/corta/releases).
-*What changes for people using Corta, in plain words. Earlier versions are listed in Releases.*
+*What changes for people using Corta, in plain words. Every version, with its download and SHA-256 checksum, is in Releases.*
 
-## Sin publicar · Unreleased
+## 0.1.0 · 2026-11-02
 
+- **La primera versión para descargar:** Corta para Mac (Apple Silicon, macOS 15 o más nuevo) en
+  [Releases](https://github.com/corta-app/corta/releases), ya sin armarla desde el código. Trae todo
+  adentro y, desde ahora, te avisa sola de cada versión nueva.
+  *The first version to download: Corta for Mac (Apple Silicon, macOS 15 or newer) from Releases, no need to build it from source.
+  Everything is bundled and, from now on, it tells you about each new version itself.*
 - En la primera pantalla vuelve, bajo cada idioma, «Continuar en español» / «Continue in English». Al cerrar Corta en medio de una
   exportación o de una transcripción, los archivos temporales se borran igual que antes.
   *On the first screen, "Continuar en español" / "Continue in English" is back under each language. Quitting Corta in the middle of
