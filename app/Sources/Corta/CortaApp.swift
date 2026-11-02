@@ -15,7 +15,10 @@ import UniformTypeIdentifiers
 @main
 enum CortaApp {
     @MainActor static func main() {
-        Host.arrancar(.init(minAncho: 900, minAlto: 600, sitio: "https://corta-app.github.io/corta/", codigo: "https://github.com/corta-app/corta")) { p in
+        // La interfaz llega hasta arriba (barra de título transparente; ui/app.css deja lugar a los botones de la ventana con
+        // `html[data-host="mac"] .barra`) y una franja invisible de 12 puntos mueve la ventana: lo hace el host (`barraTransparente`).
+        Host.arrancar(.init(minAncho: 900, minAlto: 600, sitio: "https://corta-app.github.io/corta/", codigo: "https://github.com/corta-app/corta",
+                            barraTransparente: true, altoFranja: 12)) { p in
             // ffmpeg, ffprobe y corta-transcribir vienen dentro de la app (Contents/MacOS, verificados por huella al empaquetar):
             // proyecto.programa() y la pieza «transcribir» los prefieren a los del sistema.
             Procesador.entornoApp[Host.prefijo + "PROGRAMAS"] = Rutas.programas.path
@@ -31,7 +34,6 @@ enum CortaApp {
             }
             p.estado = { base, listo in listo(Corta.estado(base)) }
             p.menus = { m in Corta.menus(m) }
-            Ventanas.preparar()
 
             // Pieza «actualizaciones»: solo los Releases de corta-app/corta (Corta-macOS.zip + .sha256). Instalación de desarrollo:
             // build.sh deja la ruta del checkout en ~/Corta/.corta/desarrollo y empaquetar.sh escribe su avance en CORTA_PROGRESO.
@@ -145,19 +147,13 @@ enum Corta {
         }
     }
 
-    /// La interfaz solo sabe los nombres; las rutas las guardó la ventana al soltar (nunca se arma una ruta con lo que manda la web).
+    /// La interfaz solo sabe los nombres; las rutas las guardó el host al soltar (`soltado(nombre)`: nunca se arma una ruta con lo
+    /// que manda la web).
     static func soltarVideo(_ d: [String: Any]) {
-        let nombres = Set(d["nombres"] as? [String] ?? [])
-        // Las rutas siempre salen del sistema, nunca de la página: la capa de Ventanas.swift y, si no alcanzó a verlas, lo que
-        // quedó en el portapapeles del arrastre.
-        if Ventanas.soltados.isEmpty {
-            let arrastre = NSPasteboard(name: .drag).readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]
-            Ventanas.soltados = (arrastre ?? []).map(\.standardizedFileURL)
-        }
-        guard let u = Ventanas.soltados.first(where: { nombres.contains($0.lastPathComponent) && videos.contains($0.pathExtension.lowercased()) }) else {
+        let nombres = d["nombres"] as? [String] ?? []
+        guard let u = nombres.lazy.compactMap({ Puente.shared.soltado($0) }).first(where: { videos.contains($0.pathExtension.lowercased()) }) else {
             return avisar("Suelta un video MP4, MOV o WebM.")
         }
-        Ventanas.soltados = []
         importar(u)
     }
 

@@ -6,6 +6,10 @@ Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriore
 
 ## Sin publicar · Unreleased
 
+- En la primera pantalla vuelve, bajo cada idioma, «Continuar en español» / «Continue in English». Al cerrar Corta en medio de una
+  exportación o de una transcripción, los archivos temporales se borran igual que antes.
+  *On the first screen, "Continuar en español" / "Continue in English" is back under each language. Quitting Corta in the middle of
+  an export or a transcription still cleans up its temporary files, as before.*
 - La vista previa gasta mucho menos computador: en pausa casi nada (antes repintaba la ventana en cada cuadro) y, con videos
   largos, también al reproducir. Tu batería lo nota.
   *The preview uses far less of your computer: almost nothing while paused (it used to repaint the window every frame) and much
