@@ -52,12 +52,12 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 | | Cómo | Estado |
 |---|---|---|
 | 🌐 **Navegador** | [Vista previa con un video de mentira](https://corta-app.github.io/corta/demo/): nada que instalar. | Para mirar cómo funciona |
-| 🍎 **Mac** | [Desde el código](#instalar-en-mac) con `bash build.sh` (Apple Silicon, macOS 15). Trae todo adentro. | Funciona; aún sin versión publicada ni firma de Apple |
+| 🍎 **Mac** | [**Descargar Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip) (Apple Silicon, macOS 15): [cómo instalarla](#instalar-en-mac). Trae todo adentro. | Funciona; sin firma de Apple |
 | 🪟 🐧 **Windows y Linux** | La misma interfaz, en una app de escritorio. | En camino |
 
 La IA es opcional y es la tuya, con tu cuenta: Claude Code, Codex (ChatGPT) o Gemini CLI
 ([cómo instalarla](https://corta-app.github.io/corta/ia.html)). Sin IA igual editas por texto, limpias silencios, pones subtítulos,
-efectos y plantillas. En GitHub, **Watch → Custom → Releases** te avisa cuando salga la primera versión para descargar.
+efectos y plantillas. Todas las versiones, cada una con su huella `.sha256`, están en [Releases](https://github.com/corta-app/corta/releases).
 
 ## Tus videos son tuyos
 - Transcripción (whisper.cpp) y exportación (ffmpeg) en tu computador. **No hay servidores de Corta**, ni cuentas, ni telemetría.
@@ -83,19 +83,27 @@ Corta es gratis y abierta, y la hacemos entre todos. Casi nada exige programar:
 Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md). ¿Una falla de seguridad? Avísanos en privado: [SECURITY.md](SECURITY.md).
 
 ## Estado
-Versión 0.1, recién nacida. Ya funcionan el motor (cortes, silencios, subtítulos, zooms, textos, encuadre, exportación vertical,
+Versión 0.1, recién nacida y [lista para descargar](#instalar-en-mac). Ya funcionan el motor (cortes, silencios, subtítulos, zooms, textos, encuadre, exportación vertical,
 edición con IA y Shorts), la interfaz y la **app para Mac** (Apple Silicon, macOS 15 o más nuevo). Windows y Linux vienen en camino.
 Puedes [probar la interfaz con un video de mentira](https://corta-app.github.io/corta/demo/).
 
 ## Instalar en Mac
-Corta para Mac trae todo adentro: no necesitas instalar Python, ffmpeg ni whisper. Mientras no haya una versión publicada, se arma
-desde el código en tu Mac (necesitas las herramientas de línea de comandos de Xcode: `xcode-select --install`):
+Corta para Mac trae todo adentro: no necesitas instalar Python, ffmpeg ni whisper. Es para Mac con Apple Silicon (M1 o más nuevo) y
+macOS 15 o más nuevo.
+1. Descarga [**Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip) (la última versión; su huella SHA-256 está en el mismo
+   [Release](https://github.com/corta-app/corta/releases/latest), en `Corta-macOS.zip.sha256`).
+2. Descomprímelo y arrastra **Corta** a Aplicaciones.
+3. Ábrela. Corta es una app **sin firmar** (no pagamos el certificado de Apple), así que la primera vez macOS avisa que no puede
+   verificarla: ve a **Ajustes del Sistema → Privacidad y seguridad** y, abajo, toca **«Abrir igualmente»**. Solo la primera vez.
+
+**Desde el código** (si prefieres armarla tú; necesitas las herramientas de línea de comandos de Xcode: `xcode-select --install`):
 ```bash
 git clone https://github.com/corta-app/corta ~/Developer/corta   # no en ~/corta: macOS no distingue ~/corta de ~/Corta (tus videos)
 cd ~/Developer/corta && bash build.sh                            # queda en ~/Applications/Corta.app
 ```
 La primera vez elige tu idioma, tu IA y descarga el transcriptor (se verifica su huella). Tus videos y proyectos quedan en `~/Corta`;
-actualizar nunca los toca. Corta revisa sola si hay una versión nueva (en una instalación desde el código, con `git pull`).
+actualizar nunca los toca. Corta revisa sola si hay una versión nueva y te avisa en Ajustes (en una instalación desde el código,
+con `git pull`).
 Dentro de la app van [ffmpeg](https://ffmpeg.org) (GPL, como programa aparte), [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
 (MIT) y Python portátil, todos descargados con su huella SHA-256 fija (`herramientas/empaquetar.sh`).
 
@@ -187,8 +195,12 @@ photos and it builds itself with its cuts, transitions, effects and texts; then 
 JSON too, and the community shares more by category in the catalog.
 Spanish-first, English included. Licensed under AGPL-3.0.
 
-**Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256). Until a release is
-published, build it from source: `git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`
+**Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256).
+[**Download Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip), unzip it and drag Corta to Applications (every version, with its `.sha256`, is in
+[Releases](https://github.com/corta-app/corta/releases)). It's an **unsigned app**: the first time, macOS says it can't verify it; go
+to **System Settings → Privacy & Security** and, at the bottom, click **"Open Anyway"**. Only the first time. Corta checks for new
+versions itself and tells you in Settings. Or build it from source:
+`git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`
 (installs to `~/Applications/Corta.app`; your videos live in `~/Corta`). Windows and Linux are on the way.
 No special permissions (no microphone, camera, notifications or Keychain); it only goes online to download the transcriber once
 (huggingface.co), open the community catalog (raw.githubusercontent.com) and check for or download new versions (GitHub), all

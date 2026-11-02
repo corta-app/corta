@@ -229,6 +229,13 @@ suma con `bv.sumarPaso`: «Hola», la IA (Siguiente, con una IA elegida) y el tr
 - Toda descarga del armado (Python, ffmpeg, ffprobe, whisper.xcframework) tiene su huella fija en `empaquetar.sh` o `Package.swift`;
   si no coincide, el armado se detiene. Nunca cambies una huella sin comprobarla contra el archivo de origen.
 
+## Publicar una versión
+Sube `CFBundleShortVersionString` en `app/Info.plist` y haz push a main: `.github/workflows/publicar.yml` corre las pruebas rápidas
+(`contrato.py` y `test_python.py`), arma la app en `macos-15` (Apple Silicon) con `herramientas/empaquetar.sh` y crea el Release
+`vX.Y.Z` con `Corta-macOS.zip` y su `.sha256` (nombres fijos: los usan la página, el README y la pieza «actualizaciones»). Si la
+versión ya existe, no hace nada; también se lanza con una etiqueta `vX.Y.Z` o a mano desde Actions. Las líneas de «Sin publicar»
+del `CHANGELOG.md` pasan a su número en el mismo cambio. Windows y Linux se suman a ese workflow cuando exista su app.
+
 ## Reglas al cambiar cosas
 - Código, comentarios, commits y textos en **español** (de Chile neutro). Todo texto nuevo visible va con su traducción en
   `ui/idiomas/en.json` en el mismo cambio, como frase completa con marcadores (`T("Listo: quedó **{s} s** más corto.", {s})`).

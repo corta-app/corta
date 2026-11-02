@@ -1,0 +1,68 @@
+# Publica una versión de Corta sola: basta con subir el número de versión en app/Info.plist y hacer push a main. Compila la app de
+# Mac, arma Corta-macOS.zip con su huella SHA-256 y crea el Release vX.Y.Z. Si la versión ya existe, no hace nada.
+# (Windows y Linux se suman aquí cuando exista su app.)
+name: Publicar versión
+on:
+  push:
+    branches: [main]
+    paths: ["app/Info.plist", ".github/workflows/publicar.yml"]
+    tags: ["v*"]
+  workflow_dispatch:
+# Permisos mínimos: todo lee; solo el último paso (crear el Release) puede escribir.
+permissions:
+  contents: read
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      publicar: ${{ steps.v.outputs.publicar }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: ffmpeg
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - name: Pruebas rápidas (no se publica una versión rota)
+        run: python3 pruebas/contrato.py && python3 pruebas/test_python.py
+      - id: v
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then V="${GITHUB_REF_NAME#v}"
+          else V=$(python3 -c "import plistlib;print(plistlib.load(open('app/Info.plist','rb'))['CFBundleShortVersionString'])"); fi
+          [[ "$V" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Versión inválida: $V"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          if gh release view "v$V" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "publicar=false" >> "$GITHUB_OUTPUT"; echo "v$V ya está publicada: nada que hacer."
+          else echo "publicar=true" >> "$GITHUB_OUTPUT"; echo "Se publicará v$V"; fi
+
+  macos:
+    needs: version
+    if: needs.version.outputs.publicar == 'true'
+    # macos-15 es Apple Silicon (arm64): empaquetar.sh solo arma para Apple Silicon y baja Python, ffmpeg y ffprobe con huella fija.
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Versión en Info.plist
+        env: { VERSION: "${{ needs.version.outputs.version }}" }
+        run: /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" app/Info.plist
+      - name: Empaquetar
+        run: bash herramientas/empaquetar.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with: { name: macos, path: "dist/Corta-macOS.zip*" }
+
+  release:
+    needs: [version, macos]
+    permissions:
+      contents: write
+    if: always() && needs.macos.result == 'success'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with: { path: descargas, merge-multiple: true }
+      - name: Crear el Release
+        env: { GH_TOKEN: "${{ github.token }}", VERSION: "${{ needs.version.outputs.version }}" }
+        run: |
+          V="v$VERSION"
+          gh release create "$V" descargas/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "Corta $V" --generate-notes
