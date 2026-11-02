@@ -6,6 +6,10 @@ Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriore
 
 ## Sin publicar · Unreleased
 
+- La vista previa gasta mucho menos computador: en pausa casi nada (antes repintaba la ventana en cada cuadro) y, con videos
+  largos, también al reproducir. Tu batería lo nota.
+  *The preview uses far less of your computer: almost nothing while paused (it used to repaint the window every frame) and much
+  less while playing long videos. Your battery will notice.*
 - La app de Mac ahora es la de toda la familia ([Pieza](https://github.com/pieza-app/pieza)): se ve y se usa igual, tus videos,
   proyectos, ajustes e idioma siguen donde estaban y los atajos son los mismos. Lo que cambia por dentro: cada tarea tiene un tiempo
   máximo (transcribir y exportar no, mientras sigan avanzando), al cerrar Corta se detiene lo que quedaba corriendo en vez de
