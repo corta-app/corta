@@ -2,9 +2,9 @@
  "formato": 1,
  "piezas": {
   "nucleo": {
-   "version": "0.7.0",
+   "version": "0.7.1",
    "archivos": {
-    "bin/nucleo.py": "071763cbcacedee9bb55db8704a6098b8f68346f549bbd7ce6befa86a295a3fb"
+    "bin/nucleo.py": "1a1fd2b119d3f7ac3ade50fbce479b72494bffb406d5ad70136733b354af824f"
    },
    "ficha": {
     "requiere": [],
@@ -140,10 +140,10 @@
    }
   },
   "catalogo": {
-   "version": "0.2.0",
+   "version": "0.2.1",
    "archivos": {
-    "bin/catalogo.py": "f4e14039756ecb69c3d8f4737cfc1a479e5a61e5aa38bc64ee739d40af7b593b",
-    "app/Sources/PiezaCatalogo/Catalogo.swift": "d46098aa918179363492e76a5712ff17ff802e66dd5bc2c57bdbea8868878ba7"
+    "bin/catalogo.py": "f61a3796c483c6ed2bc4e2506cd33630e934805619658b054454f9a3d394b425",
+    "app/Sources/PiezaCatalogo/Catalogo.swift": "3131bff38076529f6f7b80268f35be7e72c5926fae96cf4c76f16aa4e8b83eaf"
    },
    "ficha": {
     "requiere": [
@@ -208,12 +208,12 @@
    }
   },
   "host-mac": {
-   "version": "0.2.0",
+   "version": "0.3.0",
    "archivos": {
-    "app/Sources/PiezaHost/Host.swift": "83e0a0092cd3996cfe35b8377b8c8c06975fb0feb9675c3196fcc44a63269e10",
-    "app/Sources/PiezaHost/Procesador.swift": "732f71a12976724889ba389bd3f34bc042ffc4f99a5c76b3fae8dbe9a1e04132",
+    "app/Sources/PiezaHost/Host.swift": "75342959251cc9d8921d23992c6e7cbb313a2a069bae1525a8bddc6d8ec38b59",
+    "app/Sources/PiezaHost/Procesador.swift": "92a11d93f07d381ba539f6bd45db6f1fa9d0e03e25f071e982d74bf32eea04dd",
     "app/Sources/PiezaHost/Enchufe.swift": "7687d04c080e560be52d90b26d36e7cfad665f8792b2887b98f5214194038d4e",
-    "app/Sources/PiezaHost/Puente.swift": "84625abeaab9558d7c7ce15816653ad0ab438a9da40458ceee8ee2a57a1b6202",
+    "app/Sources/PiezaHost/Puente.swift": "be49c68045d6cd0371a55b84d5e7b3c7ded07badd0c984e1f26ff8c3aa73ec0a",
     "app/Sources/PiezaHost/Carpeta.swift": "60676fa9a24d09105577ae1ab06bad3f379805490334e6e47afedb114292aa22",
     "app/Sources/PiezaHost/Sistema.swift": "ec7219eee6a8b7678ce795572cd9225b1407200aa042e686bb7c833849df1277"
    },
@@ -254,10 +254,10 @@
    }
   },
   "bienvenida": {
-   "version": "0.3.0",
+   "version": "0.4.0",
    "archivos": {
-    "ui/bienvenida.js": "2110ab5ab733b73a0dcb452ed2d4d0bffcd6f8d0c8a93d3820ca06518d4dae87",
-    "ui/bienvenida.css": "bd2b48b585f7cb12f50fac16d94db361c0d6f878c0587a6b8da4ad85ed7d5613"
+    "ui/bienvenida.js": "e5d2d57fd43105b163670238b4aeb37c144367549179ab09be4b3f9a92173652",
+    "ui/bienvenida.css": "cebd589f28a4fc2f1e08e143abd5b1a6531f8060dc346f53d2b9479b7c995719"
    },
    "ficha": {
     "requiere": [
@@ -268,9 +268,9 @@
    }
   },
   "trabajos": {
-   "version": "0.2.0",
+   "version": "0.2.1",
    "archivos": {
-    "bin/trabajos.py": "33021fbea093b5a6f64bb8bd7176f01fdc1416c97c1a54e937674fa4eb13fd2e",
+    "bin/trabajos.py": "fe1640aec0f3f364968501f169d4b9b58f6a746e72f81f338b027f5c392bcde3",
     "app/Sources/PiezaTrabajos/LectorProgreso.swift": "7361eb8f02ba7fe42c5526e7e44bcea24d4f1f45bedf1090d6e16dbab6890b07"
    },
    "ficha": {

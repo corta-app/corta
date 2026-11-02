@@ -56,8 +56,12 @@
   // ───────────── Primer uso (pieza «bienvenida»): el idioma siempre primero; después Hola, Tu IA y el transcriptor ─────────────
   // No se cierra con Esc ni tocando afuera: se sale con «Lo hago después» o «Empezar». Quien ya eligió el idioma y la dejó a medias
   // sigue desde «Hola»; quien la terminó no la repite (el idioma se cambia en Ajustes).
+  // El logo de Corta va arriba del paso del idioma (`logo`) y cada idioma dice, en ese idioma, «Continuar en …» (`detalle`).
+  const LOGO = `<svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#111214"/><path d="M22 15.5 49 32 22 48.5z" fill="#c6f432"/><path d="M14 44 50 20" stroke="#111214" stroke-width="7" stroke-linecap="round"/><circle cx="14" cy="44" r="4.6" fill="none" stroke="#f4f4f0" stroke-width="2.6"/><circle cx="50" cy="20" r="4.6" fill="none" stroke="#f4f4f0" stroke-width="2.6"/></svg>`;
   const bv = window.PiezaBienvenida.crear({
-    i18n, pintar: () => pintar(), listo: false, mostrarAviso: (texto, o) => ui.aviso(texto, o),
+    i18n, pintar: () => pintar(), listo: false, logo: LOGO,
+    idiomas: [{ codigo: "es", nombre: "Español", sugerido: "Sugerido", detalle: "Continuar en español" },
+      { codigo: "en", nombre: "English", sugerido: "Suggested", detalle: "Continue in English" }], mostrarAviso: (texto, o) => ui.aviso(texto, o),
     guardarIdioma: (codigo) => { E.config.idioma_ui = codigo; host.enviar("config", { idioma_ui: codigo }); },  // el mismo camino que Ajustes
     cargarIdioma: (codigo) => cargarIdioma(codigo),
     terminar: () => { E.bvCerrada = true; E.config.bienvenida = true; host.enviar("config", { bienvenida: true }); },
@@ -1483,7 +1487,7 @@
     // El idioma va sobre fondo liso y sin nada detrás (no se cierra; el foco parte en el idioma sugerido). Cada opción va escrita
     // en su propio idioma (no se traduce).
     if (bv.soloIdioma) return `<div class="pz-capa capa-idioma"><div class="pz-dialogo" role="dialog" aria-modal="true" aria-labelledby="t-bv" tabindex="-1" data-pz-sin-esc>
-      ${LOGO}${bv.html().replace('class="opcion-idioma sugerido"', 'class="opcion-idioma sugerido" data-autofoco')}</div></div>`;
+      ${bv.html()}</div></div>`;
     if (bv.activa && !E.exportar) return ui.envolver(bv.html(), { id: "t-bv", sinEsc: true });
     const [id, d] = E.exportar ? ["t-exp", dialogoExportar()] : E.ajustes ? ["t-aj", dialogoAjustes()]
       : E.catalogo ? ["t-cat", dialogoCatalogo()] : E.pl ? ["t-pl", { clase: "dialogo-pl", ...dialogoPlantillas() }] : [];
@@ -2377,7 +2381,6 @@
   /** Lo que «elige» la vista previa al usar una plantilla: el video de Ana y dos fotos dibujadas (ui/demo/, ficticias). */
   const CLIPS_DEMO = [{ archivo: "demo/ana.mp4", tipo: "video", duracion: 30.233 }, { archivo: "demo/foto-1.jpg", tipo: "foto", duracion: null },
     { archivo: "demo/foto-2.jpg", tipo: "foto", duracion: null }];
-  const LOGO = `<svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#111214"/><path d="M22 15.5 49 32 22 48.5z" fill="#c6f432"/><path d="M14 44 50 20" stroke="#111214" stroke-width="7" stroke-linecap="round"/><circle cx="14" cy="44" r="4.6" fill="none" stroke="#f4f4f0" stroke-width="2.6"/><circle cx="50" cy="20" r="4.6" fill="none" stroke="#f4f4f0" stroke-width="2.6"/></svg>`;
 
   async function iniciar() {
     if (HOST === "web") {
