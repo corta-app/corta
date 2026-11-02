@@ -44,12 +44,15 @@
   {
    "@type": "FAQPage",
    "mainEntity": [
-    { "@type": "Question", "name": "¿Corta es una alternativa gratis a CapCut?", "acceptedAnswer": { "@type": "Answer", "text": "Para lo que más se usa en Shorts, Reels y TikTok (subtítulos animados, cortar silencios, formato vertical) sí: es gratis, de código abierto y sin marca de agua. CapCut tiene muchos más efectos y una app de celular; Corta trae efectos, transiciones y plantillas, la comunidad suma más en su catálogo, y se enfoca en editar rápido por texto." } },
-    { "@type": "Question", "name": "¿Puedo deshacer lo que hizo la IA?", "acceptedAnswer": { "@type": "Answer", "text": "Sí. Cada cambio de la IA queda anotado y «Quitar» deshace justo ese cambio, aunque hayas seguido editando. Lo que tocaste a mano después se conserva." } },
-    { "@type": "Question", "name": "¿Mis videos se suben a algún lado?", "acceptedAnswer": { "@type": "Answer", "text": "No. La transcripción y la exportación pasan en tu computador. Tu IA solo recibe el texto del video con sus tiempos, con tu propia cuenta." } },
-    { "@type": "Question", "name": "¿Pone marca de agua o limita la resolución?", "acceptedAnswer": { "@type": "Answer", "text": "No. Exporta en 1080 px sin marca de agua y sin límite de duración." } },
-    { "@type": "Question", "name": "¿En qué idiomas hace subtítulos?", "acceptedAnswer": { "@type": "Answer", "text": "En los que entiende whisper, el transcriptor abierto: español, inglés, portugués, francés y casi 100 idiomas más." } },
-    { "@type": "Question", "name": "¿Necesito una IA para usarlo?", "acceptedAnswer": { "@type": "Answer", "text": "No para editar por texto, limpiar silencios y poner subtítulos. La IA (Claude, ChatGPT o Gemini, con tu cuenta) sirve para pedir cambios en palabras y sacar Shorts de un video largo." } }
+    {"@type": "Question", "name": "¿Es una alternativa gratis a CapCut?", "acceptedAnswer": {"@type": "Answer", "text": "Para lo que más se usa en Shorts, Reels y TikTok (subtítulos animados, cortar silencios, formato vertical), sí: gratis, de código abierto y sin marca de agua. CapCut tiene muchos más efectos y una app de celular; Corta trae efectos, transiciones y plantillas (y la comunidad suma más en su catálogo), y se enfoca en editar rápido por texto."}},
+    {"@type": "Question", "name": "¿Puedo deshacer lo que hizo la IA?", "acceptedAnswer": {"@type": "Answer", "text": "Sí. Cada cambio de la IA queda anotado y «Quitar» deshace justo ese cambio, aunque hayas seguido editando. Lo que tocaste a mano después se conserva."}},
+    {"@type": "Question", "name": "¿Mis videos se suben a algún lado?", "acceptedAnswer": {"@type": "Answer", "text": "No. La transcripción y la exportación pasan en tu computador. Tu IA solo recibe el texto del video con sus tiempos, con tu propia cuenta."}},
+    {"@type": "Question", "name": "¿Pone marca de agua o limita la resolución?", "acceptedAnswer": {"@type": "Answer", "text": "No. Exporta en 1080 px, sin marca de agua y sin límite de duración."}},
+    {"@type": "Question", "name": "¿En qué idiomas hace subtítulos?", "acceptedAnswer": {"@type": "Answer", "text": "En los que entiende whisper, el transcriptor abierto: español, inglés, portugués, francés y casi 100 idiomas más."}},
+    {"@type": "Question", "name": "¿Necesito una IA para usarlo?", "acceptedAnswer": {"@type": "Answer", "text": "No para editar por texto, limpiar silencios y poner subtítulos. La IA sirve para pedir cambios en palabras y sacar Shorts de un video largo. Cómo instalar tu IA."}},
+    {"@type": "Question", "name": "¿Cómo se actualiza Corta?", "acceptedAnswer": {"@type": "Answer", "text": "Al abrir y cada 6 horas revisa si hay una versión nueva en GitHub y te avisa dentro de la app, en Ajustes. Si la instalas, la descarga, comprueba su huella, reemplaza la app y vuelve a abrirse. Tus videos y proyectos viven en la carpeta Corta, fuera de la app: actualizar no los toca. Nunca se actualiza en medio de una transcripción o una exportación."}},
+    {"@type": "Question", "name": "¿Qué permisos pide y a dónde se conecta?", "acceptedAnswer": {"@type": "Answer", "text": "Ningún permiso especial: solo abre los archivos que eliges. Se conecta a huggingface.co para bajar el transcriptor una vez, a GitHub para el catálogo de la comunidad y las versiones nuevas, y tu IA a su proveedor con tu cuenta. El detalle."}},
+    {"@type": "Question", "name": "¿Por qué mi computador dice que no puede verificar la app?", "acceptedAnswer": {"@type": "Answer", "text": "Porque es un proyecto gratis que todavía no tiene el certificado pagado de Apple o Microsoft. El código es abierto. En Mac: Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente». En Windows: «Más información» → «Ejecutar de todas formas»."}}
    ]
   }
  ]
@@ -107,7 +110,9 @@
   .rejilla { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-top: 44px; }
   .funcion { background: var(--fondo2); border: 1px solid var(--linea); border-radius: 18px; padding: 22px; }
   .funcion .ico { font-size: 26px; } .funcion h3 { font-size: 19px; margin: 12px 0 6px; } .funcion p { color: var(--suave); margin: 0; font-size: 15.5px; }
-  @media (max-width: 860px) { .rejilla { grid-template-columns: 1fr; } }
+  .rejilla.cuatro { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  @media (max-width: 1100px) { .rejilla.cuatro { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 860px) { .rejilla, .rejilla.cuatro { grid-template-columns: 1fr; } }
 
   .editor { margin-top: 40px; border-radius: 18px; overflow: hidden; border: 1px solid var(--linea); box-shadow: 0 40px 120px -30px rgba(0, 0, 0, .8); }
   .editor img { display: block; width: 100%; height: auto; }
@@ -184,6 +189,17 @@
   </div>
 </div></section>
 
+<section id="como"><div class="ancho">
+  <span class="etiqueta"><span data-es>Cómo funciona</span><span data-en>How it works</span></span>
+  <h2><span data-es>Cuatro pasos, todo en tu computador.</span><span data-en>Four steps, all on your computer.</span></h2>
+  <div class="rejilla cuatro">
+    <div class="funcion"><div class="ico">1</div><h3><span data-es>Trae tu video</span><span data-en>Bring your video</span></h3><p><span data-es>Elígelo o suéltalo en la ventana. Corta hace una copia en la carpeta Corta de tu Mac: el original nunca se toca.</span><span data-en>Pick it or drop it on the window. Corta makes a copy in the Corta folder on your Mac: the original is never touched.</span></p></div>
+    <div class="funcion"><div class="ico">2</div><h3><span data-es>Se transcribe aquí</span><span data-en>It's transcribed here</span></h3><p><span data-es>whisper convierte la voz en texto, palabra por palabra y con sus tiempos, sin subir nada. El transcriptor se descarga una sola vez.</span><span data-en>whisper turns speech into text, word by word with its timing, without uploading anything. The transcriber downloads only once.</span></p></div>
+    <div class="funcion"><div class="ico">3</div><h3><span data-es>Editas el texto</span><span data-en>You edit the text</span></h3><p><span data-es>Borras una frase y se corta del video. Limpias silencios, eliges el estilo de subtítulos o le pides los cambios a tu IA.</span><span data-en>Delete a sentence and it's cut from the video. Clean up silences, pick a caption style or ask your AI for changes.</span></p></div>
+    <div class="funcion"><div class="ico">4</div><h3><span data-es>Exportas</span><span data-en>You export</span></h3><p><span data-es>ffmpeg arma el video en tu computador, igual a la vista previa, en 1080 px y sin marca de agua.</span><span data-en>ffmpeg builds the video on your computer, just like the preview, at 1080 px with no watermark.</span></p></div>
+  </div>
+</div></section>
+
 <section id="funciones"><div class="ancho">
   <span class="etiqueta"><span data-es>Lo que hace</span><span data-en>What it does</span></span>
   <h2><span data-es>Lo que más haces en CapCut, sin pagar ni subir nada.</span><span data-en>What you do most in CapCut, without paying or uploading.</span></h2>
@@ -242,7 +258,21 @@
     <details class="p"><summary><span data-es>¿Pone marca de agua o limita la resolución?</span><span data-en>Does it add a watermark or limit resolution?</span></summary><p><span data-es>No. Exporta en 1080 px, sin marca de agua y sin límite de duración.</span><span data-en>No. It exports at 1080 px, with no watermark and no length limit.</span></p></details>
     <details class="p"><summary><span data-es>¿En qué idiomas hace subtítulos?</span><span data-en>Which languages does it caption?</span></summary><p><span data-es>En los que entiende whisper, el transcriptor abierto: español, inglés, portugués, francés y casi 100 idiomas más.</span><span data-en>Those whisper, the open transcriber, understands: Spanish, English, Portuguese, French and almost 100 more.</span></p></details>
     <details class="p"><summary><span data-es>¿Necesito una IA para usarlo?</span><span data-en>Do I need an AI to use it?</span></summary><p><span data-es>No para editar por texto, limpiar silencios y poner subtítulos. La IA sirve para pedir cambios en palabras y sacar Shorts de un video largo. <a href="ia.html">Cómo instalar tu IA</a>.</span><span data-en>Not for text editing, cleaning silences and captions. The AI is for requesting changes in words and making Shorts from a long video. <a href="ia.html">How to install your AI</a>.</span></p></details>
+    <details class="p"><summary><span data-es>¿Cómo se actualiza Corta?</span><span data-en>How does Corta update?</span></summary><p><span data-es>Al abrir y cada 6 horas revisa si hay una versión nueva en GitHub y te avisa dentro de la app, en Ajustes. Si la instalas, la descarga, comprueba su huella, reemplaza la app y vuelve a abrirse. Tus videos y proyectos viven en la carpeta Corta, fuera de la app: actualizar no los toca. Nunca se actualiza en medio de una transcripción o una exportación.</span><span data-en>On launch and every 6 hours it checks GitHub for a new version and tells you inside the app, in Settings. If you install it, it downloads it, checks its fingerprint, replaces the app and reopens. Your videos and projects live in the Corta folder, outside the app: updating doesn't touch them. It never updates in the middle of a transcription or an export.</span></p></details>
+    <details class="p"><summary><span data-es>¿Qué permisos pide y a dónde se conecta?</span><span data-en>What permissions does it ask for and where does it connect?</span></summary><p><span data-es>Ningún permiso especial: solo abre los archivos que eliges. Se conecta a huggingface.co para bajar el transcriptor una vez, a GitHub para el catálogo de la comunidad y las versiones nuevas, y tu IA a su proveedor con tu cuenta. <a href="#privacidad">El detalle</a>.</span><span data-en>No special permissions: it only opens the files you pick. It connects to huggingface.co to download the transcriber once, to GitHub for the community catalog and new versions, and your AI to its provider with your account. <a href="#privacidad">The details</a>.</span></p></details>
     <details class="p"><summary><span data-es>¿Por qué mi computador dice que no puede verificar la app?</span><span data-en>Why does my computer say it can't verify the app?</span></summary><p><span data-es>Porque es un proyecto gratis que todavía no tiene el certificado pagado de Apple o Microsoft. El código es abierto. En Mac: Ajustes del Sistema → Privacidad y seguridad → «Abrir igualmente». En Windows: «Más información» → «Ejecutar de todas formas».</span><span data-en>Because it's a free project without a paid Apple or Microsoft certificate yet. The code is open. On Mac: System Settings → Privacy &amp; Security → “Open Anyway”. On Windows: “More info” → “Run anyway”.</span></p></details>
+  </div>
+</div></section>
+
+<section id="privacidad"><div class="ancho">
+  <span class="etiqueta"><span data-es>Permisos e internet</span><span data-en>Permissions and internet</span></span>
+  <h2><span data-es>Lo que pide y a dónde se conecta. Nada más.</span><span data-en>What it asks for and where it connects. Nothing else.</span></h2>
+  <p class="intro"><span data-es>Corta no pide permisos especiales en el Mac: ni micrófono, ni cámara, ni avisos, ni el Llavero. Solo abre los archivos que tú eliges o sueltas (video, música, clips y fotos) y guarda todo en la carpeta Corta de tu carpeta personal. Sin cuentas ni telemetría.</span><span data-en>Corta asks for no special permissions on the Mac: no microphone, camera, notifications or Keychain. It only opens the files you pick or drop (video, music, clips and photos) and keeps everything in the Corta folder in your home folder. No accounts, no telemetry.</span></p>
+  <div class="rejilla cuatro">
+    <div class="funcion"><div class="ico">🎙️</div><h3>huggingface.co</h3><p><span data-es>Solo para descargar el transcriptor (whisper) la primera vez, cuando lo pides. Se comprueba con su huella SHA-256 antes de usarlo.</span><span data-en>Only to download the transcriber (whisper) the first time, when you ask. It's checked against its SHA-256 fingerprint before use.</span></p></div>
+    <div class="funcion"><div class="ico">✨</div><h3>raw.githubusercontent.com</h3><p><span data-es>Solo cuando abres los efectos o las plantillas de la comunidad (repo corta-catalogo). Cada archivo se comprueba con su huella. No se envía nada tuyo.</span><span data-en>Only when you open community effects or templates (corta-catalogo repo). Every file is checked against its fingerprint. Nothing of yours is sent.</span></p></div>
+    <div class="funcion"><div class="ico">⬆️</div><h3>api.github.com · github.com</h3><p><span data-es>Para saber si hay una versión nueva (al abrir y cada 6 horas) y descargarla cuando tú lo pides. GitHub la entrega desde su almacenamiento y Corta la comprueba con su huella.</span><span data-en>To check for a new version (on launch and every 6 hours) and download it when you ask. GitHub serves it from its storage and Corta checks its fingerprint.</span></p></div>
+    <div class="funcion"><div class="ico">✦</div><h3><span data-es>Tu IA</span><span data-en>Your AI</span></h3><p><span data-es>Si la usas, Claude, ChatGPT o Gemini se conectan a su proveedor con tu cuenta y reciben solo el texto del video con sus tiempos. Nunca el video ni el audio.</span><span data-en>If you use it, Claude, ChatGPT or Gemini connect to their provider with your account and receive only the video's text with its timing. Never the video or the audio.</span></p></div>
   </div>
 </div></section>
 
@@ -261,6 +291,7 @@
 <footer><div class="ancho">
   <span><span data-es>Corta es software libre (AGPL-3.0). Hecho en Chile 🇨🇱 para el mundo.</span><span data-en>Corta is free software (AGPL-3.0). Made in Chile 🇨🇱 for the world.</span></span>
   <span><a href="https://github.com/corta-app/corta">GitHub</a> · <a href="ia.html"><span data-es>Guía de la IA</span><span data-en>AI guide</span></a> · <a href="https://github.com/corta-app/corta/discussions"><span data-es>Comunidad</span><span data-en>Community</span></a></span>
+  <a class="hecho-con-pieza" href="https://pieza-app.github.io/pieza/"><span data-es><img src="img/sello.svg" alt="Hecho con Pieza" width="152" height="28"></span><span data-en><img src="img/sello-en.svg" alt="Made with Pieza" width="146" height="28"></span></a>
 </div></footer>
 
 <script>

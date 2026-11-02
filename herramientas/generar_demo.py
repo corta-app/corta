@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw, ImageFilter
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
+import catalogo  # noqa: E402
 import efectos  # noqa: E402
 import plantillas  # noqa: E402
 import proyecto  # noqa: E402
@@ -177,9 +178,9 @@ def catalogo_demo():
     indice = os.path.join(RAIZ, "..", "corta-catalogo", "efectos", "index.json")
     if os.path.exists(indice):
         with open(indice, encoding="utf-8") as f:
-            return efectos.validar_indice(json.load(f))
+            return catalogo.validar_indice(catalogo.tipo("efectos"), json.load(f))
     with open(os.path.join(RAIZ, "ui", "demo.json"), encoding="utf-8") as f:
-        return json.load(f).get("catalogo", [])
+        return catalogo.validar_indice(catalogo.tipo("efectos"), {"efectos": json.load(f).get("catalogo", [])})
 
 
 def catalogo_plantillas_demo():
@@ -187,9 +188,9 @@ def catalogo_plantillas_demo():
     indice = os.path.join(RAIZ, "..", "corta-catalogo", "plantillas", "index.json")
     if os.path.exists(indice):
         with open(indice, encoding="utf-8") as f:
-            return plantillas.validar_indice(json.load(f))
+            return catalogo.validar_indice(catalogo.tipo("plantillas"), json.load(f))
     with open(os.path.join(RAIZ, "ui", "demo.json"), encoding="utf-8") as f:
-        return json.load(f).get("catalogo_plantillas", [])
+        return catalogo.validar_indice(catalogo.tipo("plantillas"), {"plantillas": json.load(f).get("catalogo_plantillas", [])})
 
 
 def fotos_demo(carpeta):

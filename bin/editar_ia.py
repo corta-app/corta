@@ -3,9 +3,11 @@
   editar_ia.py pedir <carpeta> "<lo que quieres>" <salida.json>   aplica los cambios (con respaldo para deshacer)
   editar_ia.py shorts <carpeta> <salida.json>                      propone los mejores momentos (no guarda nada)
   editar_ia.py crear_short <carpeta> <desde> <hasta> "<título>" <salida.json>   crea un proyecto nuevo con ese tramo
-  editar_ia.py entrada <entrada.json> <salida.json>   lo mismo, con lo que manda la app en un archivo (nunca texto de la persona
-                                                      como argumento): {"accion": "pedir"|"shorts"|"crear_short", "carpeta",
-                                                      "texto"?, "desde"?, "hasta"?, "titulo"?}; la carpeta tiene que ser de ~/Corta
+  editar_ia.py entrada [pedir|shorts|crear_short] <entrada.json> <salida.json>
+                                                      lo mismo, con lo que manda la app en un archivo (nunca texto de la persona
+                                                      como argumento): {"accion"?, "carpeta", "texto"?, "desde"?, "hasta"?,
+                                                      "titulo"?}; la acción va como argumento (así la declara app.json) o en
+                                                      «accion»; la carpeta tiene que ser de ~/Corta
 
 La IA nunca toca el proyecto directo: responde una lista de operaciones en JSON, se validan una por una y solo se aplican las
 válidas. Ve la transcripción con números de palabra y tiempos, nunca el video.
@@ -28,6 +30,15 @@ import vocabulario  # noqa: E402
 #: Lo que cambió la IA queda anotado en el proyecto («cambios_ia», los últimos MAX_CAMBIOS) para poder quitar justo ese cambio
 #: después, aunque la persona haya seguido editando (ui/app.js, `quitarCambioIA`). Formato en el README.
 MAX_CAMBIOS = 20
+#: Lo que dice Corta y no la pieza «ia»: dónde se elige la IA (la frase con {ia} está en ui/idiomas/en.json).
+FRASES_IA = {"no_instalada": "No encontré {ia} en este computador. Revisa en Ajustes → Tu IA."}
+
+
+def error_ia(error):
+    """Respuesta de un pedido cuando la IA falla: la frase en español (la interfaz la traduce entera) y el código de la pieza."""
+    propia = FRASES_IA.get(error["codigo"])
+    texto = propia.replace("{ia}", str(error.get("valores", {}).get("ia", ""))) if propia else ia.frase(error)
+    return {"ok": False, "error": texto, "codigo": error["codigo"]}
 AJUSTES = ("lienzo", "subtitulos.estilo", "subtitulos.activos", "subtitulos.palabras_por_linea", "musica.volumen")
 
 
@@ -224,8 +235,8 @@ def pedir(carpeta, pedido):
         return {"ok": False, "error": "Primero hay que transcribir el video: así tu IA sabe qué se dice y cuándo."}
     estilos = subtitulos.estilos()
     texto, error = ia.preguntar(prompt_pedir(p, pedido.strip()[:500], estilos))
-    if error:
-        return {"ok": False, "error": error}
+    if error:  # pieza «ia»: {codigo, valores}; la interfaz traduce la frase y puede decidir por el código
+        return error_ia(error)
     datos = leer_json_ia(texto)
     if not isinstance(datos, dict):
         return {"ok": False, "error": f"{ia.nombre()} no respondió con cambios que pueda aplicar. Prueba diciéndolo de otra forma."}
@@ -278,8 +289,8 @@ def shorts(carpeta):
     if not p["palabras"]:
         return {"ok": False, "error": "Primero hay que transcribir el video."}
     texto, error = ia.preguntar(prompt_shorts(p))
-    if error:
-        return {"ok": False, "error": error}
+    if error:  # pieza «ia»: {codigo, valores}; la interfaz traduce la frase y puede decidir por el código
+        return error_ia(error)
     datos = leer_json_ia(texto) or {}
     lista = validar_shorts(p, datos.get("shorts"))
     if not lista:
@@ -327,13 +338,17 @@ def crear_short(carpeta, desde, hasta, titulo):
     return {"ok": True, "carpeta": destino, "proyecto": q}
 
 
-def desde_entrada(ruta):
-    """Lo que manda la app (la interfaz) llega en un JSON: se revisa cada campo antes de usarlo."""
+ACCIONES = ("pedir", "shorts", "crear_short")
+
+
+def desde_entrada(ruta, accion=None):
+    """Lo que manda la app (la interfaz) llega en un JSON: se revisa cada campo antes de usarlo. `accion` (del argumento, como la
+    declara app.json para el host) gana sobre la del archivo."""
     d = proyecto.leer_json(ruta, None)
     if not isinstance(d, dict):
         raise ValueError("No pude leer el pedido.")
     carpeta = proyecto.carpeta_valida(d.get("carpeta"))
-    accion = d.get("accion")
+    accion = accion or d.get("accion")
     if accion == "pedir":
         texto = d.get("texto")
         if not isinstance(texto, str) or not texto.strip():
@@ -354,6 +369,8 @@ if __name__ == "__main__":
     try:
         if len(a) == 3 and a[0] == "entrada":
             r = desde_entrada(a[1])
+        elif len(a) == 4 and a[0] == "entrada" and a[1] in ACCIONES:
+            r = desde_entrada(a[2], a[1])
         elif len(a) == 4 and a[0] == "pedir":
             r = pedir(a[1], a[2])
         elif len(a) == 3 and a[0] == "shorts":
