@@ -29,9 +29,13 @@ Reglas que importan: código, comentarios y textos en español (todo texto nuevo
 **nunca subas videos reales ni datos personales**; solo biblioteca estándar en Python; la vista previa y la exportación tienen que verse
 igual; y no romper el [formato del proyecto](README.md#formato-del-proyecto).
 
-**Archivos de piezas:** `bin/nucleo.py`, `bin/ia.py`, `bin/transcribir.py`, `bin/catalogo.py`, `app/Sources/PiezaCatalogo/`, `ui/i18n.js`, `ui/host.js`, `ui/tema.js`, `ui/tema.css`, `ui/componentes.js` y
-`ui/componentes.css` vienen de [Pieza](https://github.com/pieza-app/pieza) (están en
+**Archivos de piezas:** `bin/nucleo.py`, `bin/ia.py`, `bin/transcribir.py`, `bin/catalogo.py`, `bin/trabajos.py`, `app/Sources/PiezaHost/`
+(la app de Mac genérica: ventana, puente, scripts con límite y acciones declaradas), `app/Sources/PiezaActualizaciones/`,
+`app/Sources/PiezaCatalogo/`, `app/Sources/PiezaTrabajos/`, `ui/i18n.js`, `ui/host.js`, `ui/tema.js`, `ui/tema.css`, `ui/componentes.js`,
+`ui/componentes.css`, `ui/bienvenida.js` y `ui/bienvenida.css` vienen de [Pieza](https://github.com/pieza-app/pieza) (están en
 `piezas.json`, con el aviso de la MPL-2.0). No los cambies aquí: propón el cambio en Pieza y llega a Corta con «Pieza al día».
+Lo de Corta en la app de Mac está en `app/Sources/Corta/`; las acciones que solo corren un script se declaran en `app.json` →
+`acciones` (y `pieza.py acciones .` arma `acciones.json`).
 
 Los aportes entran con la licencia del proyecto, [AGPL-3.0](LICENSE).
 
@@ -67,8 +71,9 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
   Code and comments are in Spanish; UI text needs its English entry in `ui/idiomas/en.json`; never commit real videos or personal data.
   If your change is visible, also update the README, the page (`docs/`), screenshots and `CHANGELOG.md`, or say so in the
   pull request and we'll do it.
-- **Piece files:** `bin/nucleo.py`, `bin/ia.py`, `bin/transcribir.py`, `bin/catalogo.py`, `app/Sources/PiezaCatalogo/`, `ui/i18n.js`, `ui/host.js`, `ui/tema.js`, `ui/tema.css`, `ui/componentes.js` and
-  `ui/componentes.css` come from [Pieza](https://github.com/pieza-app/pieza) (listed in
+- **Piece files:** `bin/nucleo.py`, `bin/ia.py`, `bin/transcribir.py`, `bin/catalogo.py`, `bin/trabajos.py`, `app/Sources/PiezaHost/` (the
+  generic Mac app), `app/Sources/PiezaActualizaciones/`, `app/Sources/PiezaCatalogo/`, `app/Sources/PiezaTrabajos/`, `ui/i18n.js`,
+  `ui/host.js`, `ui/tema.*`, `ui/componentes.*` and `ui/bienvenida.*` come from [Pieza](https://github.com/pieza-app/pieza) (listed in
   `piezas.json`, MPL-2.0 notice included). Don't change them here: propose the change in Pieza and it arrives through «Pieza al día».
 - **Review:** everything goes through a pull request and a maintainer merges it. Contributions are licensed under AGPL-3.0.
   We also check that the README, the page and the docs still describe the app as it is.
@@ -76,7 +81,9 @@ Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md).
 
 ## Aportar con los flujos de Pieza
 
-Esta app es parte de la familia de [Pieza](https://github.com/pieza-app/pieza). Instala sus flujos (crear, revisar aportes y las
+Aportamos con los flujos de Pieza: en Claude Code, al abrir el repo te ofrece su marketplace (o instálalos como dice abajo); con otra IA, sigue `AGENTS.md`.
+
+Esta app es parte de la familia de [Pieza](https://github.com/pieza-app/pieza). Si no se instalaron, instala sus flujos (crear, revisar aportes y las
 reglas de seguridad) en tu IA:
 - **Claude Code:** `/plugin marketplace add pieza-app/pieza` y `/plugin install pieza@pieza`.
 - **Gemini CLI:** `gemini extensions install https://github.com/pieza-app/pieza` (comandos `/pieza:crear` y `/pieza:revisar`).

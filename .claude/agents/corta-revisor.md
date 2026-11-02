@@ -9,7 +9,8 @@ mira las pruebas de GitHub y aplica la lista de abajo. No reescribas el aporte: 
 ## Antes de nada: ¿es seguro?
 1. `gh pr view <n> -R corta-app/corta --json files,body,author,statusCheckRollup` y `gh pr diff <n>`.
 2. **Lee todo el diff antes de correr nada.** Alerta roja (no lo corras ni lo apruebes; avisa): cambios en `.github/workflows/`,
-   scripts de instalación o empaquetado, huellas SHA-256 o URLs de descarga; llamadas de red nuevas, `eval`/`exec`, `subprocess` o
+   scripts de instalación o empaquetado, huellas SHA-256 o URLs de descarga, `app.json` → `acciones` o `acciones.json` (qué
+   scripts corre la app y con qué datos), los archivos de piezas (`app/Sources/Pieza*/`, ver `piezas.json`); llamadas de red nuevas, `eval`/`exec`, `subprocess` o
    `shell=True` con texto armado (sobre todo en `render.py`, `importar.py` o `ia.py`), binarios, fuentes sin licencia libre, código
    ofuscado, dependencias nuevas o cualquier cosa que lea tokens, el Llavero o `~/.ssh`. Un video real en el diff = no se junta.
 3. Si es la primera vez que aporta, GitHub deja las pruebas esperando "Approve and run": apruébalas solo si el punto 2 está limpio.

@@ -1107,6 +1107,88 @@ class App(unittest.TestCase):
             self.assertNotIn('["ffprobe"', fuente)
 
 
+class Declaradas(unittest.TestCase):
+    """Las acciones de app.json → «acciones» (las corre el host de Pieza sin código propio): cada una se corre aquí como lo hace el
+    host (args literales, la entrada en un archivo con lo validado más lo inyectado, la salida al final) y responde lo de siempre."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(RAIZ, "acciones.json"), encoding="utf-8") as f:
+            cls.acciones = json.load(f)["acciones"]
+
+    def correr(self, nombre, datos):
+        a = self.acciones[nombre]
+        x = dict(datos)
+        if "carpeta" in x:
+            x["carpeta_real"] = os.path.realpath(x["carpeta"])  # lo pone el inyector «proyecto» del host
+        return con_entrada(a["script"], a["args"][0], x) if len(a["args"]) == 1 else \
+            correr(a["script"], *a["args"], self._entrada(x))
+
+    def _entrada(self, x):
+        ruta = os.path.join(TMP, "entrada-declarada.json")
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(x, f)
+        return ruta
+
+    def test_la_carpeta_de_un_proyecto_siempre_pasa_por_el_host(self):
+        con = {n for n, a in self.acciones.items() if "carpeta" in (a.get("datos") or {})}
+        self.assertEqual(con, {"guardarProyecto", "deshacer", "limpiar", "pedirIA", "buscarShorts", "crearShort"})
+        for n in con:
+            a = self.acciones[n]
+            self.assertEqual(a["inyectar"], {"carpeta_real": "proyecto"}, f"{n}: el host revisa la carpeta (Rutas.proyecto) antes de correr")
+            self.assertTrue(a["datos"]["carpeta"].get("requerido"), n)
+        self.assertEqual({n for n, a in self.acciones.items() if a.get("cola") == "escritura"},
+                         {"guardarProyecto", "deshacer", "limpiar", "vocabulario"}, "los cambios a un proyecto, de a uno y en orden")
+        app = json.load(open(os.path.join(RAIZ, "app.json"), encoding="utf-8"))
+        for n, a in app["acciones"].items():
+            self.assertEqual({k: v for k, v in a.items() if k != "scriptDeLaApp"}, {k: v for k, v in self.acciones[n].items() if k != "pieza"},
+                             f"acciones.json al día con app.json en «{n}» (pieza.py acciones .)")
+
+    def test_guardar_deshacer_limpiar(self):
+        carpeta = proyecto_de_prueba()
+        p = proyecto.cargar(carpeta)
+        p["lienzo"] = "1:1"
+        self.assertTrue(self.correr("guardarProyecto", {"carpeta": carpeta, "proyecto": p})["ok"])
+        d = self.correr("deshacer", {"carpeta": carpeta})
+        self.assertTrue(d["ok"] and d["deshecho"], d)
+        r = self.correr("limpiar", {"carpeta": carpeta, "silencio": 99, "muletillas": False})
+        self.assertTrue(r["ok"], r)
+        r = self.correr("limpiar", {"carpeta": carpeta, "silencio": "rm -rf", "muletillas": True})
+        self.assertTrue(r["ok"], "un silencio raro queda en el de siempre")
+        self.assertFalse(self.correr("limpiar", {"carpeta": TMP})["ok"], "fuera de ~/Corta no corre")
+
+    def test_ia_shorts_y_vocabulario(self):
+        carpeta = proyecto_de_prueba()
+        r = self.correr("pedirIA", {"carpeta": carpeta, "texto": "pon zoom; $(rm -rf ~)"})
+        self.assertTrue(r["ok"], r)
+        r = self.correr("buscarShorts", {"carpeta": carpeta})
+        self.assertIn("ok", r)
+        r = self.correr("crearShort", {"carpeta": carpeta, "desde": "0", "hasta": 1, "titulo": "x"})
+        self.assertFalse(r["ok"], "los tiempos tienen que ser números")
+        r = self.correr("vocabulario", {"accion": "palabra", "palabra": "Kalumi"})
+        self.assertTrue(r["ok"] and "Kalumi" in r["vocabulario"]["palabras"], r)
+        self.assertTrue(self.correr("vocabulario", {"accion": "quitar_palabra", "palabra": "Kalumi"})["ok"])
+
+    def test_estado_trae_las_ia(self):
+        r = correr("estado.py")
+        self.assertEqual({x["id"] for x in r["ias"]}, {"claude", "codex", "gemini"})
+        self.assertTrue(all(isinstance(x["instalada"], bool) for x in r["ias"]))
+
+    def test_trabajos_largos_laten(self):
+        """Transcribir, exportar, traer un video y armar una plantilla no tienen tope mientras laten (pieza «trabajos»)."""
+        import trabajos  # noqa: F401
+        for script in ("render.py", "importar.py", "plantillas.py"):
+            fuente = open(os.path.join(RAIZ, "bin", script), encoding="utf-8").read()
+            self.assertIn("trabajos.mantener_vivo()", fuente.split('if __name__ == "__main__":', 1)[1], script)
+        latido = os.path.join(TMP, "latido")
+        open(latido, "w").close()
+        os.utime(latido, (0, 0))
+        r = subprocess.run([sys.executable, "-c", "import sys, time; sys.path.insert(0, 'bin'); import trabajos; trabajos.mantener_vivo(); time.sleep(0.5)"],
+                           cwd=RAIZ, env={**os.environ, "CORTA_LATIDO": latido}, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertGreater(os.path.getmtime(latido), 1000, "tocó el latido")
+
+
 class Piezas(unittest.TestCase):
     """Lo que Corta usa de Pieza (nucleo, ia, i18n): app.json, carpeta de datos, config validada y probar la IA por archivo."""
 
@@ -1125,12 +1207,13 @@ class Piezas(unittest.TestCase):
         self.assertEqual(os.path.realpath(proyecto.INTERNO), os.path.realpath(os.path.join(proyecto.BASE, ".corta")))
         import nucleo
         self.assertEqual(os.path.realpath(nucleo.carpeta_datos()), os.path.realpath(proyecto.INTERNO))
-        # Las claves que acepta Ventana.swift (Config.guardar) son las de app.json.
-        swift = open(os.path.join(RAIZ, "app", "Sources", "Corta", "Servicios.swift"), encoding="utf-8").read()
-        for clave in app["config"]:
-            self.assertIn(f'case "{clave}"', swift, f"Config.guardar acepta {clave}")
+        # La app de Mac (pieza «host-mac») acepta en Config.guardar justo las claves de app.json: las lee de ahí, dentro de la app,
+        # junto a acciones.json (las acciones declaradas).
+        host = open(os.path.join(RAIZ, "app", "Sources", "PiezaHost", "Host.swift"), encoding="utf-8").read()
+        self.assertIn('Host.app["config"]', host, "Config sale de app.json")
         sh = open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read()
         self.assertIn('cp "$RAIZ/app.json" "$APP/Contents/Resources/corta/app.json"', sh, "app.json va dentro de la app")
+        self.assertIn('cp "$RAIZ/acciones.json" "$APP/Contents/Resources/corta/acciones.json"', sh, "acciones.json va dentro de la app")
 
     def test_config_validada(self):
         ruta = os.path.join(proyecto.INTERNO, "config.json")
@@ -1156,8 +1239,10 @@ class Piezas(unittest.TestCase):
         self.assertEqual((r["ia"], r["ok"]), ("claude", True), r)
         r = con_entrada("ia.py", "probar", {"ia": "otra"})
         self.assertEqual((r["ok"], r["codigo"]), (False, "desconocida"))
-        swift = open(os.path.join(RAIZ, "app", "Sources", "Corta", "Servicios.swift"), encoding="utf-8").read()
-        self.assertIn('Procesador.conEntrada("ia.py", "probar", ["ia": id])', swift, "la app prueba la IA con la pieza, por archivo")
+        # La app la prueba con la acción declarada de la pieza «ia» (acciones.json): {ia} en el archivo de entrada, nunca como argumento.
+        with open(os.path.join(RAIZ, "acciones.json"), encoding="utf-8") as f:
+            a = json.load(f)["acciones"]["probarIA"]
+        self.assertEqual((a["script"], a["args"], a["entrada"], a["responde"], a["pieza"]), ("ia.py", ["probar"], "archivo", "iaProbada", "ia"))
 
     def test_cli_sin_protecciones_no_corre(self):
         """Una IA que no conoce las protecciones nunca corre sin ellas: se pide actualizarla (código «actualizar»)."""

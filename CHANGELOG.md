@@ -6,6 +6,16 @@ Lo que cambia para quien usa Corta, en palabras simples. Las versiones anteriore
 
 ## Sin publicar · Unreleased
 
+- La app de Mac ahora es la de toda la familia ([Pieza](https://github.com/pieza-app/pieza)): se ve y se usa igual, tus videos,
+  proyectos, ajustes e idioma siguen donde estaban y los atajos son los mismos. Lo que cambia por dentro: cada tarea tiene un tiempo
+  máximo (transcribir y exportar no, mientras sigan avanzando), al cerrar Corta se detiene lo que quedaba corriendo en vez de
+  seguir escondido, y el menú suma «Ayuda» con el sitio y el código.
+  *The Mac app is now the one the whole family uses ([Pieza](https://github.com/pieza-app/pieza)): it looks and works the same, your
+  videos, projects, settings and language stay where they were, and the shortcuts are the same. Under the hood: every task has a
+  time limit (transcribing and exporting don't, as long as they keep making progress), quitting Corta stops whatever was still
+  running instead of leaving it hidden, and the menu gains "Help" with the website and the code.*
+- En la primera pantalla, el idioma también se elige con las teclas 1 y 2 o con las flechas.
+  *On the first screen you can also pick the language with the 1 and 2 keys or the arrow keys.*
 - Sin conexión, la galería de efectos y plantillas de la comunidad muestra la última lista que viste (para descargar, vuelve a
   abrirla con conexión).
   *When you're offline, the community effects and templates gallery shows the last list you saw (to download, open it again once

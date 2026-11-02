@@ -276,26 +276,13 @@ textarea:focus, input.texto:focus { outline: 2px solid var(--acento); outline-of
   .pz-dialogo { border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px)); }
   .pz-capa:has(.dialogo-pl) { padding: 0; }
 }
-.pasos-bv { display: flex; gap: 6px; margin-bottom: 18px; }
-.pasos-bv i { height: 4px; flex: 1; border-radius: 99px; background: var(--linea); }
-.pasos-bv i.hecho { background: var(--acento); }
-/* Bienvenida, paso 0: el idioma, sobre fondo liso (antes de elegirlo no se ve nada más) */
+/* Bienvenida (pieza «bienvenida»: los colores salen de la pieza «tema»). El paso 0, el idioma, va sobre fondo liso (antes de elegirlo
+   no se ve nada más), con el logo de Corta arriba. */
 .capa-idioma { background: var(--fondo); place-items: center; padding: 16px; }
 .capa-idioma .pz-dialogo { box-shadow: 0 12px 40px rgba(0, 0, 0, .14); border-radius: 18px; }
-.idioma-bv { text-align: center; }
-.idioma-bv .logo { width: 48px; height: 48px; margin: 4px auto 14px; display: block; }
-.idioma-bv h2 { font-size: 22px; margin-bottom: 20px; }
-.idioma-bv .punto { color: var(--texto-suave); }
-.opciones-idioma { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.opcion-idioma { flex-direction: column; gap: 4px; min-height: 104px; padding: 16px 14px; border-radius: 14px; position: relative; border-width: 2px; }
-.opcion-idioma b { font-size: 20px; }
-.opcion-idioma small { font-size: 13.5px; font-weight: 500; color: var(--texto-suave); }
-.opcion-idioma.pz-principal small { color: inherit; }
-.opcion-idioma .sugerido { position: absolute; top: 8px; right: 10px; font-style: normal; font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; }
-.opcion-idioma:focus-visible { outline: 3px solid var(--texto); outline-offset: 3px; }
-.nota-idioma { color: var(--texto-suave); font-size: 13px; margin: 18px 0 0; line-height: 1.5; }
-.nota-idioma span { display: block; }
-@media (max-width: 480px) { .opciones-idioma { grid-template-columns: 1fr; } .idioma-bv h2 { font-size: 20px; } .idioma-bv h2 span[lang] { display: block; } .idioma-bv .punto { display: none; } }
+.capa-idioma .logo { width: 48px; height: 48px; margin: 4px auto 14px; display: block; }
+.capa-idioma .pieza-bv-idioma h2 { font-size: 22px; margin: 6px 0 22px; }
+@media (max-width: 480px) { .capa-idioma .pieza-bv-idioma h2 { font-size: 20px; } }
 .pz-ok { font-weight: 650; font-size: 13px; white-space: nowrap; }
 .seccion { margin-bottom: 20px; }
 .seccion h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-suave); margin-bottom: 6px; }

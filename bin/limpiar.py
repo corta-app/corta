@@ -1,6 +1,8 @@
 """Cortar silencios y muletillas. Solo biblioteca estándar.
 
   limpiar.py <carpeta> <silencio_min_seg> <muletillas 0|1> <salida.json>
+  limpiar.py entrada <entrada.json> <salida.json>   lo mismo, con lo que manda la app: {"carpeta", "silencio"?, "muletillas"?}
+                                                    (la carpeta tiene que ser de ~/Corta; el silencio queda entre 0,2 y 5 s)
 
 Con transcripción, usa los espacios entre palabras; sin ella, el detector de silencio de ffmpeg. Los cortes nuevos tienen
 motivo «silencio» o «muletilla»: al volver a limpiar se reemplazan (los cortes manuales y de la IA no se tocan).
@@ -75,13 +77,26 @@ def limpiar(carpeta, silencio_min=0.5, muletillas=True):
             "ahorro": round(antes - despues, 1), "proyecto": p}
 
 
+def desde_entrada(ruta):
+    """Lo que manda la interfaz (por el host, en un archivo): cada campo se revisa antes de usarlo."""
+    d = proyecto.leer_json(ruta, None)
+    if not isinstance(d, dict):
+        raise ValueError("No pude leer el pedido.")
+    carpeta = proyecto.carpeta_valida(d.get("carpeta"))
+    silencio = d.get("silencio", 0.5)
+    if isinstance(silencio, bool) or not isinstance(silencio, (int, float)) or silencio != silencio:
+        silencio = 0.5
+    muletillas = d.get("muletillas", True)
+    return limpiar(carpeta, min(5.0, max(0.2, float(silencio))), muletillas is not False)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) != 5:
+    if not (len(sys.argv) == 5 or (len(sys.argv) == 4 and sys.argv[1] == "entrada")):
         print(__doc__)
         sys.exit(2)
     try:
-        r = limpiar(sys.argv[1], float(sys.argv[2]), sys.argv[3] == "1")
+        r = desde_entrada(sys.argv[2]) if len(sys.argv) == 4 else limpiar(sys.argv[1], float(sys.argv[2]), sys.argv[3] == "1")
     except (OSError, ValueError) as e:
         r = {"ok": False, "error": str(e)}
-    proyecto.escribir_json(sys.argv[4], r)
+    proyecto.escribir_json(sys.argv[-1], r)
     print(json.dumps({k: v for k, v in r.items() if k != "proyecto"}, ensure_ascii=False))

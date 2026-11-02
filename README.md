@@ -64,6 +64,9 @@ efectos y plantillas. En GitHub, **Watch → Custom → Releases** te avisa cuan
 - La IA es **la tuya** (Claude Code, Codex o Gemini), con tu cuenta, y solo ve el texto con sus tiempos. Nunca el video ni el audio.
 - El video original nunca se modifica: los cambios viven en un `proyecto.json` abierto, con historial para deshacer.
 - Sin marca de agua, sin límite de resolución ni de duración.
+- **Sin permisos especiales** en el Mac (ni micrófono, ni cámara, ni avisos, ni el Llavero): solo abre los archivos que eliges o
+  sueltas. Sale a internet solo para bajar el transcriptor una vez (huggingface.co), abrir el catálogo de la comunidad
+  (raw.githubusercontent.com) y buscar o bajar versiones nuevas (GitHub); todo lo que baja se comprueba con su huella SHA-256.
 
 <a id="como-aportar"></a>
 ## Cómo aportar
@@ -187,6 +190,9 @@ Spanish-first, English included. Licensed under AGPL-3.0.
 **Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256). Until a release is
 published, build it from source: `git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`
 (installs to `~/Applications/Corta.app`; your videos live in `~/Corta`). Windows and Linux are on the way.
+No special permissions (no microphone, camera, notifications or Keychain); it only goes online to download the transcriber once
+(huggingface.co), open the community catalog (raw.githubusercontent.com) and check for or download new versions (GitHub), all
+verified by SHA-256.
 
 **Try it** in your browser with a made-up video: [live preview](https://corta-app.github.io/corta/demo/?idioma=en). If you don't
 like an AI edit, **Remove** undoes just that change, even after you kept editing. Caption styles, effects and templates are welcome
@@ -195,4 +201,5 @@ in the [community catalog](https://github.com/corta-app/corta-catalogo); questio
 
 ---
 
-[![Hecho con Pieza](https://pieza-app.github.io/pieza/sello.svg)](https://pieza-app.github.io/pieza/) · Las piezas comunes (tu IA, idiomas, actualizaciones…) viven en [Pieza](https://github.com/pieza-app/pieza).
+[![Hecho con Pieza](https://pieza-app.github.io/pieza/sello.svg)](https://pieza-app.github.io/pieza/) · Las piezas comunes (tu IA, idiomas, actualizaciones, la app de Mac…) viven en [Pieza](https://github.com/pieza-app/pieza).
+[![Made with Pieza](https://pieza-app.github.io/pieza/sello-en.svg)](https://pieza-app.github.io/pieza/) · The shared pieces (your AI, languages, updates, the Mac app shell…) live in [Pieza](https://github.com/pieza-app/pieza).
