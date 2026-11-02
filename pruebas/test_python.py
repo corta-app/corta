@@ -3,6 +3,7 @@ y una IA falsa en el PATH (pruebas/ia_falsa.py, instalada como «claude»). Expo
 
 Uso: python3 pruebas/test_python.py
 """
+import hashlib
 import json
 import os
 import shutil
@@ -27,6 +28,7 @@ os.chmod(destino, os.stat(destino).st_mode | stat.S_IEXEC)
 os.environ["PATH"] = BIN_FALSO + os.pathsep + os.environ["PATH"]
 sys.path.insert(0, os.path.join(RAIZ, "bin"))
 
+import catalogo  # noqa: E402
 import editar_ia  # noqa: E402
 import efecto_formato  # noqa: E402
 import efectos  # noqa: E402
@@ -36,6 +38,7 @@ import plantilla_formato  # noqa: E402
 import plantillas  # noqa: E402
 import proyecto  # noqa: E402
 import subtitulos  # noqa: E402
+import transcribir  # noqa: E402
 import vocabulario  # noqa: E402
 
 with open(os.path.join(RAIZ, "pruebas", "casos.json"), encoding="utf-8") as f:
@@ -50,6 +53,25 @@ def correr(script, *args):
     assert r.returncode == 0, r.stderr
     with open(salida, encoding="utf-8") as f:
         return json.load(f)
+
+
+def del_catalogo(tipo, obj):
+    """Instala `obj` como lo hace la app: primero el índice validado (catalogo.py indice) y después el archivo que «bajó»
+    (catalogo.py instalar), con su huella. Devuelve (respuesta de instalar, crudo, huella)."""
+    import hashlib
+    crudo = json.dumps(obj).encode()
+    huella = hashlib.sha256(crudo).hexdigest()
+    indice, archivo = os.path.join(TMP, "indice.json"), os.path.join(TMP, "bajado.json")
+    with open(indice, "w", encoding="utf-8") as f:
+        json.dump({"formato": 1, tipo: [{**obj, "ruta": f"{tipo}/{obj['categoria']}/{obj['id']}.json", "sha256": huella, "tamano": len(crudo)}]}, f)
+    assert con_entrada("catalogo.py", "indice", {"tipo": tipo, "archivo": indice})["ok"]
+    with open(archivo, "wb") as f:
+        f.write(crudo)
+    return con_entrada("catalogo.py", "instalar", {"tipo": tipo, "archivo": archivo, "id": obj["id"], "sha256": huella}), crudo, huella
+
+
+def descargado(tipo, ident):
+    return os.path.join(proyecto.INTERNO, tipo, ident + ".json")
 
 
 def proyecto_de_prueba():
@@ -315,10 +337,14 @@ class IA(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(c["carpeta"], q["fuente"]["archivo"])))
 
     def test_whisper_a_palabras(self):
+        # La pieza «transcribir» da lo mismo que daba Corta: {t, i, f} en segundos del original, la puntuación suelta pegada a la
+        # palabra anterior, sin marcas ([música]) ni inventos en silencio.
         datos = {"transcription": [{"text": " Hola", "offsets": {"from": 0, "to": 400}}, {"text": ",", "offsets": {"from": 400, "to": 420}},
-                                   {"text": " [música]", "offsets": {"from": 500, "to": 900}}, {"text": " Ana", "offsets": {"from": 1000, "to": 1300}}]}
-        self.assertEqual(importar.palabras_de_whisper(datos), [{"t": "Hola,", "i": 0.0, "f": 0.42}, {"t": "Ana", "i": 1.0, "f": 1.3}])
-        self.assertEqual(importar.palabras_de_whisper({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
+                                   {"text": " [música]", "offsets": {"from": 500, "to": 900}}, {"text": " Ana", "offsets": {"from": 1000, "to": 1300}},
+                                   {"text": " Pérez.", "offsets": {"from": 1333, "to": 1777}}]}
+        self.assertEqual(transcribir.palabras_de(datos), [{"t": "Hola,", "i": 0.0, "f": 0.42}, {"t": "Ana", "i": 1.0, "f": 1.3},
+                                                         {"t": "Pérez.", "i": 1.333, "f": 1.777}])
+        self.assertEqual(transcribir.palabras_de({"transcription": [{"text": " Gracias.", "offsets": {"from": 0, "to": 900}}]}), [])
 
 
 class Efectos(unittest.TestCase):
@@ -490,27 +516,53 @@ class Efectos(unittest.TestCase):
         self.assertLess(max(max(cuadro[k:k + 3]) - min(cuadro[k:k + 3]) for k in range(0, len(cuadro), 3)), 24)
 
     def test_catalogo(self):
+        # Pieza «catálogo»: el índice se valida con bin/efecto_formato.py y solo se instala lo que está en el último índice validado,
+        # con su tamaño y su huella.
+        import hashlib
         bueno = {"formato": 1, "id": "neon", "categoria": "filtro", "nombre": {"es": "Neón"}, "pasos": [{"tipo": "color", "tono": 40}]}
         crudo = json.dumps(bueno).encode()
-        import hashlib
         huella = hashlib.sha256(crudo).hexdigest()
-        entrada = {**bueno, "archivo": "efectos/filtro/neon.json", "sha256": huella, "bytes": len(crudo)}
+        entrada = {**bueno, "archivo": "efectos/filtro/neon.json", "sha256": huella, "bytes": len(crudo)}  # el índice de siempre
         indice = {"formato": 1, "efectos": [entrada, {**entrada, "id": "otro"}, {**entrada, "archivo": "../../x.json"}, {**entrada, "sha256": "x"}, "raro",
                                             {**entrada, "id": "neon2", "archivo": "efectos/filtro/neon2.json", "pasos": [{"tipo": "color", "codigo": 1}]}]}
-        self.assertEqual([e["id"] for e in efectos.validar_indice(indice)], ["neon"], "solo las entradas válidas, una vez")
+        ruta_indice = os.path.join(TMP, "indice.json")
+        with open(ruta_indice, "w", encoding="utf-8") as f:
+            json.dump(indice, f)
+        r = con_entrada("catalogo.py", "indice", {"tipo": "efectos", "archivo": ruta_indice})
+        self.assertEqual([(e["id"], e["ruta"], e["tamano"]) for e in r["efectos"]], [("neon", "efectos/filtro/neon.json", len(crudo))],
+                         "solo las entradas válidas, una vez, con ruta y tamaño")
         archivo = os.path.join(TMP, "efecto.json")
         with open(archivo, "wb") as f:
             f.write(crudo)
-        r = con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", "sha256": huella})
+        instalar = lambda **x: con_entrada("catalogo.py", "instalar", {"tipo": "efectos", "archivo": archivo, "id": "neon", "sha256": huella, **x})  # noqa: E731
+        self.assertEqual(instalar(sha256="0" * 64)["codigo"], "no_esta", "huella distinta a la del índice")
+        self.assertFalse(instalar(id="otro")["ok"], "otro id")
+        for sin in ({"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella[:63]}):
+            self.assertFalse(instalar(**sin)["ok"], f"sin huella válida: {sin}")
+        self.assertFalse(os.path.exists(descargado("efectos", "neon")))
+        with open(archivo, "ab") as f:
+            f.write(b" ")
+        self.assertEqual(instalar()["codigo"], "danado", "el archivo no calza con la huella del índice")
+        with open(archivo, "wb") as f:
+            f.write(crudo)
+        r = instalar()
         self.assertTrue(r["ok"], r)
-        self.assertIn("neon", efectos.disponibles())
+        self.assertEqual(r["efecto"]["origen"], "descargado")
+        self.assertEqual(stat.S_IMODE(os.stat(descargado("efectos", "neon")).st_mode), 0o600)
         self.assertEqual(efectos.disponibles()["neon"]["origen"], "descargado")
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "neon", "sha256": "0" * 64})["ok"], "huella distinta")
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otro"})["ok"], "otro id")
-        with open(archivo, "w") as f:
-            json.dump({**bueno, "id": "malo", "pasos": [{"tipo": "color", "brillo": 9}]}, f)
-        self.assertFalse(con_entrada("efectos.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "malo"})["ok"])
-        os.remove(os.path.join(efectos.DESCARGADOS, "neon.json"))
+        malo, _, _ = del_catalogo("efectos", {**bueno, "id": "malo", "pasos": [{"tipo": "color", "brillo": 9}]})
+        self.assertFalse(malo["ok"])
+        os.remove(descargado("efectos", "neon"))
+
+    def test_descargados_de_antes_siguen(self):
+        # Lo que bajó Corta antes de la pieza quedó en ~/Corta/.corta/efectos/<id>.json: la pieza lee la misma carpeta.
+        viejo = {"formato": 1, "id": "de-antes", "categoria": "color", "nombre": {"es": "De antes"}, "pasos": [{"tipo": "color", "brillo": 1.1}]}
+        proyecto.escribir_json(descargado("efectos", "de-antes"), viejo)
+        try:
+            self.assertEqual(efectos.disponibles()["de-antes"], {**viejo, "origen": "descargado"})
+            self.assertIn("de-antes", [e["id"] for e in correr("estado.py")["efectos"]])
+        finally:
+            os.remove(descargado("efectos", "de-antes"))
 
     def test_mismo_formato_que_el_catalogo(self):
         # El catálogo de la comunidad usa este mismo archivo para validar: si está al lado (../corta-catalogo), tienen que ser iguales.
@@ -544,7 +596,7 @@ class Plantillas(unittest.TestCase):
         self.assertGreaterEqual(len({p["categoria"] for p in todas.values()}), 4)
         tipos = plantillas.tipos_de_efectos({i: e for i, e in efectos.disponibles().items() if e["origen"] == "incluido"})
         for p in todas.values():
-            self.assertEqual(p["origen"], "incluida")
+            self.assertEqual(p["origen"], "incluido")
             self.assertEqual(plantilla_formato.referencias(p, tipos, set(subtitulos.estilos())), [], p["id"])
             self.assertTrue(p["nombre"].get("en") and p["descripcion"].get("en"), f"{p['id']}: falta el inglés")
             for h in p["huecos"]:
@@ -633,12 +685,7 @@ class Plantillas(unittest.TestCase):
         return rojo, azul
 
     def _instalar(self, d):
-        crudo = json.dumps(d).encode()
-        archivo = os.path.join(TMP, "plantilla.json")
-        with open(archivo, "wb") as f:
-            f.write(crudo)
-        import hashlib
-        return con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": d["id"], "sha256": hashlib.sha256(crudo).hexdigest()})
+        return del_catalogo("plantillas", d)[0]
 
     def _color(self, video, t):
         cuadro = subprocess.run(["ffmpeg", "-v", "error", "-ss", str(t), "-i", video, "-frames:v", "1", "-vf", "scale=8:8,format=rgb24",
@@ -694,7 +741,7 @@ class Plantillas(unittest.TestCase):
         self.assertEqual(d["proyecto"]["fuente"], r["proyecto"]["fuente"])
         self.assertTrue(os.path.exists(os.path.join(carpeta, d["proyecto"]["fuente"]["archivo"])))
         self.assertIn(os.path.realpath(carpeta), [x["carpeta"] for x in correr("estado.py")["proyectos"]])
-        os.remove(os.path.join(plantillas.DESCARGADAS, "prueba-dos.json"))
+        os.remove(descargado("plantillas", "prueba-dos"))
 
     def test_crear_rechaza(self):
         rojo, _ = self._clips()
@@ -719,14 +766,26 @@ class Plantillas(unittest.TestCase):
         entrada = {**bueno, "archivo": "plantillas/celebracion/tres.json", "sha256": huella, "bytes": len(crudo)}
         indice = {"formato": 1, "plantillas": [entrada, {**entrada, "id": "otra"}, {**entrada, "archivo": "efectos/filtro/tres.json"},
                                                {**entrada, "bytes": 10 ** 6}, {**entrada, "id": "x2", "archivo": "plantillas/celebracion/x2.json", "huecos": []}]}
-        self.assertEqual([e["id"] for e in plantillas.validar_indice(indice)], ["tres"])
-        self.assertTrue(self._instalar(bueno)["ok"])
-        self.assertEqual(plantillas.disponibles()["tres"]["origen"], "descargada")
+        ruta_indice = os.path.join(TMP, "indice.json")
+        with open(ruta_indice, "w", encoding="utf-8") as f:
+            json.dump(indice, f)
+        self.assertEqual([e["id"] for e in con_entrada("catalogo.py", "indice", {"tipo": "plantillas", "archivo": ruta_indice})["plantillas"]], ["tres"])
         archivo = os.path.join(TMP, "plantilla.json")
-        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", "sha256": "0" * 64})["ok"])
-        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "otra"})["ok"])
+        with open(archivo, "wb") as f:
+            f.write(crudo)
+        instalar = lambda **x: con_entrada("catalogo.py", "instalar", {"tipo": "plantillas", "archivo": archivo, "id": "tres", "sha256": huella, **x})  # noqa: E731
+        self.assertFalse(instalar(sha256="0" * 64)["ok"])
+        self.assertFalse(instalar(id="otra")["ok"])
+        for sin in ({"sha256": ""}, {"sha256": None}, {"sha256": huella.upper()}, {"sha256": huella + "0"}):
+            self.assertFalse(instalar(**sin)["ok"], f"sin huella válida: {sin}")
+        r = instalar()
+        self.assertTrue(r["ok"], r)
+        self.assertEqual(r["plantilla"]["id"], "tres")
+        self.assertEqual(plantillas.disponibles()["tres"]["origen"], "descargado")
+        self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "instalar", "archivo": archivo, "id": "tres", "sha256": huella})["ok"],
+                         "instalar ya no es de plantillas.py")
         self.assertFalse(con_entrada("plantillas.py", "entrada", {"accion": "borrar_todo"})["ok"])
-        os.remove(os.path.join(plantillas.DESCARGADAS, "tres.json"))
+        os.remove(descargado("plantillas", "tres"))
 
     def test_mismo_formato_que_el_catalogo(self):
         otro = os.path.join(RAIZ, "..", "corta-catalogo", "herramientas", "plantilla_formato.py")
@@ -891,27 +950,77 @@ class Vocabulario(unittest.TestCase):
         cambio(accion="quitar_palabra", palabra="bien")
         self.assertEqual(vocabulario.leer(), {"formato": 1, "reemplazos": [], "palabras": []})
 
-    def test_transcribir_con_vocabulario(self):
-        os.makedirs(importar.MODELOS, exist_ok=True)
-        with open(os.path.join(importar.MODELOS, importar.ARCHIVOS_MODELO["turbo"]), "wb") as f:
-            f.write(b"modelo ficticio")
+    def transcribir_con_vocabulario(self, transcriptor=None):
+        """Transcribe el video ficticio con el vocabulario «Kalumi, Ana».
+        transcriptor: None (corta-transcribir, del PATH de las pruebas) o «whisper-cli» (en CORTA_PROGRAMAS)."""
+        for m in ("turbo", "vad"):  # ficticios, del tamaño de los de verdad (sin ocupar disco)
+            with open(transcribir.ruta_modelo(m), "wb") as f:
+                f.truncate(transcribir.MODELOS[m]["bytes"])
         con_entrada("vocabulario.py", "entrada", {"accion": "agregar", "de": "calumi", "a": "Kalumi"})
         con_entrada("vocabulario.py", "entrada", {"accion": "palabra", "palabra": "Ana"})
-        recibido = os.path.join(TMP, "prompt.txt")
-        os.environ["CORTA_PRUEBA_PROMPT"] = recibido
+        recibido, registro = os.path.join(TMP, "prompt.txt"), os.path.join(TMP, "registro.json")
+        entorno = {"CORTA_PRUEBA_PROMPT": recibido, "CORTA_PRUEBA_REGISTRO": registro}
+        if transcriptor:
+            propios = tempfile.mkdtemp(dir=TMP)
+            shutil.copy(os.path.join(RAIZ, "pruebas", "transcriptor_falso.py"), os.path.join(propios, transcriptor))
+            os.chmod(os.path.join(propios, transcriptor), 0o755)
+            entorno["CORTA_PROGRAMAS"] = propios
+            # La pieza busca primero corta-transcribir en todas partes: sin el del PATH de las pruebas, queda whisper-cli.
+            entorno["PATH"] = os.pathsep.join(d for d in os.environ["PATH"].split(os.pathsep) if d != BIN_FALSO)
+        path = os.environ["PATH"]
+        os.environ.update(entorno)
         try:
             carpeta = correr("importar.py", VIDEO)["carpeta"]
             r = correr("importar.py", "transcribir", carpeta)
         finally:
-            del os.environ["CORTA_PRUEBA_PROMPT"]
+            for k in entorno:
+                del os.environ[k]
+            os.environ["PATH"] = path
+            con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
+            con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
         self.assertTrue(r["ok"], r)
         self.assertEqual(" ".join(w["t"] for w in r["proyecto"]["palabras"]), "Hola, soy de Kalumi. Kalumi ayuda a Ana.")
+        # Los mismos tiempos que antes de la pieza para esta entrada fija (segundos del original, 3 decimales).
+        self.assertEqual([(w["i"], w["f"]) for w in r["proyecto"]["palabras"]], [(round(0.5 + 0.4 * k, 3), round(0.85 + 0.4 * k, 3)) for k in range(8)])
+
         self.assertEqual(r["corregidas"], 2)
         with open(recibido, encoding="utf-8") as f:
             self.assertEqual(f.read(), "Kalumi, Ana", "el vocabulario le llega al transcriptor en un archivo")
-        self.assertFalse(os.path.exists(os.path.join(carpeta, "vocabulario.txt")), "el archivo del vocabulario no queda en la carpeta")
-        con_entrada("vocabulario.py", "entrada", {"accion": "quitar", "de": "calumi"})
-        con_entrada("vocabulario.py", "entrada", {"accion": "quitar_palabra", "palabra": "Ana"})
+        with open(registro, encoding="utf-8") as f:
+            reg = json.load(f)
+        self.assertNotIn("--vad", reg["opciones"], "sin detector de voz aunque esté descargado: puede recortar la palabra del borde")
+        for a in reg["argv"]:
+            for palabra in ("Kalumi", "Ana"):
+                self.assertNotIn(palabra, a, "el vocabulario nunca va en los argumentos del proceso (los ve cualquier programa)")
+        self.assertEqual(len(reg["archivos"]), 1)
+        ruta, modo = next(iter(reg["archivos"].items()))
+        self.assertEqual(modo, 0o600, "el archivo con el vocabulario es privado")
+        self.assertFalse(os.path.exists(ruta), "el archivo del vocabulario se borra al terminar")
+        self.assertFalse(ruta.startswith(carpeta), "ni queda en la carpeta del proyecto")
+        self.assertFalse(os.path.exists(os.path.join(carpeta, "vocabulario.txt")))
+        return reg
+
+    def test_transcribir_con_vocabulario(self):
+        reg = self.transcribir_con_vocabulario()
+        self.assertIn("--prompt-archivo", reg["argv"])
+
+    def test_whisper_cli_recibe_el_vocabulario_por_archivo_de_argumentos(self):
+        reg = self.transcribir_con_vocabulario("whisper-cli")
+        self.assertEqual(len(reg["argv"]), 1, "whisper-cli recibe solo @archivo")
+        self.assertTrue(reg["argv"][0].startswith("@"))
+
+    def test_vocabulario_en_una_sola_linea(self):
+        cmd, temporales = transcribir.comando("/x/whisper-cli", ["-m", "m.bin"], "  \n ")
+        self.assertEqual((cmd, temporales), (["/x/whisper-cli", "-m", "m.bin"], []), "sin vocabulario no hay archivo")
+        # Un salto de línea (vocabulario.json cambiado a mano) nunca cuela otra opción en el archivo de argumentos.
+        cmd, temporales = transcribir.comando("/x/whisper-cli", ["-m", "m.bin"], "Kalumi\n-of\n/tmp/otra\r\nAna")
+        try:
+            with open(temporales[0], encoding="utf-8") as f:
+                lineas = f.read().split("\n")
+        finally:
+            os.remove(temporales[0])
+        self.assertEqual(cmd, ["/x/whisper-cli", "@" + temporales[0]])
+        self.assertEqual(lineas, ["-m", "m.bin", "--prompt", "Kalumi -of /tmp/otra Ana", ""])
 
     def test_validar_palabras(self):
         p = proyecto.nuevo("x", {"archivo": "a.mp4", "duracion": 10, "ancho": 1920, "alto": 1080})
@@ -998,8 +1107,234 @@ class App(unittest.TestCase):
             self.assertNotIn('["ffprobe"', fuente)
 
 
+class Declaradas(unittest.TestCase):
+    """Las acciones de app.json → «acciones» (las corre el host de Pieza sin código propio): cada una se corre aquí como lo hace el
+    host (args literales, la entrada en un archivo con lo validado más lo inyectado, la salida al final) y responde lo de siempre."""
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(RAIZ, "acciones.json"), encoding="utf-8") as f:
+            cls.acciones = json.load(f)["acciones"]
+
+    def correr(self, nombre, datos):
+        a = self.acciones[nombre]
+        x = dict(datos)
+        if "carpeta" in x:
+            x["carpeta_real"] = os.path.realpath(x["carpeta"])  # lo pone el inyector «proyecto» del host
+        return con_entrada(a["script"], a["args"][0], x) if len(a["args"]) == 1 else \
+            correr(a["script"], *a["args"], self._entrada(x))
+
+    def _entrada(self, x):
+        ruta = os.path.join(TMP, "entrada-declarada.json")
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(x, f)
+        return ruta
+
+    def test_la_carpeta_de_un_proyecto_siempre_pasa_por_el_host(self):
+        con = {n for n, a in self.acciones.items() if "carpeta" in (a.get("datos") or {})}
+        self.assertEqual(con, {"guardarProyecto", "deshacer", "limpiar", "pedirIA", "buscarShorts", "crearShort"})
+        for n in con:
+            a = self.acciones[n]
+            self.assertEqual(a["inyectar"], {"carpeta_real": "proyecto"}, f"{n}: el host revisa la carpeta (Rutas.proyecto) antes de correr")
+            self.assertTrue(a["datos"]["carpeta"].get("requerido"), n)
+        self.assertEqual({n for n, a in self.acciones.items() if a.get("cola") == "escritura"},
+                         {"guardarProyecto", "deshacer", "limpiar", "vocabulario"}, "los cambios a un proyecto, de a uno y en orden")
+        app = json.load(open(os.path.join(RAIZ, "app.json"), encoding="utf-8"))
+        for n, a in app["acciones"].items():
+            self.assertEqual({k: v for k, v in a.items() if k != "scriptDeLaApp"}, {k: v for k, v in self.acciones[n].items() if k != "pieza"},
+                             f"acciones.json al día con app.json en «{n}» (pieza.py acciones .)")
+
+    def test_guardar_deshacer_limpiar(self):
+        carpeta = proyecto_de_prueba()
+        p = proyecto.cargar(carpeta)
+        p["lienzo"] = "1:1"
+        self.assertTrue(self.correr("guardarProyecto", {"carpeta": carpeta, "proyecto": p})["ok"])
+        d = self.correr("deshacer", {"carpeta": carpeta})
+        self.assertTrue(d["ok"] and d["deshecho"], d)
+        r = self.correr("limpiar", {"carpeta": carpeta, "silencio": 99, "muletillas": False})
+        self.assertTrue(r["ok"], r)
+        r = self.correr("limpiar", {"carpeta": carpeta, "silencio": "rm -rf", "muletillas": True})
+        self.assertTrue(r["ok"], "un silencio raro queda en el de siempre")
+        self.assertFalse(self.correr("limpiar", {"carpeta": TMP})["ok"], "fuera de ~/Corta no corre")
+
+    def test_ia_shorts_y_vocabulario(self):
+        carpeta = proyecto_de_prueba()
+        r = self.correr("pedirIA", {"carpeta": carpeta, "texto": "pon zoom; $(rm -rf ~)"})
+        self.assertTrue(r["ok"], r)
+        r = self.correr("buscarShorts", {"carpeta": carpeta})
+        self.assertIn("ok", r)
+        r = self.correr("crearShort", {"carpeta": carpeta, "desde": "0", "hasta": 1, "titulo": "x"})
+        self.assertFalse(r["ok"], "los tiempos tienen que ser números")
+        r = self.correr("vocabulario", {"accion": "palabra", "palabra": "Kalumi"})
+        self.assertTrue(r["ok"] and "Kalumi" in r["vocabulario"]["palabras"], r)
+        self.assertTrue(self.correr("vocabulario", {"accion": "quitar_palabra", "palabra": "Kalumi"})["ok"])
+
+    def test_estado_trae_las_ia(self):
+        r = correr("estado.py")
+        self.assertEqual({x["id"] for x in r["ias"]}, {"claude", "codex", "gemini"})
+        self.assertTrue(all(isinstance(x["instalada"], bool) for x in r["ias"]))
+
+    def test_trabajos_largos_laten(self):
+        """Transcribir, exportar, traer un video y armar una plantilla no tienen tope mientras laten (pieza «trabajos»)."""
+        import trabajos  # noqa: F401
+        for script in ("render.py", "importar.py", "plantillas.py"):
+            fuente = open(os.path.join(RAIZ, "bin", script), encoding="utf-8").read()
+            self.assertIn("trabajos.mantener_vivo()", fuente.split('if __name__ == "__main__":', 1)[1], script)
+        latido = os.path.join(TMP, "latido")
+        open(latido, "w").close()
+        os.utime(latido, (0, 0))
+        r = subprocess.run([sys.executable, "-c", "import sys, time; sys.path.insert(0, 'bin'); import trabajos; trabajos.mantener_vivo(); time.sleep(0.5)"],
+                           cwd=RAIZ, env={**os.environ, "CORTA_LATIDO": latido}, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertGreater(os.path.getmtime(latido), 1000, "tocó el latido")
+
+
+class Piezas(unittest.TestCase):
+    """Lo que Corta usa de Pieza (nucleo, ia, i18n): app.json, carpeta de datos, config validada y probar la IA por archivo."""
+
+    def test_app_json_y_carpeta_de_datos(self):
+        with open(os.path.join(RAIZ, "app.json"), encoding="utf-8") as f:
+            app = json.load(f)
+        self.assertEqual((app["id"], app["nombre"], app["datos"]), ("corta", "Corta", "visible"), "~/Corta/.corta, igual que la app de Mac")
+        self.assertTrue(app.get("privado"), "los JSON de Corta quedan 0600, como siempre")
+        self.assertEqual(app["config"]["idioma_audio"], {"tipo": "texto", "patron": "auto|[a-z]{2,3}"}, "va como -l del transcriptor")
+        ruta = os.path.join(TMP, "permisos.json")
+        with open(ruta, "w") as f:
+            f.write("{}")
+        os.chmod(ruta, 0o644)
+        proyecto.escribir_json(ruta, {"a": 1})
+        self.assertEqual(stat.S_IMODE(os.stat(ruta).st_mode), 0o600)
+        self.assertEqual(os.path.realpath(proyecto.INTERNO), os.path.realpath(os.path.join(proyecto.BASE, ".corta")))
+        import nucleo
+        self.assertEqual(os.path.realpath(nucleo.carpeta_datos()), os.path.realpath(proyecto.INTERNO))
+        # La app de Mac (pieza «host-mac») acepta en Config.guardar justo las claves de app.json: las lee de ahí, dentro de la app,
+        # junto a acciones.json (las acciones declaradas).
+        host = open(os.path.join(RAIZ, "app", "Sources", "PiezaHost", "Host.swift"), encoding="utf-8").read()
+        self.assertIn('Host.app["config"]', host, "Config sale de app.json")
+        sh = open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read()
+        self.assertIn('cp "$RAIZ/app.json" "$APP/Contents/Resources/corta/app.json"', sh, "app.json va dentro de la app")
+        self.assertIn('cp "$RAIZ/acciones.json" "$APP/Contents/Resources/corta/acciones.json"', sh, "acciones.json va dentro de la app")
+
+    def test_config_validada(self):
+        ruta = os.path.join(proyecto.INTERNO, "config.json")
+        antes = proyecto.leer_json(ruta, None)
+        try:
+            proyecto.escribir_json(ruta, {"ia": "otra", "modelo": "small", "idioma_audio": "es; rm -rf ~", "extra": 1, "bienvenida": True})
+            c = proyecto.config()
+            self.assertEqual((c["ia"], c["modelo"], c["idioma_audio"], c["bienvenida"]), ("claude", "small", "auto", True))
+            self.assertNotIn("extra", c)
+            proyecto.escribir_json(ruta, {"idioma_audio": "pt"})
+            self.assertEqual(proyecto.config()["idioma_audio"], "pt")
+            for malo in ("ES", "espanol", "auto ", "-l", ""):  # el patrón de app.json: el valor entero tiene que calzar
+                proyecto.escribir_json(ruta, {"idioma_audio": malo})
+                self.assertEqual(proyecto.config()["idioma_audio"], "auto", malo)
+        finally:
+            if antes is None:
+                os.remove(ruta)
+            else:
+                proyecto.escribir_json(ruta, antes)
+
+    def test_probar_ia_por_archivo(self):
+        r = con_entrada("ia.py", "probar", {"ia": "claude"})
+        self.assertEqual((r["ia"], r["ok"]), ("claude", True), r)
+        r = con_entrada("ia.py", "probar", {"ia": "otra"})
+        self.assertEqual((r["ok"], r["codigo"]), (False, "desconocida"))
+        # La app la prueba con la acción declarada de la pieza «ia» (acciones.json): {ia} en el archivo de entrada, nunca como argumento.
+        with open(os.path.join(RAIZ, "acciones.json"), encoding="utf-8") as f:
+            a = json.load(f)["acciones"]["probarIA"]
+        self.assertEqual((a["script"], a["args"], a["entrada"], a["responde"], a["pieza"]), ("ia.py", ["probar"], "archivo", "iaProbada", "ia"))
+
+    def test_cli_sin_protecciones_no_corre(self):
+        """Una IA que no conoce las protecciones nunca corre sin ellas: se pide actualizarla (código «actualizar»)."""
+        import ia
+        carpeta = tempfile.mkdtemp(dir=TMP)
+        corrio = os.path.join(carpeta, "corrio")
+        with open(os.path.join(carpeta, "claude"), "w", encoding="utf-8") as f:
+            f.write(f"#!{sys.executable}\nimport sys\nif '--help' in sys.argv: print('-p --print'); sys.exit(0)\n"
+                    f"open({corrio!r}, 'w').write('x'); print('listo')\n")
+        os.chmod(os.path.join(carpeta, "claude"), 0o755)
+        antes = os.environ["PATH"]
+        os.environ["PATH"] = carpeta + os.pathsep + antes
+        try:
+            _, error = ia.preguntar("hola", ia="claude", timeout=30)
+        finally:
+            os.environ["PATH"] = antes
+        self.assertEqual(error["codigo"], "actualizar")
+        self.assertFalse(os.path.exists(corrio), "nunca se corre sin las protecciones")
+
+    def test_error_de_ia_con_codigo(self):
+        import ia
+        antes = ia.preguntar
+        ia.preguntar = lambda *a, **k: ("", {"codigo": "no_instalada", "valores": {"ia": "Claude", "detalle": ""}})
+        try:
+            carpeta = proyecto_de_prueba()
+            r = editar_ia.pedir(carpeta, "pon zoom")
+        finally:
+            ia.preguntar = antes
+        self.assertEqual(r, {"ok": False, "codigo": "no_instalada", "error": "No encontré Claude en este computador. Revisa en Ajustes → Tu IA."})
+
+
 class Seguridad(unittest.TestCase):
-    """Content-Security-Policy de la interfaz y de la página pública (docs/)."""
+    """Content-Security-Policy de la interfaz y de la página pública (docs/), lo que recibe la IA y cómo se arma el HTML."""
+
+    def _ia_falsa(self, nombre):
+        """Un CLI falso que anota sus argumentos, su entorno y los archivos de su carpeta, y responde «listo»."""
+        carpeta = tempfile.mkdtemp(dir=TMP)
+        anotado = os.path.join(carpeta, "anotado.json")
+        ruta = os.path.join(carpeta, nombre)
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write("#!" + sys.executable + "\nimport json, os, sys\n"
+                    "if '--help' in sys.argv: print('--strict-mcp-config --disallowedTools'); sys.exit(0)\n"
+                    f"json.dump({{'argv': sys.argv[1:], 'env': dict(os.environ), 'archivos': os.listdir('.')}}, open({anotado!r}, 'w'))\n"
+                    "print('listo')\n")
+        os.chmod(ruta, 0o755)
+        return carpeta, anotado
+
+    def _con_ia(self, id_ia, nombre):
+        import ia
+        carpeta, anotado = self._ia_falsa(nombre)
+        antes_path, antes_elegida = os.environ["PATH"], ia.elegida
+        os.environ["PATH"] = carpeta + os.pathsep + antes_path
+        os.environ["CORTA_SECRETO_PRUEBA"] = "no-debe-llegar"
+        ia.elegida = lambda: id_ia
+        try:
+            r = ia.ejecutar("PEDIDO-SECRETO de la persona", timeout=60)
+        finally:
+            os.environ["PATH"], ia.elegida = antes_path, antes_elegida
+            del os.environ["CORTA_SECRETO_PRUEBA"]
+        self.assertEqual(r.returncode, 0, r.stderr)
+        with open(anotado, encoding="utf-8") as f:
+            return json.load(f)
+
+    def test_ia_no_recibe_variables_de_corta(self):
+        for id_ia, nombre in (("claude", "claude"), ("codex", "codex"), ("gemini", "agy")):
+            x = self._con_ia(id_ia, nombre)
+            self.assertFalse([k for k in x["env"] if k.startswith("CORTA_")], f"{id_ia}: las variables CORTA_* no llegan a la IA")
+        x = self._con_ia("claude", "claude")
+        self.assertEqual((x["env"].get("CLAUDE_CODE_DISABLE_CLAUDE_MDS"), x["env"].get("CLAUDE_CODE_DISABLE_AUTO_MEMORY")), ("1", "1"),
+                         "Claude corre sin la memoria de la persona")
+        self.assertIn("--disallowedTools", x["argv"])
+
+    def test_pedido_a_antigravity_va_en_archivo(self):
+        x = self._con_ia("gemini", "agy")
+        self.assertFalse(any("PEDIDO-SECRETO" in a for a in x["argv"]), "el pedido nunca va en los argumentos (los ve cualquier programa)")
+        self.assertIn("instrucciones.md", x["archivos"])
+
+    def test_T_escapa_los_valores(self):
+        """T es de la pieza «i18n» (ui/i18n.js): escapa la frase y cada valor; app.js la usa tal cual."""
+        js = open(os.path.join(RAIZ, "ui", "app.js"), encoding="utf-8").read()
+        if not shutil.which("node"):
+            self.skipTest("falta node")
+        prueba = (f"const {{ T }} = require({os.path.join(RAIZ, 'ui', 'i18n.js')!r}).crear();\n"
+                  "console.log(T('Plantilla «{x}» de **{n}**', { x: '<img src=x onerror=alert(1)>', n: 'a&b' }));")
+        r = subprocess.run(["node", "-e", prueba], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.strip(), "Plantilla «&lt;img src=x onerror=alert(1)&gt;» de <b>a&amp;b</b>")
+        self.assertIn("const { T, Tp, tr, frase, traducirDOM } = i18n;", js, "app.js usa la T de la pieza, no una propia")
+        self.assertNotRegex(js, r"function (T|tr|traducirDOM)\(", "sin copias propias de lo que trae la pieza «i18n»")
+        self.assertNotRegex(js, r"esc\((T|frase)\(", "T ya escapa: no escapar dos veces")
+        html = open(os.path.join(RAIZ, "ui", "index.html"), encoding="utf-8").read()
+        self.assertLess(html.index('src="i18n.js"'), html.index('src="app.js"'), "i18n.js se carga antes que app.js")
 
     def csp(self, html):
         import re

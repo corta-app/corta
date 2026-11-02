@@ -1,0 +1,266 @@
+{
+ "nombre": "Corta",
+ "id": "corta",
+ "datos": "visible",
+ "privado": true,
+ "icono": "docs/favicon.svg",
+ "plataformas": [
+  "mac"
+ ],
+ "config": {
+  "idioma_ui": [
+   "es",
+   "en"
+  ],
+  "bienvenida": "bool",
+  "ia": [
+   "claude",
+   "codex",
+   "gemini"
+  ],
+  "modelo": [
+   "turbo",
+   "small"
+  ],
+  "idioma_audio": {
+   "tipo": "texto",
+   "patron": "auto|[a-z]{2,3}"
+  },
+  "tema": [
+   "sistema",
+   "claro",
+   "oscuro"
+  ]
+ },
+ "catalogo": {
+  "repo": "corta-app/corta-catalogo",
+  "rama": "main",
+  "tipos": {
+   "efectos": {
+    "validador": "efecto_formato",
+    "indice": "efectos/index.json",
+    "max_bytes": 65536,
+    "max_indice": 524288,
+    "max_en_indice": 500,
+    "singular": "efecto",
+    "funcion": "validar_efecto",
+    "campos": "CLAVES"
+   },
+   "plantillas": {
+    "validador": "plantilla_formato",
+    "indice": "plantillas/index.json",
+    "max_bytes": 65536,
+    "max_indice": 524288,
+    "max_en_indice": 500,
+    "singular": "plantilla",
+    "funcion": "validar_plantilla",
+    "campos": "CLAVES"
+   }
+  }
+ },
+ "acciones": {
+  "guardarProyecto": {
+   "script": "guardar.py",
+   "args": [
+    "proyecto"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "carpeta": {
+     "tipo": "texto",
+     "max": 4096,
+     "requerido": true
+    },
+    "*": "pasar"
+   },
+   "inyectar": {
+    "carpeta_real": "proyecto"
+   },
+   "responde": "proyectoGuardado",
+   "limite": 60,
+   "eco": [
+    "carpeta"
+   ],
+   "cola": "escritura",
+   "maximo": 52428800,
+   "scriptDeLaApp": true
+  },
+  "deshacer": {
+   "script": "guardar.py",
+   "args": [
+    "deshacer"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "carpeta": {
+     "tipo": "texto",
+     "max": 4096,
+     "requerido": true
+    }
+   },
+   "inyectar": {
+    "carpeta_real": "proyecto"
+   },
+   "responde": "deshecho",
+   "limite": 60,
+   "eco": [
+    "carpeta"
+   ],
+   "cola": "escritura",
+   "scriptDeLaApp": true
+  },
+  "limpiar": {
+   "script": "limpiar.py",
+   "args": [
+    "entrada"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "carpeta": {
+     "tipo": "texto",
+     "max": 4096,
+     "requerido": true
+    },
+    "muletillas": {
+     "tipo": "bool"
+    },
+    "*": "pasar"
+   },
+   "inyectar": {
+    "carpeta_real": "proyecto"
+   },
+   "responde": "limpiado",
+   "limite": 1800,
+   "eco": [
+    "carpeta"
+   ],
+   "cola": "escritura",
+   "scriptDeLaApp": true
+  },
+  "pedirIA": {
+   "script": "editar_ia.py",
+   "args": [
+    "entrada",
+    "pedir"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "carpeta": {
+     "tipo": "texto",
+     "max": 4096,
+     "requerido": true
+    },
+    "texto": {
+     "tipo": "texto",
+     "max": 2000,
+     "recortar": true
+    }
+   },
+   "inyectar": {
+    "carpeta_real": "proyecto"
+   },
+   "responde": "iaRespondio",
+   "limite": 900,
+   "eco": [
+    "carpeta"
+   ],
+   "scriptDeLaApp": true
+  },
+  "buscarShorts": {
+   "script": "editar_ia.py",
+   "args": [
+    "entrada",
+    "shorts"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "carpeta": {
+     "tipo": "texto",
+     "max": 4096,
+     "requerido": true
+    }
+   },
+   "inyectar": {
+    "carpeta_real": "proyecto"
+   },
+   "responde": "shortsListos",
+   "limite": 900,
+   "eco": [
+    "carpeta"
+   ],
+   "scriptDeLaApp": true
+  },
+  "crearShort": {
+   "script": "editar_ia.py",
+   "args": [
+    "entrada",
+    "crear_short"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "carpeta": {
+     "tipo": "texto",
+     "max": 4096,
+     "requerido": true
+    },
+    "titulo": {
+     "tipo": "texto",
+     "max": 80,
+     "recortar": true
+    },
+    "*": "pasar"
+   },
+   "inyectar": {
+    "carpeta_real": "proyecto"
+   },
+   "responde": "shortCreado",
+   "limite": 900,
+   "scriptDeLaApp": true
+  },
+  "vocabulario": {
+   "script": "vocabulario.py",
+   "args": [
+    "entrada"
+   ],
+   "entrada": "archivo",
+   "datos": {
+    "accion": {
+     "tipo": "enum",
+     "valores": [
+      "agregar",
+      "quitar",
+      "palabra",
+      "quitar_palabra"
+     ],
+     "requerido": true
+    },
+    "de": {
+     "tipo": "texto",
+     "max": 60,
+     "recortar": true
+    },
+    "a": {
+     "tipo": "texto",
+     "max": 60,
+     "recortar": true
+    },
+    "palabra": {
+     "tipo": "texto",
+     "max": 60,
+     "recortar": true
+    }
+   },
+   "responde": "vocabularioActualizado",
+   "cola": "escritura",
+   "limite": 60,
+   "scriptDeLaApp": true
+  }
+ },
+ "sin_acciones": [
+  "listaIA",
+  "modelosVoz",
+  "catalogoInstalados",
+  "catalogoQuitar",
+  "catalogoUltima"
+ ]
+}

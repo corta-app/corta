@@ -22,17 +22,50 @@ palabras y elige los mejores momentos de un video largo. Interfaz web única; ap
 
 | Ruta | Qué es |
 |---|---|
-| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + velocidad + encuadre + zoom, concat, subtítulos, música con sidechain; su lista blanca de filtros está al inicio del archivo y la prueba `Velocidad.test_grafo_solo_lista_blanca` la revisa), `importar.py` (copiar el video, ffprobe, transcribir con `whisper-cli -ml 1 -sow -oj`), `musica.py` (copia la canción elegida a `musica/` del proyecto, sin pisar copias anteriores, y la deja en `musica`), `editar_ia.py` (pedidos, Shorts y crear un Short; `entrada <entrada.json>` para lo que manda la app), `ia.py` (la IA del usuario, sin herramientas), `estado.py` (proyectos, estilos, config y vocabulario para la app), `guardar.py` (guardar y deshacer lo que manda la interfaz, por archivo de entrada), `efecto_formato.py` (formato y validación de un efecto; el MISMO archivo que `corta-catalogo/herramientas/`), `plantilla_formato.py` (formato, validación y referencias de una plantilla; también el MISMO archivo que el catálogo), `plantillas.py` (plantillas incluidas y descargadas, `llenar`/`aplicar`, armar el video de los huecos con ffmpeg, crear/ajustar/cambiar por archivo de entrada, índice e instalar del catálogo), `efectos.py` (efectos incluidos y descargados, tiempos de un efecto en el video exportado y su cadena de ffmpeg con lista blanca; valida el índice del catálogo e instala lo que descarga la app), `vocabulario.py` (corregir palabras sin perder tiempos y el vocabulario de `~/Corta/vocabulario.json`, que `importar.py` aplica al transcribir y le pasa al transcriptor en un archivo, `--prompt-archivo`). El último argumento de cada script es la ruta del JSON de salida. |
-| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode). `Sources/Corta/`: `CortaApp.swift` (arranque y menús), `Ventana.swift` (WKWebView + puente: un `case` por acción; trabajos largos y su avance), `Medios.swift` (`corta://`), `Catalogo.swift` (efectos y plantillas de la comunidad, un `Tipo` por cada uno: dominio fijo, sin redirecciones, tamaño máximo y huella SHA-256), `Servicios.swift` (rutas, config, idioma, IA, modelos con huella, `Procesador`, `EnOrden`), `Actualizaciones.swift`. `Sources/Transcribir/` es `corta-transcribir` (whisper.cpp oficial con Metal, mismas opciones que `whisper-cli`). `Corta.icns` sale de `herramientas/generar_icono.mjs`. |
-| `build.sh`, `herramientas/empaquetar.sh` | Arman `dist/Corta.app` (Python portátil, ffmpeg/ffprobe y whisper.framework verificados por SHA-256, más bin/, ui/, estilos/, efectos/ y plantillas/) + zip + `.sha256`; `build.sh` la instala en `~/Applications` y se niega si hay una exportación o transcripción en curso. |
+| `bin/` | Python **solo biblioteca estándar**. `proyecto.py` (formato, validación, tramos conservados, tiempo original → exportado, cortar/restaurar palabras, guardar con historial y deshacer), `limpiar.py` (silencios y muletillas por palabras, o `silencedetect` sin transcripción), `subtitulos.py` (estilos y archivo .ass), `render.py` (grafo de ffmpeg: piezas con trim + velocidad + encuadre + zoom, concat, subtítulos, música con sidechain; su lista blanca de filtros está al inicio del archivo y la prueba `Velocidad.test_grafo_solo_lista_blanca` la revisa), `importar.py` (copiar el video, ffprobe y transcribir palabra por palabra con la pieza «transcribir», sin VAD), `musica.py` (copia la canción elegida a `musica/` del proyecto, sin pisar copias anteriores, y la deja en `musica`), `editar_ia.py` (pedidos, Shorts y crear un Short; `entrada <entrada.json>` para lo que manda la app), `nucleo.py` (pieza «nucleo»: `app.json`, carpeta de datos, config validada, escritura atómica), `ia.py` (pieza «ia»: la IA del usuario, sin herramientas ni memoria, en una carpeta temporal; `ia.py probar <entrada {ia}> <salida>`; errores como `{codigo, valores}` que `ia.frase()` pasa a texto), `estado.py` (proyectos, estilos, config y vocabulario para la app), `guardar.py` (guardar y deshacer lo que manda la interfaz, por archivo de entrada), `efecto_formato.py` (formato y validación de un efecto; la pieza «catálogo» usa `validar_efecto` y `CLAVES`; el MISMO archivo que `corta-catalogo/herramientas/`), `plantilla_formato.py` (formato, validación y referencias de una plantilla; también el MISMO archivo que el catálogo), `plantillas.py` (plantillas incluidas y descargadas, `llenar`/`aplicar`, armar el video de los huecos con ffmpeg, crear/ajustar/cambiar por archivo de entrada), `efectos.py` (efectos incluidos y descargados, tiempos de un efecto en el video exportado y su cadena de ffmpeg con lista blanca), `vocabulario.py` (corregir palabras sin perder tiempos y el vocabulario de `~/Corta/vocabulario.json`, que `importar.py` aplica al transcribir y le pasa al transcriptor (pieza «transcribir»: en un archivo privado 0600, fuera del proyecto, que se borra al terminar; `corta-transcribir --prompt-archivo` o `whisper-cli @archivo`, el vocabulario en una sola línea; nunca como argumento)), `transcribir.py` (pieza «transcribir»), `catalogo.py` (pieza «catálogo»). El último argumento de cada script es la ruta del JSON de salida. |
+| `app/` | App de Mac (SwiftPM, macOS 15, sin proyecto de Xcode) sobre la pieza «host-mac». `Sources/PiezaHost/` es la app genérica de Pieza (ventana, puente con guardas, config e idioma desde `app.json`, menús, apariencia, scripts con límite, la fila y las acciones declaradas de `acciones.json`). `Sources/Corta/` es lo propio: `CortaApp.swift` (`Host.arrancar`: menús, estado, inyector `proyecto`, lo registrado, catálogo y actualizaciones; `Trabajos` para transcribir y exportar con su avance; `Plantillas` con HEIC → JPEG), `Ventanas.swift` (la interfaz bajo la barra de título, la franja que mueve la ventana y la capa que guarda las rutas de lo que se suelta), `Medios.swift` (qué sirve `corta://video/…`), `Servicios.swift` (`Rutas` de `~/Corta` y `Modelos` de whisper con huella). `Sources/PiezaActualizaciones/` (pieza «actualizaciones»), `Sources/PiezaCatalogo/` (pieza «catálogo»: efectos y plantillas de la comunidad, dominio fijo, sin redirecciones, tamaño máximo y huella SHA-256; se configura en `CortaApp` con `app.json`) y `Sources/PiezaTrabajos/` (pieza «trabajos», sin target: Corta solo usa su latido en Python). `Sources/Transcribir/` es `corta-transcribir` (whisper.cpp oficial con Metal, mismas opciones que `whisper-cli`). `Corta.icns` sale de `herramientas/generar_icono.mjs`. |
+| `build.sh`, `herramientas/empaquetar.sh` | Arman `dist/Corta.app` (Python portátil, ffmpeg/ffprobe y whisper.framework verificados por SHA-256, más bin/, ui/, estilos/, efectos/, plantillas/ y app.json) + zip + `.sha256`; `build.sh` la instala en `~/Applications` y se niega si hay una exportación o transcripción en curso. |
 | `estilos/` | Estilos de subtítulos incluidos y `README.md` con el formato. |
 | `efectos/` | Efectos incluidos (`<categoria>/<id>.json`, solo datos) y `README.md` con el formato. Los de la comunidad viven en el repo `corta-app/corta-catalogo`. |
 | `plantillas/` | Plantillas incluidas (`<categoria>/<id>.json`, solo datos) y `README.md` con el formato. Las de la comunidad, en `corta-catalogo/plantillas/`. |
-| `ui/` | Interfaz única (`app.js`, `app.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros) + `demo/foto-1.jpg`, `demo/foto-2.jpg` (dibujos para llenar plantillas; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
+| `app.json`, `piezas.json`, `acciones.json` | **Pieza** (ver «Piezas»): `app.json` describe la app para las piezas (id, nombre, datos, plataformas, claves de config, `acciones` declaradas y `sin_acciones`); `piezas.json` lo escribe `pieza.py` (versión y huella de cada archivo copiado); `acciones.json` también lo arma `pieza.py` (las acciones de las piezas y las de `app.json`) y va dentro de la app junto a `app.json`. |
+| `ui/` | Interfaz única (`app.js`, `app.css`; de Pieza: `i18n.js`, `host.js`, `tema.js`/`tema.css` y `componentes.js`/`componentes.css`), `fuentes/` (OFL, las usan la vista previa y ffmpeg), `demo.json` + `demo/ana.mp4` + `demo/musica-demo.mp3` (música sintetizada, sin derechos de terceros) + `demo/foto-1.jpg`, `demo/foto-2.jpg` (dibujos para llenar plantillas; se generan con `herramientas/generar_demo.py`) e `idiomas/en.json`. |
 | `docs/` | Página pública (GitHub Pages); `pagina.yml` publica también `ui/` en `/demo/`. |
-| `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `transiciones.mjs` (vista previa ↔ exportado, con `cuadros_transiciones.py`), `velocidad.mjs` (velocidad por tramo: cada cuadro y cada palabra exportados contra la vista previa, con `cuadros_velocidad.py`, y el costo de exportar), `contrato.py` (interfaz ↔ `Ventana.swift`), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
+| `pruebas/` | `correr.sh`, `test_python.py` (exporta de verdad con ffmpeg), `interfaz.mjs` (Playwright), `transiciones.mjs` (vista previa ↔ exportado, con `cuadros_transiciones.py`), `velocidad.mjs` (velocidad por tramo: cada cuadro y cada palabra exportados contra la vista previa, con `cuadros_velocidad.py`, y el costo de exportar), `contrato.py` (interfaz ↔ app de Mac: registradas, del host y declaradas), `casos.json` (casos compartidos Python ↔ JS), `ia_falsa.py`, `datos/`. |
 | `CHANGELOG.md` | Lo que cambia para quien usa la app, en palabras simples (ver «Lo que rodea a un cambio»). |
 | `herramientas/` | `generar_demo.py` (Pillow, solo para desarrollo), `imagenes.mjs` (capturas de la página), `generar_icono.mjs` (ícono de la app de Mac), `empaquetar.sh` (arma la app de Mac), `revisar_privacidad.sh`. |
+
+## Piezas (de [Pieza](https://github.com/pieza-app/pieza))
+Corta usa piezas de Pieza, la base de la familia de apps: código probado que se copia a la app (modelo «copiar y adueñarse»).
+
+| Pieza | Versión | Archivos | Qué usa Corta |
+|---|---|---|---|
+| `nucleo` | 0.7.0 | `bin/nucleo.py` | `app.json`, carpeta de datos (`~/Corta/.corta`: `"datos": "visible"`; en las pruebas `CORTA_CARPETA` mueve `~/Corta` entero; `"privado": true` deja todo JSON en 0600, como antes), config validada por `app.json`, `leer_json`/`escribir_json` atómicos, `recursos()`. `proyecto.py` lo envuelve: `config()` suma lo de siempre (`CONFIG_DEFECTO`); `idioma_audio` va como `-l` del transcriptor y `app.json` solo lo deja «auto» o un código de idioma (`"patron": "auto|[a-z]{2,3}"`). Lo propio de Corta (`carpeta_valida`, `SOLO_ARCHIVOS`, `entrada`, `programa`) sigue en `proyecto.py`. |
+| `ia` | 0.6.3 | `bin/ia.py` | `preguntar`, `nombre`, `frase`, `probar`, `lista`. Lo propio de Corta (prompts y operaciones JSON) sigue en `editar_ia.py`, que responde `{ok: false, error, codigo}` (`error_ia`: la frase de la pieza, o la de Corta en `FRASES_IA` cuando dice dónde se elige la IA). `probarIA` es la acción declarada de la pieza (`ia.py probar`, límite 150 s) y la respuesta llega tal cual; la fila de «Tu IA» (pieza «componentes») muestra el error traducido con su `plantilla` y `valores` y guarda `config.ia` si respondió. Las IA instaladas (`ias` del estado) las da `bin/estado.py` con `ia.lista()`. No adoptada: `listaIA` (`sin_acciones`). |
+| `i18n` | 0.3.1 | `ui/i18n.js` | `T`, `Tp`, `tr`, `frase`, `traducirDOM` y `cargarIdioma` con `i18n.elegir` (elegido > `?idioma=` > config > sistema); se carga antes que `app.js`. `E.idioma` es una copia de `i18n.idioma`. `ui/idiomas/en.json` lleva `codigo` y `nombre` (los paquetes se validan). |
+| `host-ui` | 0.2.0 | `ui/host.js` | `host = PiezaHost.crearHost({nombre: "corta", global: "Corta", simular})`: `host.enviar` (Mac `webkit.messageHandlers.corta`, Electron `window.cortaEscritorio`, navegador `simular()`; los datos viajan como copia JSON también en la vista previa), `HOST = host.plataforma` y `<html data-host>`. Las respuestas van en `host.responder({…})` (quedan en `window.Corta`); `window.Corta._pruebas` va aparte porque no es una función. `simular` atiende lo propio y deja `probarIA`, `buscarActualizacion`, `actualizar` y `abrirEnlace` a `PiezaHost.simulacionesComunes()`. |
+| `tema` | 0.2.1 | `ui/tema.css`, `ui/tema.js` | Los tokens de color (`--fondo`, `--panel`, `--panel-2`, `--linea`, `--texto`, `--texto-suave`, `--acento`, `--sobre-acento`, `--rojo`, `--verde`, `--acento-suave`, `--rojo-suave`…) con `light-dark()`. `app.css` solo define los pares de Corta (`--x-claro`/`--x-oscuro`), también los de lo propio (`--lateral`, `--corte-fuerte`/`--corte-suave` para `--corte`, `--escenario`, `--violeta*`, `--azul*`), elegidos con `light-dark()` y con su respaldo `@supports` para navegadores sin él. El modo va en `<html data-pz-modo>`: se lee con `tema.valor`/`tema.resuelto()`, nunca del atributo. Ajustes → Apariencia (`tema.selectorHTML()`, config `tema`: sistema, claro u oscuro; «sistema» se ve igual que antes); `?tema=oscuro` para capturas. |
+| `componentes` | 0.3.0 | `ui/componentes.js`, `ui/componentes.css` | `ui = PiezaComponentes.crear({…})`: `ui.dialogo` (cada `dialogoX()` devuelve `{titulo, valores?, cuerpo, pie, cerrable?, sinEsc?}`; `cerrarDialogo()` es el ✕/Esc/velo; el detalle de una plantilla vuelve a la lista con Esc), `toast` = `ui.aviso` (en cola; mientras se elige el idioma esperan con `retener`), `ui.filasIA` (`probarIA {ia}`; al probar bien guarda `config.ia`), `ui.filaActualizacion` (`actualizacionDisponible`/`Revisada` con `{pintar: false}` para no pintar detrás del idioma) y `ui.acercaDe` (con «Enviar comentarios» → issue en GitHub; la versión llega por `crear({version: () => E.version})`). El foco de un diálogo parte en su título (`data-autofoco` solo en un campo, o en el idioma sugerido); `confirmar({peligro})` lo deja en «Cancelar». El detalle de una plantilla pone «‹ Plantillas» en `antes`. Clases `pz-`: `.pz-boton` (+ `.pz-principal`, `.pz-plano`, `.pz-peligro`; `.grande` y `.chico` son de Corta), `.pz-fila`/`.pz-txt`, `.pz-chip`, `.pz-seg`, `.pz-ok`, `.pz-error-texto`. `app.css` les da la forma de Corta; el editor conserva sus tamaños (`:root { --pz-boton-alto: 0px; --pz-chip-alto: 0px }`) y la pieza sube a `--pz-tactil` (44 px) solo lo suyo (diálogos, filas de Ajustes, avisos) en celular y pantallas táctiles; la ✕ (`.pz-cerrar`) nunca baja de 36 px. Llamar `ui.despuesDePintar()` al final de `pintar()` y `ui.capas()` dentro de lo pintado. |
+| `transcribir` | 0.2.0 | `bin/transcribir.py` | `importar.transcribir` llama `transcribir.transcribir(audio, palabras=True, idioma, modelo, vocabulario)` → `{t, i, f}` en segundos del original (3 decimales, la puntuación suelta pegada a la palabra anterior, sin marcas ni inventos). **Sin VAD** (palabra por palabra es lo de siempre en la pieza) aunque el detector esté descargado: puede recortar la palabra del borde y aquí cada palabra es un borde de corte. El vocabulario va por `--prompt-archivo` (`corta-transcribir`) o `whisper-cli @archivo`, en un temporal 0600 que se borra; la transcripción, en una carpeta temporal (ya no queda `transcripcion.json` en el proyecto). Modelos en `~/Corta/.corta/modelos` (`modelo_elegido(config.modelo)`: si falta el elegido usa el otro). La descarga de modelos sigue en `Modelos` de `Servicios.swift` (mismos archivos y huellas). Errores `ErrorTranscribir` → `{ok: false, error, codigo}`. |
+| `host-mac` | 0.2.0 | `app/Sources/PiezaHost/` | La app de Mac genérica (ver «App de Mac» y «Puente»). **Un cambio propio** en `Procesador.swift`: `Procesador.entornoApp` (las variables que la app pone para todos sus scripts, aquí `CORTA_PROGRAMAS`), anotado como pendiente para Pieza; `pieza.py estado .` lo muestra como cambiado y `actualizar` no lo pisa. |
+| `actualizaciones` | 0.3.0 | `app/Sources/PiezaActualizaciones/Actualizaciones.swift` | Configurada en `CortaApp` (`repo: "corta-app/corta"`, `nombre: "Corta"`: los mismos `Corta-macOS.zip` + `.sha256`, `~/Corta/.corta/desarrollo` y `CORTA_PROGRESO` de antes) y atendida por el host (`p.actualizaciones`: `buscarActualizacion`, `actualizar` solo sin scripts corriendo, revisar al abrir y cada 6 h con el idioma elegido, `actualizacion` en el estado). Los textos van en español con `valores` y los traduce la interfaz. |
+| `bienvenida` | 0.3.0 | `ui/bienvenida.js`, `ui/bienvenida.css` | `bv = PiezaBienvenida.crear({…, listo: false})` con tres pasos de Corta (`hola`, `ia`, `transcriptor`); ver «Bienvenida». |
+| `trabajos` | 0.2.0 | `bin/trabajos.py` (+ `app/Sources/PiezaTrabajos/`, sin target) | Solo `trabajos.mantener_vivo()` en `render.py`, `importar.py` y `plantillas.py`: laten para el host, así exportar, transcribir, traer un video y armar una plantilla no tienen tope mientras el script siga vivo (si deja de latir 45 s, el host lo corta). El avance sigue en `<carpeta>/estado.json`. |
+| `catalogo` | 0.2.0 | `bin/catalogo.py`, `app/Sources/PiezaCatalogo/Catalogo.swift` | `app.json` → `catalogo`: repo `corta-app/corta-catalogo`, tipos `efectos` (validador `efecto_formato`) y `plantillas` (`plantilla_formato`), cada uno con su `index.json`, 64 KB por archivo, 512 KB el índice y 500 entradas; `singular` (`efecto`/`plantilla`) para que las respuestas sigan trayendo `efecto`/`plantilla`. `"funcion"` (`validar_efecto`/`validar_plantilla`) y `"campos": "CLAVES"` dicen qué usa la pieza del validador, sin alias en los archivos compartidos con el catálogo; el validador recibe el objeto entero y después se recorta a `CLAVES`. `efectos.disponibles()`/`plantillas.disponibles()` son `catalogo.listar(tipo)` por id (`origen`: «incluido» o «descargado», también en las plantillas). Swift: target `PiezaCatalogo`, `Catalogo.configurar(appJSON:agente:correr:)` en `CortaApp` y `Catalogo.listar/descargar(tipo, …)` en las acciones registradas de `CortaApp.swift`. Los descargados siguen en `~/Corta/.corta/efectos/` y `plantillas/` (la carpeta de datos de siempre: no hubo que migrar nada). El índice del catálogo puede seguir con `archivo`/`bytes`: la pieza devuelve `ruta`/`tamano`. Errores `{codigo, frase}` → `errorCatalogo(r)` en `app.js` (en `plantilla` llega la plantilla descargada). Sin conexión, `Catalogo.listar` devuelve la última lista validada con `sin_conexion: true`: la galería se ve, con un aviso, y descargar pide conexión. |
+
+- **No edites a mano los archivos de una pieza.** Se actualizan con «Pieza al día» (`.github/workflows/pieza-al-dia.yml`, una vez por
+  semana abre un PR o un issue) o con `python3 <pieza>/herramientas/pieza.py actualizar .`. Si hay que cambiar algo, el cambio va
+  primero a Pieza (`pieza.py diferencias . <pieza>` lo muestra) y vuelve desde allá; `pieza.py estado .` dice si algo quedó distinto.
+- `app.json` va dentro de la app (`herramientas/empaquetar.sh` lo copia a `Contents/Resources/corta/`): `bin/nucleo.py` lo busca junto
+  a `bin/`. Las claves de config que acepta `Config.guardar` (Swift) son las de `app.json` (una prueba lo revisa).
+- `.gitignore` es una lista blanca: `app.json` y `piezas.json` están en ella.
+- La pantalla del idioma (paso 0 de la bienvenida) la arma la pieza «bienvenida»; Corta la pone sobre fondo liso con su logo en
+  `.pz-capa.capa-idioma` con `data-pz-sin-esc`, y marca `data-autofoco` en el idioma sugerido para que la pieza «componentes» le dé
+  el foco sin dejar cerrarla.
+- No adoptadas: `red` (los scripts de Corta no salen a internet: lo que baja, lo baja la app) y, de `trabajos`, el `Trabajo` con
+  etapas (transcribir y exportar son un solo paso con su `estado.json`; no hay etapas, preguntas ni «seguir donde quedó»): de esa
+  pieza solo se usa el latido. De las acciones de las piezas, `listaIA`, `modelosVoz`, `catalogoInstalados`, `catalogoQuitar` y
+  `catalogoUltima` (la interfaz no las pide: `app.json` → `sin_acciones`).
 
 ## Reglas de la lógica compartida
 La misma regla existe en Python (para exportar) y en `ui/app.js` (para la vista previa): `conservados`, `a_salida`, `cortar_palabras`,
@@ -100,7 +133,28 @@ devuelve los ajustes que nadie volvió a cambiar y conserva (sin `origen`) lo qu
 El resultado se guarda como cualquier edición (y se puede deshacer).
 
 ## Puente interfaz ↔ app
-La UI llama `host.enviar(accion, datos)` y la app responde con `window.Corta.<funcion>(json)`; en el navegador responde `simular()`.
+La UI llama `host.enviar(accion, datos)` (pieza «host-ui») y la app responde con `window.Corta.<funcion>(json)` (las de `host.responder`); en
+el navegador responde `simular()`. En la app de Mac (pieza «host-mac») cada acción es de uno de tres tipos, en este orden:
+- **Registrada** (lo nativo de Corta, `p.registrar("x")` en `app/Sources/Corta/CortaApp.swift`): `elegirVideo`, `soltarVideo`,
+  `transcribir`, `exportar`, `descargarModelo`, `elegirMusica`, `elegirClips`, `ajustarHueco`, `cambiarClip`, `abrirCarpeta`,
+  `catalogoEfectos`, `descargarEfecto`, `catalogoPlantillas` y `descargarPlantilla`.
+- **Del host**: `listo` (el estado: `bin/estado.py` + versión, idioma, config y actualización + lo de Corta en `p.estado`: modelos,
+  carpeta y `progreso`), `config` (con las claves de `app.json`; rearma los menús al cambiar el idioma y aplica la apariencia),
+  `abrirEnlace` (solo https), `buscarActualizacion` y `actualizar` (pieza «actualizaciones»). El host llama `menu({accion})` para
+  «Ajustes…» (y `guardar` al cerrar: Corta ya guardó cada cambio).
+- **Declarada** (solo corre un script, `app.json` → `acciones` y las de las piezas; `pieza.py acciones .` arma `acciones.json`):
+  `guardarProyecto` → `proyectoGuardado {ok, carpeta}`, `deshacer` → `deshecho {ok, deshecho, carpeta, proyecto}`, `limpiar` →
+  `limpiado`, `pedirIA` → `iaRespondio`, `buscarShorts` → `shortsListos`, `crearShort` → `shortCreado {ok, carpeta, proyecto}`,
+  `vocabulario` → `vocabularioActualizado` y `probarIA` → `iaProbada` (pieza «ia»). El host valida los datos con su esquema (lo que
+  no está declarado se descarta, salvo `"*": "pasar"` donde el script valida todo), la carpeta de un proyecto pasa por el inyector
+  `proyecto` (`Rutas.proyecto`: si no es una carpeta directa de `~/Corta` con `proyecto.json`, responde `codigo: "falta"` y el script
+  no corre; `carpeta_real` va en la entrada) y `bin/` la vuelve a revisar. `guardarProyecto`, `deshacer`, `limpiar` y `vocabulario`
+  van en la fila (`cola: "escritura"`, la misma que usan la música y las plantillas). Los errores del host son
+  `{ok: false, codigo: "datos" | "falta" | "limite" | "fallo", texto, valores, error}`.
+Una acción nueva que solo corre un script se declara en `app.json` (y `pieza.py acciones .`); una nativa se registra en
+`CortaApp.swift`. Siempre con su caso en `simular()` y su respuesta en `host.responder`. `probarIA` es `{ia}` → `iaProbada {ia, ok, codigo?, plantilla?, valores?, error?}` (lo que devuelve
+`ia.py probar`); `actualizacionRevisada` es `{hay, notas, sinConexion}` y `estado.actualizacion` es `{hay, notas}`. La pieza
+«componentes» también manda `probarIA`, `config`, `buscarActualizacion`, `actualizar` y `abrirEnlace` (`pruebas/contrato.py` las lee de `ui/componentes.js`).
 Acciones: `listo, config, guardarProyecto, deshacer, elegirVideo, soltarVideo, transcribir, limpiar, pedirIA, buscarShorts, crearShort,
 exportar, probarIA, descargarModelo, elegirMusica, abrirEnlace, abrirCarpeta, buscarActualizacion, actualizar, vocabulario, catalogoEfectos, descargarEfecto,
 catalogoPlantillas, descargarPlantilla, elegirClips, ajustarHueco, cambiarClip`. Respuestas: `estado,
@@ -113,41 +167,57 @@ selector múltiple (videos y fotos; HEIC pasa a JPEG con ImageIO; orden por nomb
 `ajustarHueco` (`{carpeta, hueco, desde}`) y `cambiarClip` (`{carpeta, hueco}`, con selector) vuelven a armar. Las tres responden
 `plantillaArmada` `{ok, carpeta, proyecto, faltan?}` o `{ok: false, error}` (sin `error` si se canceló). `corta://` también sirve
 `clips/<archivo>` de un proyecto (las miniaturas de la pestaña Clips). `catalogoEfectos` baja
-`efectos/index.json` del catálogo y responde `catalogoListo` con lo que validó `bin/efectos.py indice`; `descargarEfecto` (`{id}`) busca
-ese id en el último índice validado, baja el archivo, compara tamaño y SHA-256 y `bin/efectos.py entrada` (`instalar`) lo valida y lo deja en
-`~/Corta/.corta/efectos/`; responde `efectoDescargado` con `{ok, efecto}` o `{ok: false, id, error}`. `vocabulario` (`{accion: "agregar" |
+`efectos/index.json` del catálogo y responde `catalogoListo` con lo que validó `bin/catalogo.py indice` (`{ok, tipo, efectos}`, cada uno
+con `ruta`, `sha256` y `tamano`); `descargarEfecto` (`{id}`) busca ese id en el último índice validado, baja el archivo, compara tamaño y
+SHA-256 y `bin/catalogo.py instalar` lo vuelve a comparar con ese índice, lo valida y lo deja en `~/Corta/.corta/efectos/`; responde
+`efectoDescargado` con `{ok, efecto}` o `{ok: false, tipo, id, codigo, plantilla, error}` (la interfaz muestra `Tp(plantilla)`). `vocabulario` (`{accion: "agregar" |
 "quitar" | "palabra" | "quitar_palabra", de?, a?, palabra?}`) corre `bin/vocabulario.py entrada` y responde `vocabularioActualizado`
-con `{ok, vocabulario}`. `pruebas/contrato.py` revisa que cada acción exista en `simular()`, en
-`Ventana.swift` (y en Windows/Linux cuando exista) y que cada función que llama la app exista en `window.Corta`. Una acción nueva va en
-`ui/app.js`, en `Ventana.swift` y simulada en `simular()`. El video se sirve como `corta://video/<carpeta>/<archivo>` (`Medios.swift`,
-con rangos): solo el `fuente.archivo` de un proyecto o un archivo de su `musica/`, en una carpeta directa de `~/Corta` con
+con `{ok, vocabulario}`. `pruebas/contrato.py` revisa que cada acción exista en `simular()` y en la app de Mac
+(registrada, del host o declarada), que cada función que llama la app (también el `responde` de cada declarada) exista en
+`window.Corta`, que `acciones.json` esté al día con `app.json` y las protecciones del host. El video se sirve como
+`corta://video/<carpeta>/<archivo>` (`p.registrarMedios("video")` del host, con rangos; `Medios.archivo` decide qué se sirve): solo el `fuente.archivo` de un proyecto o un archivo de su `musica/`, en una carpeta directa de `~/Corta` con
 `proyecto.json`, sin enlaces que salgan de `~/Corta`.
 `elegirMusica` (`{carpeta}`) abre el selector de archivos de audio y corre `bin/musica.py <carpeta> <archivo>`; responde
 `musicaElegida` con `{ok, carpeta, proyecto}` o `{ok: false, error}` (sin `error` si la persona canceló). La música queda dentro de la
 carpeta y se sirve igual que el video (`corta://video/<carpeta>/musica/<nombre>`). Quitarla o cambiar el volumen es `guardarProyecto`.
 
-**Bienvenida (primer uso, `config.bienvenida` sin marcar):** el paso 0 es el idioma y va antes que todo: «Elige tu idioma · Choose
+**Bienvenida (primer uso, `config.bienvenida` sin marcar; pieza «bienvenida»):** el paso 0 es el idioma y va antes que todo: «Elige tu idioma · Choose
 your language» con «Español» y «English» escritos en su propio idioma (`data-sin-traducir`), el del sistema sugerido y enfocado. Mientras
-tanto no se pinta la app detrás ni el video, los avisos (`toast`) esperan y no corren atajos ni se suelta un video. Al elegir se guarda
-`idioma_ui` igual que en Ajustes (`host.enviar("config")` + `cargarIdioma(codigo)`) y siguen, ya en ese idioma, «Hola», la IA y el
-transcriptor. Quien ya hizo la bienvenida no la repite; el idioma se cambia en Ajustes. Una app nativa no debe mostrar ni pedir nada
+tanto no se pinta la app detrás ni el video, los avisos (`toast`) esperan y no corren atajos ni se suelta un video. También se elige con 1/2 y las flechas. Al elegir se guarda
+`idioma_ui` igual que en Ajustes (`host.enviar("config")` + `cargarIdioma(codigo)`) y siguen, ya en ese idioma, los pasos que Corta
+suma con `bv.sumarPaso`: «Hola», la IA (Siguiente, con una IA elegida) y el transcriptor (con un modelo descargado); el último trae
+«Empezar». Quien eligió el idioma y la dejó a medias sigue desde «Hola». Quien ya hizo la bienvenida no la repite; el idioma se cambia en Ajustes. Una app nativa no debe mostrar ni pedir nada
 (avisos de actualización, descargas) antes de que la interfaz pase ese paso.
 
 ## App de Mac
-- Videos y proyectos en `~/Corta`; el código va dentro de la app (`Contents/Resources/corta`: bin/, ui/ sin la demo, estilos/) y los
-  scripts corren con el Python portátil incluido (`CORTA_RECURSOS`). ffmpeg, ffprobe y `corta-transcribir` van en `Contents/MacOS`
-  (`CORTA_PROGRAMAS`): `proyecto.programa()` los prefiere a los del sistema. Las variables `CORTA_*` de afuera no llegan a los scripts.
+- La base es la pieza «host-mac» (`app/Sources/PiezaHost/`, no se edita aquí salvo lo anotado en «Piezas»): `Host.arrancar` lee
+  `app.json` y `acciones.json` de dentro de la app (`Contents/Resources/corta/`), la carpeta de datos es la de siempre
+  (`~/Corta/.corta`, `"datos": "visible"`), la config `config.json` con las claves de `app.json`, la ventana recuerda su tamaño con el
+  mismo nombre («Corta») y los menús son los de siempre (⌘O video nuevo, ⌘, Ajustes, ⌘Z/⇧⌘Z, ⌘W, ⌘M, ⌘H, ⌘Q) más Ventana → Zoom
+  y Ayuda (sitio y código). Lo de Corta en `app/Sources/Corta/` no arma otra ventana, otro puente ni otro delegado.
+- Videos y proyectos en `~/Corta`; el código va dentro de la app (`Contents/Resources/corta`: bin/, ui/ sin la demo, estilos/,
+  `app.json` y `acciones.json`) y los scripts corren con el Python portátil incluido (`CORTA_RECURSOS`, `CORTA_DATOS`). ffmpeg, ffprobe
+  y `corta-transcribir` van en `Contents/MacOS` (`CORTA_PROGRAMAS`, que Corta pone con `Procesador.entornoApp`): `proyecto.programa()`
+  y la pieza «transcribir» los prefieren a los del sistema. Las variables `CORTA_*` de afuera no llegan a los scripts.
 - ffmpeg y ffprobe abren solo archivos: `proyecto.SOLO_ARCHIVOS` (`-protocol_whitelist file`) antes de cada entrada y la ruta con
   `proyecto.entrada()` (`file:` + ruta absoluta). Nunca va texto de la persona en los argumentos: los pedidos a la IA, los títulos y
-  los proyectos van en un JSON de entrada (`Procesador.conEntrada`); toda carpeta que manda la interfaz pasa por
-  `Rutas.proyecto` (Swift) y `proyecto.carpeta_valida` (Python). `guardar.py` no deja cambiar `fuente` ni apuntar la música fuera de `musica/`.
-- La IA corre sin herramientas ni MCP (`claude --disallowedTools "*" --strict-mcp-config`, `codex -s read-only`), igual al probarla.
-- La ventana solo carga archivos de `ui/` (navegación), el puente solo atiende al marco principal con origen `file` y la interfaz tiene
-  acceso de lectura solo a `ui/` (lo demás, por `corta://`). Un enlace https se abre en el navegador.
-- Transcribir y exportar: el avance lo dejan los scripts en `<carpeta>/estado.json`; `Ventana` lo lee cada medio segundo (`progreso`,
-  `exportarProgreso`). Guardar, deshacer, limpiar y música corren de a uno (`EnOrden`). No se actualiza ni se arma con `build.sh`
-  mientras hay un trabajo en curso.
-- Arranque: menús y ventana de inmediato; revisar actualizaciones (`CortaApp.iniciarTareas`) parte solo cuando `Idioma.elegido`.
+  los proyectos van en un JSON de entrada (el host lo escribe en una carpeta temporal 0700); toda carpeta que manda la interfaz pasa por
+  `Rutas.proyecto` (Swift: en lo registrado y en el inyector `proyecto` de lo declarado) y `proyecto.carpeta_valida` (Python). `guardar.py` no deja cambiar `fuente` ni apuntar la música fuera de `musica/`.
+- La IA corre sin herramientas ni MCP (`claude --disallowedTools "*" --strict-mcp-config`, `codex -s read-only`), igual al probarla
+  (la app la prueba con `bin/ia.py probar`, pieza «ia»);
+  sin las variables `CORTA_*` (`ia._entorno`), Claude sin la memoria de la persona (`SIN_MEMORIA_CLAUDE`) y el pedido a Antigravity
+  siempre en `instrucciones.md`, nunca en `-p`. Instalar un efecto o plantilla exige `sha256` (64 hex) y `T()` escapa sus valores.
+- La ventana solo carga archivos de `ui/` (navegación), el puente solo atiende al marco principal con un archivo de `ui/` y la interfaz
+  tiene acceso de lectura solo a `ui/` (lo demás, por `corta://`). Un enlace https se abre en el navegador. La interfaz llega hasta
+  arriba (barra de título transparente, `Ventanas.swift`) y lo que se suelta en la ventana pasa por una capa que guarda las rutas
+  (`Ventanas.soltados`) antes de que la página reciba el «drop»: la interfaz manda solo los nombres (`soltarVideo`).
+- Cada script tiene límite de tiempo (el `limite` de cada acción declarada; en lo registrado, el de `Procesador.correrJSON`).
+  Transcribir, exportar, traer un video y armar una plantilla no tienen tope mientras laten (`latido: true` + `trabajos.mantener_vivo()`;
+  45 s sin latido y el host los corta). El avance lo dejan los scripts en `<carpeta>/estado.json`; `Trabajos` (en `CortaApp.swift`) lo
+  lee cada medio segundo (`progreso`, `exportarProgreso`). Guardar, deshacer, limpiar, vocabulario, música y plantillas corren de a uno
+  (la fila del host, `Fila`). No se actualiza mientras corre un script (el host espera hasta 5 s y si no, responde `codigo: "ocupada"`)
+  ni se arma con `build.sh` mientras hay un trabajo en curso. Al salir de la app se corta lo que siga corriendo.
+- Arranque: menús y ventana de inmediato; revisar actualizaciones (el host, con `p.actualizaciones`) parte solo cuando `Idioma.elegido`.
 - Modelos de whisper: los descarga la app (`Modelos`, huella SHA-256 fija, los mismos de Graba y Minuta) en `~/Corta/.corta/modelos`.
 - Desarrollo en el Mac: el checkout va en `~/Developer/corta` (macOS no distingue `~/corta` de `~/Corta`); `bash build.sh` arma e
   instala en `~/Applications/Corta.app` y deja `~/Corta/.corta/desarrollo` (actualizar = `git pull` + armar). Compilar solo:
@@ -160,6 +230,9 @@ transcriptor. Quien ya hizo la bienvenida no la repite; el idioma se cambia en A
   `ui/idiomas/en.json` en el mismo cambio, como frase completa con marcadores (`T("Listo: quedó **{s} s** más corto.", {s})`).
 - Contenido del usuario (títulos, palabras) con `esc()` y `data-sin-traducir`.
 - No cambies el formato de `proyecto.json` sin compatibilidad (subir `formato` y migrar).
+- Archivos de piezas (`bin/nucleo.py`, `bin/ia.py`, `bin/transcribir.py`, `bin/catalogo.py`, `bin/trabajos.py`, `app/Sources/Pieza*/`,
+  `ui/i18n.js`, `ui/host.js`, `ui/tema.*`, `ui/componentes.*`, `ui/bienvenida.*`): no se editan aquí; ver «Piezas».
+- Colores solo con los tokens de la pieza «tema» (`var(--texto-suave)`, `var(--panel-2)`…); un color nuevo que cambia con el modo va como par `--x-claro`/`--x-oscuro`, elegido con `light-dark()` y repetido en el respaldo `@supports` de `app.css`.
 - Antes de cerrar un cambio: `bash pruebas/correr.sh` y mirar la interfaz (`cd ui && python3 -m http.server 8765`, `?idioma=en`,
   `?bienvenida`, `?vacio`, `window.Corta._probar(E => …)`), también a ancho de celular y en modo claro y oscuro.
 - Privacidad: `bash herramientas/revisar_privacidad.sh` antes de cada commit. Nunca subas videos reales: `.gitignore` solo deja los de la demo.
@@ -177,6 +250,7 @@ revisa cada fila ("no aplica" se decide, no se supone):
 | quita algo | bórralo de la página, el README y las guías: nada que prometa lo que ya no hace |
 | cambia el formato de datos o el puente | la documentación del formato, `ejemplos/` si existe y esta guía |
 | cambia carpetas, reglas o pruebas | esta guía (`AGENTS.md`) y `CONTRIBUTING.md` |
+| actualiza o agrega una pieza | `piezas.json` (lo escribe `pieza.py`), la tabla «Piezas» de esta guía y `app.json` si pide config |
 | resuelve un issue | ciérralo con «Resuelto en …» dando crédito y abre issues para lo que quedó pendiente |
 | lo nota quien usa Corta | `CHANGELOG.md`: una línea en «Sin publicar», en lenguaje de persona («Ahora puedes…»), en español e inglés |
 
