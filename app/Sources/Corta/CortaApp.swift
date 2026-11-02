@@ -148,6 +148,12 @@ enum Corta {
     /// La interfaz solo sabe los nombres; las rutas las guardó la ventana al soltar (nunca se arma una ruta con lo que manda la web).
     static func soltarVideo(_ d: [String: Any]) {
         let nombres = Set(d["nombres"] as? [String] ?? [])
+        // Las rutas siempre salen del sistema, nunca de la página: la capa de Ventanas.swift y, si no alcanzó a verlas, lo que
+        // quedó en el portapapeles del arrastre.
+        if Ventanas.soltados.isEmpty {
+            let arrastre = NSPasteboard(name: .drag).readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL]
+            Ventanas.soltados = (arrastre ?? []).map(\.standardizedFileURL)
+        }
         guard let u = Ventanas.soltados.first(where: { nombres.contains($0.lastPathComponent) && videos.contains($0.pathExtension.lowercased()) }) else {
             return avisar("Suelta un video MP4, MOV o WebM.")
         }

@@ -35,7 +35,7 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
 - La interfaz tiene una Content-Security-Policy sin `unsafe-eval` ni scripts en línea; todo lo que viene de afuera se valida y se escapa.
 - En la app de Mac (la pieza «host-mac» de Pieza, en `app/Sources/PiezaHost/`), la ventana solo carga la interfaz que viene adentro,
   el puente solo le responde al marco principal con una página de `ui/` y los videos se sirven por `corta://` solo desde los proyectos
-  de `~/Corta`. Lo que manda la interfaz se valida con un esquema cerrado (`acciones.json`) antes de correr un script, va en un archivo
+  de `~/Corta`. Lo que manda la interfaz se valida con su esquema (`acciones.json`; los campos que el esquema deja pasar los vuelve a revisar el script) antes de correr un script, va en un archivo
   de entrada (nunca como argumento) y la carpeta de un proyecto se revisa dos veces (en la app y en `bin/`). Cada script tiene límite
   de tiempo (los trabajos largos, mientras laten) y no recibe variables `CORTA_*` de afuera; al salir de la app se corta lo que siga
   corriendo. ffmpeg solo abre archivos locales (`-protocol_whitelist file`), la IA corre sin herramientas y lo que se descarga al armar
@@ -59,7 +59,7 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
 Advisory with the fix and credit you if you want. Please don't disclose details until a fix is out (90 days at most as a general rule).
 
 The Mac app is Pieza's generic host (`app/Sources/PiezaHost/`): the bridge only answers the main frame with a page from `ui/`, UI data is
-validated against a closed schema (`acciones.json`) before any script runs, scripts have a time limit and never inherit outside
+validated against its schema (`acciones.json`; fields the schema lets through are checked again by the script) before any script runs, scripts have a time limit and never inherit outside
 `CORTA_*` variables, and updates come only from this repo's Releases, checked against their published SHA-256.
 
 In scope: code execution, file access outside the project folder, ffmpeg command or UI (XSS) injection through projects, caption styles, catalog effects or templates, or AI responses; anything that makes media or text leave the computer; CI/build issues that let code slip in. Out of scope: bugs in your own AI CLI or in ffmpeg or whisper.cpp, attacks that already require full control of the

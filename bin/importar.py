@@ -10,6 +10,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -92,6 +93,8 @@ def transcribir(carpeta):
 if __name__ == "__main__":
     # Pieza «trabajos»: late para el host mientras corre (una acción sin tope de tiempo; sin el host, no hace nada).
     trabajos.mantener_vivo()
+    # Al cerrar la app el host manda SIGTERM: salir con SystemExit deja correr los `finally` y los `with` (temporales, audio).
+    signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))
     a = sys.argv[1:]
     try:
         if len(a) == 3 and a[0] == "transcribir":
