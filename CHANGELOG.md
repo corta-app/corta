@@ -10,6 +10,10 @@ Lo que cambia para quien usa Corta, en palabras simples. Cada versión, con su d
   el video entero. Lo exportado sale cuadro a cuadro igual que antes.
   *Exporting a Short taken from the middle or the end of a long video takes half the time or less: Corta reads only the part it
   uses, not the whole video. The export is frame-for-frame the same as before.*
+- **Exportar ya no se queda pegado:** en un video con muchos cortes y efectos, Corta podía quedarse esperando para siempre con
+  el avance detenido, sin decir nada. Ahora termina, y si ffmpeg falla te muestra el motivo.
+  *Exporting no longer hangs: on a video with many cuts and effects, Corta could wait forever with the progress stuck and say
+  nothing. Now it finishes, and if ffmpeg fails it shows you why.*
 
 ## 0.1.0 · 2026-11-02
 
