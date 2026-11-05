@@ -4,6 +4,13 @@ Lo que cambia para quien usa Corta, en palabras simples. Cada versión, con su d
 [Releases](https://github.com/corta-app/corta/releases).
 *What changes for people using Corta, in plain words. Every version, with its download and SHA-256 checksum, is in Releases.*
 
+## Sin publicar
+
+- Exportar un Short sacado del medio o del final de un video largo tarda la mitad o menos: Corta lee solo el pedazo que usa, no
+  el video entero. Lo exportado sale cuadro a cuadro igual que antes.
+  *Exporting a Short taken from the middle or the end of a long video takes half the time or less: Corta reads only the part it
+  uses, not the whole video. The export is frame-for-frame the same as before.*
+
 ## 0.1.0 · 2026-11-02
 
 - **La primera versión para descargar:** Corta para Mac (Apple Silicon, macOS 15 o más nuevo) en
