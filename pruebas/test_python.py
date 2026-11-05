@@ -219,6 +219,40 @@ class Exportar(unittest.TestCase):
         self.assertEqual((d["streams"][0]["width"], d["streams"][0]["height"]), (1080, 1920))
         self.assertAlmostEqual(float(d["format"]["duration"]), proyecto.duracion_final(p), delta=0.25)
 
+    def test_exportar_lee_solo_lo_que_usa(self):
+        """Un Short del medio de un video: ffmpeg lee solo ese pedazo (-ss/-t) y sale cuadro a cuadro igual que leyéndolo entero,
+        también con velocidad en rampa (la voz en escalones) y un zoom."""
+        import render
+        carpeta = proyecto_de_prueba()
+        p = proyecto.cargar(carpeta)
+        dur = p["fuente"]["duracion"]
+        p["cortes"] = [{"i": 0.0, "f": 3.0, "motivo": "fuera"}, {"i": 4.5, "f": 4.9, "motivo": "manual"},
+                       {"i": 8.0, "f": dur, "motivo": "fuera"}]
+        p["zooms"] = [{"i": 3.5, "f": 4.2, "escala": 1.3}]
+        p["velocidades"] = [{"i": 5.2, "f": 6.8, "v": 0.5, "rampa": True, "audio": "tono"}]
+        proyecto.guardar(carpeta, p)
+        self.assertEqual(render.leer_desde_hasta(p), (2.0, 9.0))
+        self.assertIn("[0:v]trim=start=1:end=1.5,", render.grafo(p, True, "/tmp/s.ass", False, 2.0), "los trim, corridos en «desde»")
+
+        def cuadros():
+            r = render.exportar(carpeta)
+            info = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", r["archivo"]],
+                                  capture_output=True, text=True).stdout.strip()
+            md5 = subprocess.run(["ffmpeg", "-v", "error", "-i", r["archivo"], "-f", "framemd5", "-"], capture_output=True,
+                                 text=True).stdout
+            return info, [x.rsplit(",", 1)[-1].strip() for x in md5.splitlines() if x and not x.startswith("#")]
+
+        recortado = cuadros()
+        antes = render.MARGEN
+        render.MARGEN = 1e6  # lee el original entero, como antes
+        try:
+            entero = cuadros()
+        finally:
+            render.MARGEN = antes
+        self.assertAlmostEqual(float(recortado[0]), proyecto.duracion_final(p), delta=0.1)
+        self.assertGreater(len(recortado[1]), 60)
+        self.assertEqual(recortado, entero, "imagen y voz iguales a leer el video entero")
+
     def test_exportar_desenfoque_cuadrado(self):
         carpeta = proyecto_de_prueba()
         p = proyecto.cargar(carpeta)

@@ -27,6 +27,8 @@ import trabajos  # noqa: E402
 import subtitulos  # noqa: E402
 
 FUENTES = os.path.join(proyecto.RECURSOS, "ui", "fuentes")
+# Segundos de más que se leen del original antes de la primera pieza y después de la última (ver `leer_desde_hasta`).
+MARGEN = 1.0
 
 
 def ffmpeg():
@@ -144,7 +146,18 @@ def encuadre(p, ancho, alto):
     return f"scale={nw}:{nh},crop={W}:{H}:{x}:{y}"
 
 
-def grafo(p, con_audio, ruta_ass, con_musica):
+def leer_desde_hasta(p):
+    """Qué parte del original hay que leer: desde un poco antes de la primera pieza hasta un poco después de la última (`MARGEN`).
+    Así un Short de 30 s sacado de un video largo no decodifica el video entero; los cortes exactos los siguen haciendo los trim
+    del grafo, con los tiempos corridos en `desde`. → (desde, hasta) en segundos del original, o None si no queda nada."""
+    pzs = piezas(p)
+    if not pzs:
+        return None
+    return max(0.0, round(pzs[0]["i"] - MARGEN, 3)), round(pzs[-1]["f"] + MARGEN, 3)
+
+
+def grafo(p, con_audio, ruta_ass, con_musica, desde=0.0):
+    """El grafo de ffmpeg. `desde`: el segundo del original donde parte la entrada (ffmpeg con -ss); 0 si se lee entera."""
     W, H = proyecto.LIENZOS[p["lienzo"]]
     fuente = p["fuente"]
     marco = encuadre(p, fuente["ancho"], fuente["alto"])
@@ -155,7 +168,8 @@ def grafo(p, con_audio, ruta_ass, con_musica):
         # Con velocidad: cada cuadro va a su segundo del exportado (setpts), la cámara lenta se puede suavizar y la pieza dura
         # justo lo que dice proyecto.lento (tpad repite el último cuadro si faltara uno; trim corta lo que sobre).
         largo = _n(proyecto.lento(vels, pz["i"], pz["f"]))
-        v = f"[0:v]trim=start={pz['i']}:end={pz['f']},setpts=PTS-STARTPTS"
+        ini, fin = _n(pz["i"] - desde), _n(pz["f"] - desde)
+        v = f"[0:v]trim=start={ini}:end={fin},setpts=PTS-STARTPTS"
         if e:
             v += "," + tiempo_vel(e, pz["i"]) + ("," + SUAVIZAR[e["suavizar"]] if e.get("suavizar") in SUAVIZAR else "")
         v += ",fps=30" + (f",tpad=stop_mode=clone:stop_duration=0.2,trim=end={largo}" if e else "") + f",{marco}"
@@ -163,7 +177,7 @@ def grafo(p, con_audio, ruta_ass, con_musica):
             zw, zh = par(W * pz["escala"]), par(H * pz["escala"])
             v += f",scale={zw}:{zh},crop={W}:{H}"
         partes.append(v + f",setsar=1,format=yuv420p[v{k}]")
-        recorte = f"[0:a]atrim=start={pz['i']}:end={pz['f']},asetpts=PTS-STARTPTS,aresample=48000"
+        recorte = f"[0:a]atrim=start={ini}:end={fin},asetpts=PTS-STARTPTS,aresample=48000"
         justo = f"apad=whole_dur={largo},atrim=end={largo}"
         if not con_audio:
             partes.append(f"anullsrc=r=48000:cl=stereo,atrim=duration={largo if e else pz['f'] - pz['i']}[a{k}]")
@@ -176,7 +190,7 @@ def grafo(p, con_audio, ruta_ass, con_musica):
         else:
             trozos = tramos_audio(e, pz["i"], pz["f"])
             for j, (c, d) in enumerate(trozos):
-                partes.append(",".join([f"[0:a]atrim=start={_n(c)}:end={_n(d)},asetpts=PTS-STARTPTS,aresample=48000",
+                partes.append(",".join([f"[0:a]atrim=start={_n(c - desde)}:end={_n(d - desde)},asetpts=PTS-STARTPTS,aresample=48000",
                                         *atempo((d - c) / proyecto.lento(vels, c, d))]) + f"[a{k}r{j}]")
             partes.append("".join(f"[a{k}r{j}]" for j in range(len(trozos))) + f"concat=n={len(trozos)}:v=0:a=1,{justo}[a{k}]")
         etiquetas.append(f"[v{k}][a{k}]")
@@ -219,26 +233,37 @@ def exportar(carpeta, al_avanzar=None):
         with open(ruta_ass, "w", encoding="utf-8") as f:
             f.write(subtitulos.ass(p, estilo, W, H))
         grafo_txt = os.path.join(tmp, "grafo.txt")
+        rango = leer_desde_hasta(p)
+        if rango is None:
+            raise ValueError("No queda nada del video: quita algunos cortes.")
+        desde, hasta = rango
         with open(grafo_txt, "w", encoding="utf-8") as f:
-            f.write(grafo(p, tiene_audio(video), ruta_ass, bool(musica)))
+            f.write(grafo(p, tiene_audio(video), ruta_ass, bool(musica), desde))
         temporal = os.path.join(tmp, "salida.mp4")
-        # Solo archivos locales como entrada (-protocol_whitelist file, con «file:» delante de cada ruta).
-        cmd = [ffmpeg(), "-hide_banner", "-y", "-nostats", *proyecto.SOLO_ARCHIVOS, "-i", proyecto.entrada(video)]
+        # Solo archivos locales como entrada (-protocol_whitelist file, con «file:» delante de cada ruta). Solo se lee lo que se
+        # usa del original (-ss/-t: un Short de un video largo no lo decodifica entero).
+        cmd = [ffmpeg(), "-hide_banner", "-y", "-nostats", *proyecto.SOLO_ARCHIVOS, "-ss", _n(desde), "-t", _n(hasta - desde),
+               "-i", proyecto.entrada(video)]
         if musica:
             cmd += [*proyecto.SOLO_ARCHIVOS, "-i", proyecto.entrada(musica)]
         cmd += ["-filter_complex_script", grafo_txt, "-map", "[vs]", "-map", "[as]", "-c:v", "libx264", "-preset", "veryfast",
                 "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart",
                 "-progress", "pipe:1", temporal]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        for linea in proc.stdout:
-            m = re.match(r"out_time_us=(\d+)", linea)
-            if m and total:
-                pct = min(99, int(int(m.group(1)) / 1e6 / total * 100))
-                proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "exportando", "pct": pct})
-                if al_avanzar:
-                    al_avanzar(pct)
-        error = proc.stderr.read()
-        if proc.wait() != 0 or not os.path.exists(temporal):
+        # Los mensajes de ffmpeg van a un archivo: por una tubería que nadie lee mientras avanza, un grafo largo con muchos avisos
+        # podía llenarla y dejar a ffmpeg esperando para siempre.
+        registro = os.path.join(tmp, "ffmpeg.log")
+        with open(registro, "w", encoding="utf-8") as err, \
+                subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=err, text=True, encoding="utf-8", errors="replace") as proc:
+            for linea in proc.stdout:
+                m = re.match(r"out_time_us=(\d+)", linea)
+                if m and total:
+                    pct = min(99, int(int(m.group(1)) / 1e6 / total * 100))
+                    proyecto.escribir_json(os.path.join(carpeta, "estado.json"), {"paso": "exportando", "pct": pct})
+                    if al_avanzar:
+                        al_avanzar(pct)
+        with open(registro, encoding="utf-8", errors="replace") as f:
+            error = f.read()
+        if proc.returncode != 0 or not os.path.exists(temporal):
             raise RuntimeError("ffmpeg no pudo exportar: " + error.strip().splitlines()[-1][:300] if error.strip() else "ffmpeg falló.")
         shutil.move(temporal, salida)
     try:
