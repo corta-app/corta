@@ -19,12 +19,12 @@ notify = { version = "8", default-features = false, features = ["macos_fsevent"]
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 notify-rust = "4"
 arboard = { version = "3", default-features = false }
-opener = { version = "0.8", features = ["reveal"] }
-rfd = { version = "0.15", default-features = false, features = ["gtk3"] }
+opener = { version = "0.9", features = ["reveal"] }
+rfd = { version = "0.17", default-features = false, features = ["gtk3"] }
 trash = "5"
 sys-locale = "0.3"
-ureq = { version = "2", features = ["json"] }
-sha2 = "0.10"
+ureq = { version = "3", features = ["json"] }
+sha2 = "0.11"
 
 [build-dependencies]
 tauri-build = "2"
