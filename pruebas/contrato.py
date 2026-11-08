@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Contrato entre la interfaz (ui/app.js) y la app de Mac.
+"""Contrato entre la interfaz (ui/app.js) y la app nativa (escritorio/, pieza «host-tauri»).
 
 Revisa: 1) cada host.enviar("x") de la interfaz (y de la pieza «componentes») lo responde la vista previa del navegador (simular() o,
-para las comunes, PiezaHost.simulacionesComunes de ui/host.js); 2) la app de Mac atiende cada acción: registrada en app/Sources/Corta
-(`registrar("x")`: lo nativo de Corta), del host (pieza «host-mac»: listo, config, abrirEnlace, copiar y, con la pieza
-«actualizaciones», buscarActualizacion y actualizar) o declarada en acciones.json (las que solo corren un script: app.json →
-«acciones» y las de las piezas); 3) toda función que llama la app (las de Swift, las del host y el «responde» de cada declarada)
-existe en window.Corta (host.responder de ui/app.js); 4) acciones.json está al día con app.json, sus scripts existen y la carpeta de un
-proyecto pasa siempre por el host (inyector «proyecto»); 5) los scripts que nombra Swift existen en bin/; 6) la seguridad que trae la
-pieza (puente solo para el marco principal con un archivo de ui/, navegación solo dentro de ui/, scripts con límite y sin CORTA_* de
-afuera, actualizaciones solo desde los Releases con huella) y que Corta no arma otra ventana ni otro puente; 7) el video por corta://."""
+para las comunes, PiezaHost.simulacionesComunes de ui/host.js); 2) la app atiende cada acción: registrada en escritorio/src
+(`registrar("x")`: lo nativo de Corta), del host (listo, config, abrirEnlace, copiar y, con la pieza «actualizaciones»,
+buscarActualizacion y actualizar) o declarada en acciones.json (las que solo corren un script: app.json → «acciones» y las de las
+piezas); 3) toda función que llama la app existe en window.Corta (host.responder de ui/app.js); 4) acciones.json está al día con
+app.json, sus scripts existen y la carpeta de un proyecto pasa siempre por el host (inyector «proyecto»); 5) los scripts que nombra
+la app existen en bin/; 6) la seguridad que trae la pieza y que Corta no arma otra ventana ni otro puente; 7) los medios por
+host.medio."""
+import glob
 import json
 import os
 import re
@@ -78,47 +78,73 @@ for n in ("guardarProyecto", "deshacer", "limpiar", "vocabulario"):
     if (acciones_json.get(n) or {}).get("cola") != "escritura":
         problemas.append(f'«{n}» va en la fila (cola: "escritura"): los cambios a un proyecto, de a uno y en orden')
 
-# 2, 3, 5, 6) La app de Mac: pieza «host-mac» (app/Sources/PiezaHost) + lo propio de Corta (app/Sources/Corta).
-carpeta_swift = os.path.join(RAIZ, "app/Sources/Corta")
-swift = "".join(leer(os.path.join("app/Sources/Corta", n)) for n in sorted(os.listdir(carpeta_swift)) if n.endswith(".swift"))
-puente_mac = leer("app/Sources/PiezaHost/Puente.swift") or ""
-host_mac = "".join(leer(f"app/Sources/PiezaHost/{n}.swift") or "" for n in ("Host", "Procesador", "Enchufe")) + puente_mac
-registradas = internas(swift, r'registrar\("(\w+)"')
-del_host = internas(puente_mac, r'internas\["(\w+)"\]')
-atiende = registradas | del_host | declaradas
-problemas += [f'Mac no atiende la acción "{a}" (ni registrada, ni del host, ni declarada)' for a in sorted(acciones - atiende)]
-problemas += [f'Mac registra "{a}" y la interfaz nunca la pide' for a in sorted(registradas - acciones)]
-problemas += [f'"{a}" está registrada y también declarada: gana la registrada (sácala de una)' for a in sorted(registradas & declaradas)]
-llamadas = internas(swift, r'llamar\("(\w+)"') | internas(puente_mac, r'llamar\("(\w+)"')
-if "copiar" not in acciones:
-    llamadas.discard("copiado")  # del host, solo si la interfaz pide «copiar» (Corta no la usa)
-problemas += [f"Mac llama window.Corta.{f} y la interfaz no la tiene" for f in sorted((llamadas | respuestas_declaradas) - funciones_ui)]
-scripts = internas(swift, r'(?:correrJSON|conEntrada)\("(\w+\.py)"')
-problemas += [f"La app llama bin/{s} y no existe" for s in sorted(scripts) if not os.path.exists(os.path.join(RAIZ, "bin", s))]
-if not tiene(puente_mac, r"frameInfo\.isMainFrame", r'securityOrigin\.protocol == "file"', r"hasPrefix\(prefijoUI\)", r"decidePolicyFor",
-             r'u\.scheme == "https"', r'runOpenPanelWith.*?marco\.isMainFrame, marco\.securityOrigin\.protocol == "file"'):
-    problemas.append("Mac: el puente de la pieza «host-mac» atiende solo al marco principal con un archivo de ui/ y no navega fuera (Puente.swift)")
-if re.search(r"WKWebView\(|WKScriptMessageHandler|NSApplicationDelegate|WKURLSchemeHandler", swift):
-    problemas.append("Mac: la ventana, el puente, los medios y el delegado los pone la pieza «host-mac» (Corta no arma otros)")
-if not tiene(host_mac, r"hasPrefix\(prefijo\)", r"matarArbol", r"latidoMuerto") or not tiene(swift, r"Host\.arrancar\(", r'registrarMedios\("video"\)',
-                                                                                           r'inyectores\["proyecto"\].*?Rutas\.proyecto\(', r'entornoApp\[Host\.prefijo \+ "PROGRAMAS"\]'):
-    problemas.append("Mac: Host.arrancar con corta://video (registrarMedios), la carpeta de un proyecto revisada por el inyector «proyecto», CORTA_PROGRAMAS para los scripts; el Procesador del host sin CORTA_* de afuera, con límite y latido")
-if not tiene(swift, r"static func proyecto.*?baseReal.*?proyecto\.json", r"static func archivo\(_ ruta: String\).*?Rutas\.baseReal.*?\"musica\", \"clips\".*?fuente\[\"archivo\"\]"):
-    problemas.append("Mac: Rutas.proyecto (una carpeta directa de ~/Corta con proyecto.json) y Medios.archivo (solo el video, la música o los clips de un proyecto)")
-act = leer("app/Sources/PiezaActualizaciones/Actualizaciones.swift") or ""
-paquete = leer("app/Package.swift") or ""
-if not tiene(act, r"/releases/download/", r"esDescargaNuestra\(zip, repo: c\.repo\)", r"shasum -a 256", r"comillas\(", r"--proto-redir '=https'") \
-        or not tiene(swift, r'Actualizaciones\.configurar\(\.init\(repo: "corta-app/corta", nombre: "Corta"', r"p\.actualizaciones = \.init\(") \
-        or not tiene(paquete, r'\.target\(name: "PiezaActualizaciones"', r'\.target\(name: "PiezaHost"', r'dependencies: \["PiezaHost", "PiezaActualizaciones", "PiezaCatalogo"\]'):
-    problemas.append("Mac: las actualizaciones solo desde los Releases de corta-app/corta, con huella y comillas() (pieza «actualizaciones», atendidas por el host) y los targets PiezaHost y PiezaActualizaciones")
-if re.search(r'"(claude|codex)"\s*,\s*\[', swift):
-    problemas.append("Mac: la app no llama a la IA por su cuenta (la corre bin/ia.py)")
-if "acciones.json" not in (leer("herramientas/empaquetar.sh") or ""):
-    problemas.append("Mac: herramientas/empaquetar.sh tiene que copiar acciones.json junto a app.json")
+# 2, 3, 5, 6) La app nativa (pieza «host-tauri», Rust): cada acción la atiende uno de tres lados, en este orden: lo que registra
+#    Corta (`registrar("x")` en escritorio/src, fuera de pieza/), lo que trae el host (sus internas en escritorio/src/pieza/host.rs:
+#    listo, config, abrirEnlace, copiar y, con `actualizaciones`, buscarActualizacion y actualizar) y lo declarado en acciones.json.
+def juntar(patron):
+    return "\n".join(open(f, encoding="utf-8").read() for f in sorted(glob.glob(os.path.join(RAIZ, patron))))
 
-# 7) El video se pide con el esquema que sirve la app (corta://, el id de app.json).
-if app_json.get("id") != "corta" or "corta://video/" not in ui:
-    problemas.append("La interfaz ya no pide el video como corta://video/…: cambia también Medios.swift (registrarMedios)")
+
+def sin_comentarios(t):
+    return re.sub(r"^\s*(//|///|//!).*$", "", t or "", flags=re.M)
+
+
+def bloque(texto, inicio):
+    i = texto.find(inicio)
+    if i < 0:
+        return ""
+    j, n = texto.index("{", i), 0
+    for k in range(j, len(texto)):
+        n += {"{": 1, "}": -1}.get(texto[k], 0)
+        if n == 0:
+            return texto[j:k + 1]
+    return ""
+
+
+rust = sin_comentarios(juntar("escritorio/src/*.rs"))
+host_rs = sin_comentarios(leer("escritorio/src/pieza/host.rs"))
+procesador_rs = leer("escritorio/src/pieza/procesador.rs") or ""
+registradas = set(re.findall(r'\.registrar\("(\w+)"', rust))
+del_host = set(re.findall(r'^\s*"(\w+)"(?:\s*\|\s*"\w+")*(?:\s+if\s[^=]*)?\s*=>', bloque(host_rs, "fn interna("), re.M))
+del_host |= {x for linea in re.findall(r'^\s*("\w+"(?:\s*\|\s*"\w+")+)', bloque(host_rs, "fn interna("), re.M) for x in re.findall(r'"(\w+)"', linea)}
+if not re.search(r"^\s*actualizaciones:\s", rust, re.M):
+    del_host -= {"buscarActualizacion", "actualizar"}
+if not rust or not host_rs:
+    problemas.append("Falta la app nativa (escritorio/src) o la pieza «host-tauri» (escritorio/src/pieza)")
+atiende = registradas | del_host | declaradas
+problemas += [f'La app no atiende la acción "{a}" (ni registrada, ni del host, ni declarada)' for a in sorted(acciones - atiende)]
+problemas += [f'La app registra "{a}" y la interfaz nunca la pide' for a in sorted(registradas - acciones)]
+problemas += [f'"{a}" está registrada y también declarada: gana la registrada (sácala de una)' for a in sorted(registradas & declaradas)]
+# Lo que la app llama en window.Corta: responder/llamar("x") en Rust, lo de las declaradas y lo que el host manda siempre (estado,
+# menu, soltados con `soltar: true`) o con las actualizaciones.
+llamadas = set(re.findall(r'(?:llamar|responder)\((?:&?h2?, )?"(\w+)"', rust)) | {"estado", "menu", "soltados", "soltando", "actualizacionRevisada", "actualizacionProgreso"}
+problemas += [f"La app llama window.Corta.{f} y la interfaz no la tiene" for f in sorted((llamadas | respuestas_declaradas) - funciones_ui)]
+scripts = set(re.findall(r'(?:correr_json|con_entrada|correr)\("(\w+\.py)"', rust))
+problemas += [f"La app llama bin/{s} y no existe" for s in sorted(scripts) if not os.path.exists(os.path.join(RAIZ, "bin", s))]
+recursos = ((json.loads(leer("escritorio/tauri.conf.json") or "{}").get("bundle") or {}).get("resources") or {})
+for r in ("app.json", "acciones.json", "bin/", "ui/", "estilos/", "efectos/", "plantillas/"):
+    if recursos.get(f"../{r}") != f"recursos/{r}":
+        problemas.append(f"escritorio/tauri.conf.json no lleva {r} dentro de la app (app.json → empaquetado.carpetas)")
+# La seguridad que trae la pieza: el puente solo para la ventana propia con su página en ui/, la ventana nunca navega fuera, scripts
+# con límite, sin CORTA_* de afuera y con los programas de la app en CORTA_HERRAMIENTAS.
+if not tiene(host_rs, r"let en_ui = webview\.url\(\)", r"on_navigation", r"fn puente_js") \
+        or not tiene(procesador_rs, r"starts_with\(&self\.prefijo\)", r"HERRAMIENTAS", r"grupo_propio"):
+    problemas.append("La pieza «host-tauri» cambió: el puente solo para la ventana propia, sin navegar fuera de ui/, scripts con límite y sin CORTA_* de afuera")
+if re.search(r"WebviewWindowBuilder|invoke_handler|register_uri_scheme_protocol", rust):
+    problemas.append("La ventana, el puente y los medios los pone la pieza «host-tauri» (Corta no arma otros)")
+if not tiene(rust, r'registrar_medios\("video"', r'inyector\("proyecto"', r"fn proyecto_en.*?proyecto\.json", r"soltar: true",
+             r'Actualizaciones::nuevas\("corta-app/corta", "Corta"\)'):
+    problemas.append("La app: medios «video» (solo lo de un proyecto), la carpeta de un proyecto por el inyector «proyecto», soltar y actualizaciones desde corta-app/corta")
+if not tiene(leer("escritorio/src/medios.rs"), r'"musica" \| "clips"', r'fuente.*?"archivo"', r"starts_with\(&raiz\)"):
+    problemas.append("escritorio/src/medios.rs: solo el video, la música o los clips de un proyecto de ~/Corta")
+if re.search(r'"--disallowedTools"|"--strict-mcp-config"|"(claude|codex)"\s*,', rust):
+    problemas.append("La app no llama a la IA por su cuenta (la corre bin/ia.py, pieza «ia»)")
+if not tiene(leer("app.json"), r'"whisper": true') or "whisper-cli" not in (leer("escritorio/herramientas/preparar.sh") or ""):
+    problemas.append("app.json → empaquetado.whisper: la app lleva whisper-cli (pieza «empaquetado»)")
+
+# 7) Los medios se piden con host.medio (pieza «host-ui»), nunca con una dirección armada a mano.
+if app_json.get("id") != "corta" or 'host.medio("video"' not in ui or re.search(r"corta://", ui):
+    problemas.append('La interfaz pide el video, la música y los clips con host.medio("video", …) (escritorio/src/medios.rs)')
 if problemas:
     print("✗ Contrato roto:\n  - " + "\n  - ".join(problemas))
     sys.exit(1)

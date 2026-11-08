@@ -1,80 +1,81 @@
 #!/bin/bash
-# Arma dist/Corta.app (autosuficiente) y dist/Corta-macOS.zip + .sha256, sin instalar nada. Solo en un Mac (Apple Silicon).
-# Lo usan build.sh (en tu Mac) y .github/workflows/publicar.yml (la acción de GitHub que publica cada versión).
-# Dentro van: la app; corta-transcribir + whisper.framework (whisper.cpp oficial, con Metal); ffmpeg y ffprobe; Python portátil;
-# y el código (bin/, ui/, estilos/, efectos/, plantillas/, app.json y acciones.json) en Contents/Resources/corta. Los videos y proyectos de la persona quedan en ~/Corta.
-# Todo lo que se descarga tiene su huella SHA-256 fija aquí: si no coincide, no se usa y el armado se detiene.
+# Empaqueta Corta para este sistema (o el que digas) con su host de Tauri («host-tauri»): la app nativa en Rust, Python
+# portátil y el código (en recursos/: bin/, ui/, app.json, acciones.json y lo de app.json → empaquetado.carpetas). Deja en dist/ los archivos
+# de nombre fijo que usan el Release, instalar.sh, instalar.ps1 y el actualizador, cada uno con su .sha256:
+#   mac      Corta-macOS.zip
+#   windows  Corta-Windows.exe            (instalador por usuario, /S silencioso)
+#   linux    Corta-Linux.AppImage  Corta-Linux.tar.gz
+# Uso: bash herramientas/empaquetar.sh [mac|windows|linux]     Necesita: cargo (Rust) y, la primera vez, internet.
+# Generado por la pieza «empaquetado» de Pieza (MPL-2.0, https://mozilla.org/MPL/2.0/) desde app.json: si lo cambias, desde ahí
+# es de la app y Pieza ya no lo toca. Lo propio va en app.json → empaquetado o en herramientas/empaquetar-extra.sh.
 set -euo pipefail
-export PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH
 RAIZ="$(cd "$(dirname "$0")/.." && pwd)"
-[ "$(uname -s)" = Darwin ] || { echo "✗ La app de Mac se arma en un Mac." >&2; exit 1; }
-[ "$(uname -m)" = arm64 ] || { echo "✗ Por ahora Corta para Mac es solo para Apple Silicon (arm64)." >&2; exit 1; }
-cd "$RAIZ/app"
-swift build -c release 2>&1 | tee "${CORTA_PROGRESO:-/dev/null}" | tail -20
-REL=.build/release
-CACHE=.build/descargas
-mkdir -p "$CACHE"
+cd "$RAIZ"
+case "${1:-$(uname -s)}" in
+  mac | Darwin) SO=mac; V=mac ;;
+  windows | MINGW* | MSYS* | CYGWIN*) SO=windows; V=win ;;
+  linux | Linux) SO=linux; V=linux ;;
+  *) echo "sistema desconocido: $1" >&2; exit 1 ;;
+esac
+VERSION=$(python3 -c "import json;print(json.load(open('app.json'))['version'])" 2>/dev/null || echo 0.1.0)
+mkdir -p dist
+huella() { if command -v sha256sum >/dev/null; then sha256sum "$1" | cut -d' ' -f1; else shasum -a 256 "$1" | cut -d' ' -f1; fi; }
+firmar() { (cd dist && printf '%s  %s\n' "$(huella "$1")" "$1" > "$1.sha256"); }
 
-huella() { shasum -a 256 "$1" | cut -d' ' -f1; }
-bajar() { # url huella destino
-  if [ -f "$3" ] && [ "$(huella "$3")" = "$2" ]; then return; fi
-  echo "→ $(basename "$3")"
-  curl -fsSL --proto '=https' --retry 3 "$1" -o "$3.tmp"
-  [ "$(huella "$3.tmp")" = "$2" ] || { rm -f "$3.tmp"; echo "✗ $(basename "$3") no coincide con su huella: no se usa." >&2; exit 1; }
-  mv "$3.tmp" "$3"
-}
-
-# Python portátil (python-build-standalone): la misma versión y huella que Alcancía, Graba y Minuta. La persona no instala nada.
-PY_URL="https://github.com/astral-sh/python-build-standalone/releases/download/20261003/cpython-3.13.16%2B20261003-aarch64-apple-darwin-install_only_stripped.tar.gz"
-PY_SHA="9e01f63bbb08576cd9c8bc2d0564d098cb30c8453a0cd4bcf6aef458f6d2a147"
-bajar "$PY_URL" "$PY_SHA" "$CACHE/python-3.13.16.tar.gz"
-
-# ffmpeg y ffprobe estáticos para Apple Silicon, de ffmpeg-static (github.com/eugeneware/ffmpeg-static, etiqueta b6.1.1; la misma
-# fuente que usa Graba en Windows y Linux). Traen libx264 (exportar), libass + fontconfig (subtítulos) y solo enlazan bibliotecas
-# del sistema. Licencia GPL: son programas aparte que la app ejecuta (ver LICENCIAS-TERCEROS.txt dentro de la app).
-# ffmpeg-static no publica huellas: estas se calcularon al descargarlos de ese Release (28-10-2026) y quedan fijas.
-FF_BASE="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1"
-FFMPEG_SHA="8923876afa8db5585022d7860ec7e589af192f441c56793971276d450ed3bbfa"   # ffmpeg-darwin-arm64.gz
-FFPROBE_SHA="d986a8ec7b030899fe66a8a288ed809a3543338705a3ce178cfb85869c5d80be"  # ffprobe-darwin-arm64.gz
-bajar "$FF_BASE/ffmpeg-darwin-arm64.gz" "$FFMPEG_SHA" "$CACHE/b6.1.1-ffmpeg-darwin-arm64.gz"
-bajar "$FF_BASE/ffprobe-darwin-arm64.gz" "$FFPROBE_SHA" "$CACHE/b6.1.1-ffprobe-darwin-arm64.gz"
-
-DIST="$RAIZ/dist"; APP="$DIST/Corta.app"
-rm -rf "$DIST"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/corta" "$APP/Contents/Frameworks"
-cp "$REL/Corta" "$REL/corta-transcribir" "$APP/Contents/MacOS/"
-gzip -dc "$CACHE/b6.1.1-ffmpeg-darwin-arm64.gz" > "$APP/Contents/MacOS/ffmpeg"
-gzip -dc "$CACHE/b6.1.1-ffprobe-darwin-arm64.gz" > "$APP/Contents/MacOS/ffprobe"
-chmod +x "$APP/Contents/MacOS/"*
-cp Info.plist "$APP/Contents/Info.plist"
-[ -f Corta.icns ] && cp Corta.icns "$APP/Contents/Resources/Corta.icns"
-ditto "$REL/whisper.framework" "$APP/Contents/Frameworks/whisper.framework"
-tar -xzf "$CACHE/python-3.13.16.tar.gz" -C "$APP/Contents/Resources"   # → Resources/python/bin/python3
-for d in bin ui estilos efectos plantillas; do ditto "$RAIZ/$d" "$APP/Contents/Resources/corta/$d"; done
-# app.json: la descripción de la app que leen las piezas (bin/nucleo.py la busca junto a bin/; sin ella ningún script arranca).
-cp "$RAIZ/app.json" "$APP/Contents/Resources/corta/app.json"
-# acciones.json: las acciones que solo corren un script (lo arma pieza.py; el host de Mac lo revisa al abrir y en cada mensaje).
-cp "$RAIZ/acciones.json" "$APP/Contents/Resources/corta/acciones.json"
-# La app usa tus videos, nunca la demo (y el video de Ana pesa).
-rm -rf "$APP/Contents/Resources/corta/ui/demo.json" "$APP/Contents/Resources/corta/ui/demo"
-find "$APP/Contents/Resources/corta" -name "__pycache__" -prune -exec rm -rf {} + 2>/dev/null || true
-chmod +x "$APP/Contents/Resources/corta/bin/"*.py
-cat > "$APP/Contents/Resources/LICENCIAS-TERCEROS.txt" <<'TXT'
+# Lo que va adentro: Python portátil y los programas de app.json (cada uno verificado con su huella).
+bash escritorio/herramientas/preparar.sh "$SO"
+# La CLI de Tauri, con versión fija (sin npm).
+command -v cargo-tauri >/dev/null || cargo install tauri-cli --version "^2" --locked
+# Los íconos de todos los sistemas, desde uno solo de 1024×1024.
+if [ -f escritorio/iconos/icono.png ] && [ ! -f escritorio/iconos/icon.icns ]; then (cd escritorio && cargo tauri icon iconos/icono.png -o iconos); fi
+# La versión de app.json y, para empaquetar, también Python y las herramientas (en desarrollo se usa el Python del sistema).
+cat > escritorio/LICENCIAS-TERCEROS.txt <<'TXT'
 Corta se distribuye con la licencia AGPL-3.0 (https://github.com/corta-app/corta). Dentro de la app van, como programas aparte:
 
-- ffmpeg y ffprobe (https://ffmpeg.org), compilación estática de ffmpeg-static b6.1.1
-  (https://github.com/eugeneware/ffmpeg-static). Licencia GPL; el código fuente está en https://ffmpeg.org/download.html.
-- whisper.cpp v1.8.3 (https://github.com/ggml-org/whisper.cpp), licencia MIT.
 - Python 3.13 de python-build-standalone (https://github.com/astral-sh/python-build-standalone), licencia PSF y las de sus partes.
-- Tipografías de ui/fuentes con la SIL Open Font License (ver ui/fuentes/OFL.txt).
+- Tauri (https://tauri.app) y los crates de Rust de escritorio/Cargo.lock, con licencias MIT, Apache-2.0 y otras compatibles.
+- whisper.cpp v1.8.3 (https://github.com/ggml-org/whisper.cpp), licencia MIT: whisper-cli, compilado al empaquetar.
+- ffmpeg y ffprobe (https://ffmpeg.org), compilación estática de ffmpeg-static b6.1.1 (https://github.com/eugeneware/ffmpeg-static), licencia GPL; el código fuente está en https://ffmpeg.org/download.html
 TXT
+cat > escritorio/tauri.empaquetar.json <<JSON
+{ "version": "$VERSION", "bundle": { "resources": { "vendor/$V/python/": "python/", "vendor/$V/herramientas/": "herramientas/", "LICENCIAS-TERCEROS.txt": "LICENCIAS-TERCEROS.txt" } } }
+JSON
+# La app usa los datos de la persona, nunca la demo de la vista previa.
+QUITAR=(ui/demo.json ui/demo)
+GUARDADO=$(mktemp -d)
+for q in "${QUITAR[@]}"; do if [ -e "$q" ]; then mkdir -p "$GUARDADO/$(dirname "$q")"; mv "$q" "$GUARDADO/$q"; fi; done
+devolver() { for q in "${QUITAR[@]}"; do if [ -e "$GUARDADO/$q" ]; then mv "$GUARDADO/$q" "$q"; fi; done; rm -rf "$GUARDADO" escritorio/tauri.empaquetar.json escritorio/LICENCIAS-TERCEROS.txt; }
+trap devolver EXIT
 
-# Firma ad hoc, de adentro hacia afuera, con requisito por identificador (macOS reconoce la app entre versiones).
-codesign --force --sign - "$APP/Contents/Frameworks/whisper.framework"
-find "$APP/Contents/Resources/python" -type f \( -name "*.so" -o -name "*.dylib" -o -perm -u+x \) -exec codesign --force --sign - {} \; 2>/dev/null || true
-for p in ffmpeg ffprobe corta-transcribir; do codesign --force --sign - "$APP/Contents/MacOS/$p"; done
-codesign --force --sign - --requirements '=designated => identifier "app.corta.mac"' "$APP"
-
-cd "$DIST"
-ditto -c -k --keepParent Corta.app Corta-macOS.zip
-shasum -a 256 Corta-macOS.zip > Corta-macOS.zip.sha256
-echo "Listo: $DIST/Corta-macOS.zip ($(du -h Corta-macOS.zip | cut -f1))"
+B=escritorio/target/release/bundle
+case "$SO" in
+  mac)
+    (cd escritorio && cargo tauri build --bundles app --config tauri.empaquetar.json)
+    APP="$B/macos/Corta.app"
+    if [ -f herramientas/empaquetar-extra.sh ]; then bash herramientas/empaquetar-extra.sh "$APP" "$SO"; fi
+    # Firma ad hoc (sin cuenta de Apple), con requisito por identificador: el Llavero y los permisos siguen a la app al actualizar.
+    find "$APP/Contents/Resources" -type f \( -name "*.so" -o -name "*.dylib" -o -perm -u+x \) -exec codesign --force --sign - {} \; 2>/dev/null || true
+    codesign --force --deep --sign - --requirements '=designated => identifier "app.corta.mac"' "$APP"
+    rm -rf "dist/Corta.app" && ditto "$APP" "dist/Corta.app"
+    (cd dist && rm -f Corta-macOS.zip && ditto -c -k --keepParent Corta.app Corta-macOS.zip)
+    firmar Corta-macOS.zip ;;
+  windows)
+    (cd escritorio && cargo tauri build --bundles nsis --config tauri.empaquetar.json)
+    cp "$(ls "$B"/nsis/*.exe | head -1)" dist/Corta-Windows.exe
+    firmar Corta-Windows.exe ;;
+  linux)
+    (cd escritorio && cargo tauri build --bundles appimage --config tauri.empaquetar.json)
+    cp "$(ls "$B"/appimage/*.AppImage | head -1)" dist/Corta-Linux.AppImage && chmod +x dist/Corta-Linux.AppImage
+    firmar Corta-Linux.AppImage
+    # El tar.gz de instalar.sh (~/.local/share/Corta): el ejecutable, el código en recursos/ y Python, todo junto.
+    T=$(mktemp -d); D="$T/Corta"; mkdir -p "$D/recursos"
+    cp escritorio/target/release/corta "$D/"
+    for d in app.json acciones.json bin ui estilos efectos plantillas; do cp -R "$d" "$D/recursos/"; done
+    cp escritorio/LICENCIAS-TERCEROS.txt "$D/"
+    for q in "${QUITAR[@]}"; do rm -rf "$D/recursos/$q"; done
+    cp -R escritorio/vendor/linux/python "$D/python"; cp -R escritorio/vendor/linux/herramientas "$D/herramientas"
+    if [ -f escritorio/iconos/128x128.png ]; then cp escritorio/iconos/128x128.png "$D/corta.png"; fi
+    tar -czf dist/Corta-Linux.tar.gz -C "$T" Corta && rm -rf "$T"
+    firmar Corta-Linux.tar.gz ;;
+esac
+echo "Listo: $(ls dist | tr '\n' ' ')"

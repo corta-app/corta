@@ -3,7 +3,6 @@
 !/.gitignore
 !/.github/
 !/.claude/
-!/app/
 !/bin/
 !/ui/
 !/docs/
@@ -15,6 +14,7 @@
 !/ejemplos/
 !/escritorio/
 !/build.sh
+!/instalar.sh
 !/README.md
 !/AGENTS.md
 !/CLAUDE.md
@@ -24,10 +24,11 @@
 !/CODE_OF_CONDUCT.md
 !/SECURITY.md
 !/LICENSE
-app/.build/
-escritorio/node_modules/
+escritorio/target/
 escritorio/vendor/
-escritorio/dist/
+escritorio/gen/
+escritorio/tauri.empaquetar.json
+escritorio/LICENCIAS-TERCEROS.txt
 __pycache__/
 .terminos-privados
 capturas/

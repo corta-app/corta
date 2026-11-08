@@ -615,10 +615,13 @@
       </div>
       ${lineaTiempo()}`;
   }
+  /** Un archivo de un proyecto (su video, su música o un clip) como lo sirve la app: `host.medio("video", "<carpeta>/<archivo>")`,
+   *  con la carpeta por su nombre dentro de ~/Corta (la app revisa que sea un proyecto de verdad y que el archivo sea suyo). */
+  const medioDe = (carpeta, archivo) => host.medio("video", `${String(carpeta).split(/[\\/]/).filter(Boolean).pop()}/${archivo}`);
   function fuenteVideo() {
     const x = proy(), archivo = x.proyecto.fuente.archivo;
     if (HOST === "web") return archivo;
-    return `corta://video/${encodeURIComponent(x.carpeta + "/" + archivo)}`;
+    return medioDe(x.carpeta, archivo);
   }
 
   const PESTANAS = [["texto", "Texto"], ["subtitulos", "Subtítulos"], ["efectos", "Efectos"], ["musica", "Música"], ["ia", "IA"], ["shorts", "Shorts"]];
@@ -982,8 +985,8 @@
       <p class="nota">Si eliges menos, se repiten; si eliges más, sobran. Después puedes cambiar cada uno y elegir qué parte de cada video se usa.</p>`,
       pie: `<button class="pz-boton" data-ver-pl="">Atrás</button>${accion}` };
   }
-  /** Un clip o una foto de la plantilla, para verlo en el panel: por corta:// en la app; en la vista previa, la ruta de la demo. */
-  const fuenteClip = (carpeta, archivo) => (HOST === "web" ? archivo : `corta://video/${encodeURIComponent(carpeta + "/" + archivo)}`);
+  /** Un clip o una foto de la plantilla, para verlo en el panel: lo sirve la app (`medioDe`); en la vista previa, la ruta de la demo. */
+  const fuenteClip = (carpeta, archivo) => (HOST === "web" ? archivo : medioDe(carpeta, archivo));
   function panelClips() {
     const p = P(), pl = plantillaPorId(p.plantilla.id), ini = iniciosHuecos(p.plantilla.huecos);
     const filas = p.plantilla.huecos.map((h, k) => {
@@ -1405,7 +1408,7 @@
     if (!a) return "";
     if (/^([\\/]|[A-Za-z]:)/.test(a)) return "";  // fuera de la carpeta: la app solo sirve archivos de ~/Corta
     if (HOST === "web") return a;
-    return `corta://video/${encodeURIComponent(proy().carpeta + "/" + a)}`;
+    return medioDe(proy().carpeta, a);
   }
   function sincronizarMusica(dt = 0) {
     if (!musicaAudio) return;
@@ -1805,7 +1808,7 @@
   // Las muestras de los efectos usan el cuadro del video: se vuelven a copiar cuando hay un cuadro nuevo en pausa.
   document.addEventListener("seeked", (ev) => { if (ev.target.id === "video") pintarMuestras(); }, true);
   document.addEventListener("loadeddata", (ev) => { if (ev.target.id === "video") pintarMuestras(); }, true);
-  // Cada clip del panel Clips muestra el cuadro donde empieza su parte (sin #t= en la dirección: corta:// no acepta fragmentos).
+  // Cada clip del panel Clips muestra el cuadro donde empieza su parte (sin #t= en la dirección: la app no sirve fragmentos).
   document.addEventListener("loadedmetadata", (ev) => { const d = ev.target.dataset?.desde; if (d != null) ev.target.currentTime = Number(d) + 0.05; }, true);
 
   // ───────────── Eventos ─────────────
@@ -2124,12 +2127,23 @@
       if (bv.soloIdioma) return;  // mientras se elige el idioma no se importa nada
       const encima = tipo === "dragover";
       if (E.soltar !== encima) { E.soltar = encima; const z = $("[data-soltar]"); if (z) z.classList.toggle("encima", encima); }
-      if (tipo === "drop") host.enviar("soltarVideo", { nombres: [...ev.dataTransfer.files].map((f) => f.name) });
+      // En la app soltar lo atiende el sistema (`soltados`, abajo: la página nunca ve rutas); aquí, solo la vista previa.
+      if (tipo === "drop" && HOST === "web") host.enviar("soltarVideo", { nombres: [...ev.dataTransfer.files].map((f) => f.name) });
     });
   }
 
   // ───────────── Lo que manda la app ─────────────
   host.responder({
+    /** Un archivo arrastrado encima de la ventana (en la app el arrastre lo ve el sistema, no la página): marca dónde soltarlo. */
+    soltando(d) {
+      const encima = !bv.soloIdioma && d?.encima === true;
+      if (E.soltar !== encima) { E.soltar = encima; const z = $("[data-soltar]"); if (z) z.classList.toggle("encima", encima); }
+    },
+    /** Lo que se soltó en la ventana (pieza «host-tauri»): solo los nombres; la app guardó las rutas. */
+    soltados(d) {
+      if (bv.soloIdioma || !Array.isArray(d?.nombres) || !d.nombres.length) return;
+      host.enviar("soltarVideo", { nombres: d.nombres.filter((n) => typeof n === "string").slice(0, 20) });
+    },
     async estado(e) {
       Object.assign(E, { proyectos: e.proyectos || [], estilos: e.estilos || [], config: e.config || {}, ias: e.ias || [], modelos: e.modelos || { lista: [] },
         vocabulario: e.vocabulario || { reemplazos: [], palabras: [] }, efectos: e.efectos || [], plantillas: e.plantillas || [],

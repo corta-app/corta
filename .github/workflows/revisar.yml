@@ -23,9 +23,9 @@ jobs:
         run: |
           node --check ui/app.js
           python3 -m py_compile bin/*.py pruebas/*.py ejemplos/*.py
-          python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('estilos/*.json') + glob.glob('efectos/*/*.json') + ['ui/demo.json', 'pruebas/casos.json']]"
+          python3 -c "import json, glob; [json.load(open(f, encoding='utf-8')) for f in glob.glob('ui/idiomas/*.json') + glob.glob('estilos/*.json') + glob.glob('efectos/*/*.json') + glob.glob('plantillas/*/*.json') + ['ui/demo.json', 'pruebas/casos.json']]"
           for f in build.sh herramientas/*.sh pruebas/*.sh; do bash -n "$f"; done
-      - name: Contrato interfaz ↔ app de Mac
+      - name: Contrato interfaz ↔ app nativa
         run: python3 pruebas/contrato.py
       - name: Privacidad (correos personales y rutas de usuario)
         run: bash herramientas/revisar_privacidad.sh --generico
@@ -47,21 +47,34 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with: { name: capturas, path: capturas, retention-days: 14, if-no-files-found: ignore }
-  mac:
-    # Compila la app de Mac (Swift solo compila en un Mac) cuando cambia algo de ella.
-    runs-on: macos-15
-    timeout-minutes: 30
+  app:
+    # La app nativa (Rust + Tauri, pieza «host-tauri»): pruebas, clippy y, en Linux, abrirla de verdad con una pantalla virtual.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    defaults: { run: { shell: bash, working-directory: escritorio } }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: { fetch-depth: 0, persist-credentials: false }
-      - name: ¿Cambió algo de la app de Mac?
-        id: cambio
-        # Lo que viene del evento entra por variables de entorno, nunca pegado en el guion.
-        env:
-          ANTES: ${{ github.event.before }}
-          EVENTO: ${{ github.event_name }}
+        with: { persist-credentials: false }
+      - name: Lo que Tauri necesita en Linux
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev xvfb
+      - name: Pruebas y clippy (exactamente lo de Cargo.lock)
         run: |
-          if [ "$EVENTO" != "push" ] || ! git cat-file -e "$ANTES" 2>/dev/null || git diff --name-only "$ANTES" HEAD | grep -qE '^(app/|herramientas/empaquetar\.sh|build\.sh)'; then echo "si=1" >> "$GITHUB_OUTPUT"; fi
-      - name: Compilar
-        if: steps.cambio.outputs.si == '1'
-        run: cd app && swift build -c release
+          cargo test --locked
+          cargo clippy --locked --all-targets -- -D warnings
+      - name: La app abierta en Linux (pantalla virtual)
+        if: runner.os == 'Linux'
+        run: bash pruebas/arranque.sh
+      # Lo que va dentro de la app de Mac: Python, ffmpeg y ffprobe (con su huella) y whisper-cli compilado con Metal.
+      - name: Lo que lleva la app de Mac (whisper-cli con Metal, ffmpeg)
+        if: runner.os == 'macOS'
+        run: |
+          bash herramientas/preparar.sh mac
+          H=vendor/mac/herramientas
+          "$H/whisper-cli" --help >/dev/null 2>&1 || { "$H/whisper-cli" --help; exit 1; }
+          otool -L "$H/whisper-cli" | grep -q Metal.framework
+          "$H/ffmpeg" -hide_banner -version | head -1 && "$H/ffprobe" -hide_banner -version | head -1

@@ -1,6 +1,8 @@
 {
  "nombre": "Corta",
  "id": "corta",
+ "version": "0.1.0",
+ "repo": "corta-app/corta",
  "datos": "visible",
  "privado": true,
  "icono": "docs/favicon.svg",
@@ -262,5 +264,49 @@
   "catalogoInstalados",
   "catalogoQuitar",
   "catalogoUltima"
- ]
+ ],
+ "empaquetado": {
+  "descripcion": "Editor de video para Shorts, Reels y TikTok: edita el texto y se corta el video, todo en tu computador.",
+  "categoria": "public.app-category.video",
+  "linux_categoria": "AudioVideo",
+  "carpetas": [
+   "estilos",
+   "efectos",
+   "plantillas"
+  ],
+  "quitar": [
+   "ui/demo"
+  ],
+  "permisos": [],
+  "ocupada": [
+   {
+    "proceso": "bin/render.py",
+    "mensaje": "✗ Corta está exportando un video. Espera a que termine."
+   },
+   {
+    "proceso": "bin/importar.py",
+    "mensaje": "✗ Corta está transcribiendo o trayendo un video. Espera a que termine."
+   }
+  ],
+  "whisper": true,
+  "licencias": [
+   "ffmpeg y ffprobe (https://ffmpeg.org), compilación estática de ffmpeg-static b6.1.1 (https://github.com/eugeneware/ffmpeg-static), licencia GPL; el código fuente está en https://ffmpeg.org/download.html"
+  ],
+  "mac": {
+   "binarios": [
+    {
+     "nombre": "ffmpeg",
+     "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz",
+     "sha256": "8923876afa8db5585022d7860ec7e589af192f441c56793971276d450ed3bbfa",
+     "gz": true
+    },
+    {
+     "nombre": "ffprobe",
+     "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-arm64.gz",
+     "sha256": "d986a8ec7b030899fe66a8a288ed809a3543338705a3ce178cfb85869c5d80be",
+     "gz": true
+    }
+   ]
+  }
+ }
 }

@@ -51,7 +51,8 @@
     if (opciones.listo !== false) {
       const l = opciones.listo || {};
       pasos.push({ id: "listo", titulo: l.titulo || "Todo listo", orden: Infinity,
-        cuerpo: l.cuerpo || (() => `<p>${ajustes ? T("Ya puedes empezar. Todo lo que elegiste se cambia cuando quieras en {donde}.", { donde: T(ajustes.es) })
+        // Ya traducido con T: data-sin-traducir, así traducirDOM no lo cuenta como un texto que falta (lo veía en inglés).
+        cuerpo: l.cuerpo || (() => `<p data-sin-traducir>${ajustes ? T("Ya puedes empezar. Todo lo que elegiste se cambia cuando quieras en {donde}.", { donde: T(ajustes.es) })
           : opciones.ajustes === false ? T("Ya puedes empezar.") : T("Ya puedes empezar. Todo lo que elegiste se cambia cuando quieras en Ajustes.")}</p>`),
         puede: () => true, saltable: false, alFinal: false, despues: "Lo hago después", fin: { texto: "Empezar", principal: true, accion: null } });
     }

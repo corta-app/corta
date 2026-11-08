@@ -6,6 +6,12 @@ Lo que cambia para quien usa Corta, en palabras simples. Cada versión, con su d
 
 ## Sin publicar
 
+- **Corta para Mac cambia por dentro:** ahora es la misma app nativa que tendrán Windows y Linux (Rust y Tauri, con el navegador
+  del sistema). Tus videos, proyectos, ajustes y modelos siguen donde estaban y no tienes que hacer nada. El transcriptor es el
+  mismo whisper.cpp con la GPU del Mac (Metal), ahora armado como un solo programa.
+  *Corta for Mac changes on the inside: it is now the same native app that Windows and Linux will get (Rust and Tauri, with the
+  system's browser engine). Your videos, projects, settings and models stay where they were and you don't need to do anything. The
+  transcriber is the same whisper.cpp with the Mac's GPU (Metal), now built as a single program.*
 - Exportar un Short sacado del medio o del final de un video largo tarda la mitad o menos: Corta lee solo el pedazo que usa, no
   el video entero. Lo exportado sale cuadro a cuadro igual que antes.
   *Exporting a Short taken from the middle or the end of a long video takes half the time or less: Corta reads only the part it
