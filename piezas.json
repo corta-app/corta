@@ -68,9 +68,9 @@
    }
   },
   "host-ui": {
-   "version": "0.2.0",
+   "version": "0.3.0",
    "archivos": {
-    "ui/host.js": "cdca43b52982db53c3c018b807a8df0bc9282c9ff61b4ecee8037ddc3e5521aa"
+    "ui/host.js": "07505d7d288b0fdfa0d3a31430a57331f59198e2ebd413d3adf1f244883d501f"
    },
    "ficha": {
     "requiere": [],
@@ -140,10 +140,10 @@
    }
   },
   "catalogo": {
-   "version": "0.2.1",
+   "version": "0.3.0",
    "archivos": {
     "bin/catalogo.py": "f61a3796c483c6ed2bc4e2506cd33630e934805619658b054454f9a3d394b425",
-    "app/Sources/PiezaCatalogo/Catalogo.swift": "3131bff38076529f6f7b80268f35be7e72c5926fae96cf4c76f16aa4e8b83eaf"
+    "escritorio/src/pieza/catalogo.rs": "b44495a85786814e6ab8c0594b3950f78da56520386fcc4e990a8278f1fedd77"
    },
    "ficha": {
     "requiere": [
@@ -207,40 +207,10 @@
     }
    }
   },
-  "host-mac": {
-   "version": "0.3.0",
-   "archivos": {
-    "app/Sources/PiezaHost/Host.swift": "75342959251cc9d8921d23992c6e7cbb313a2a069bae1525a8bddc6d8ec38b59",
-    "app/Sources/PiezaHost/Procesador.swift": "92a11d93f07d381ba539f6bd45db6f1fa9d0e03e25f071e982d74bf32eea04dd",
-    "app/Sources/PiezaHost/Enchufe.swift": "7687d04c080e560be52d90b26d36e7cfad665f8792b2887b98f5214194038d4e",
-    "app/Sources/PiezaHost/Puente.swift": "be49c68045d6cd0371a55b84d5e7b3c7ded07badd0c984e1f26ff8c3aa73ec0a",
-    "app/Sources/PiezaHost/Carpeta.swift": "60676fa9a24d09105577ae1ab06bad3f379805490334e6e47afedb114292aa22",
-    "app/Sources/PiezaHost/Sistema.swift": "ec7219eee6a8b7678ce795572cd9225b1407200aa042e686bb7c833849df1277"
-   },
-   "ficha": {
-    "requiere": [
-     "nucleo",
-     "host-ui"
-    ],
-    "permisos": {
-     "mac": [
-      {
-       "clave": "Notificaciones",
-       "por": "solo si la app usa Notificaciones: macOS pregunta cuando la app lo pide (pedirPermiso), nunca al abrir"
-      },
-      {
-       "clave": "Llavero",
-       "por": "solo si la app usa Secretos: los tokens quedan en el Llavero de la persona, solo en este Mac"
-      }
-     ]
-    },
-    "red": []
-   }
-  },
   "actualizaciones": {
-   "version": "0.3.0",
+   "version": "0.4.0",
    "archivos": {
-    "app/Sources/PiezaActualizaciones/Actualizaciones.swift": "ab8c92a4ce314a388cbc0975f7b25d4fb4a8ad6fdbca6da60e3bcb0a4426e144"
+    "escritorio/src/pieza/actualizaciones.rs": "f75ebd8ebdfd8fda468cf8c613ea3509784e3cb3a5fe66c8be60ab32cf5f866f"
    },
    "ficha": {
     "requiere": [],
@@ -254,9 +224,9 @@
    }
   },
   "bienvenida": {
-   "version": "0.4.0",
+   "version": "0.4.1",
    "archivos": {
-    "ui/bienvenida.js": "e5d2d57fd43105b163670238b4aeb37c144367549179ab09be4b3f9a92173652",
+    "ui/bienvenida.js": "0265e1d4f6f9cea46eff5d0df1d1098c28bd0d889e0b26e8a8fb3936c8ccbd12",
     "ui/bienvenida.css": "cebd589f28a4fc2f1e08e143abd5b1a6531f8060dc346f53d2b9479b7c995719"
    },
    "ficha": {
@@ -268,10 +238,10 @@
    }
   },
   "trabajos": {
-   "version": "0.2.1",
+   "version": "0.2.2",
    "archivos": {
     "bin/trabajos.py": "fe1640aec0f3f364968501f169d4b9b58f6a746e72f81f338b027f5c392bcde3",
-    "app/Sources/PiezaTrabajos/LectorProgreso.swift": "7361eb8f02ba7fe42c5526e7e44bcea24d4f1f45bedf1090d6e16dbab6890b07"
+    "escritorio/src/pieza/progreso.rs": "7ffc66f2f47bef96415542dc025817fc52b53c65c3228c82c10f7c260f032645"
    },
    "ficha": {
     "requiere": [
@@ -279,6 +249,86 @@
     ],
     "permisos": {},
     "red": []
+   }
+  },
+  "host-tauri": {
+   "version": "0.1.0",
+   "archivos": {
+    "escritorio/src/pieza/mod.rs": "92f9a2a855b9f855b15a9a9112c5d87debc101a7d5ac8b39a2e02f67d38f37b1",
+    "escritorio/src/pieza/enchufe.rs": "e5047cc286eefa5b30d67af3463f45f94d69923830e9aa84ab507140e2108a48",
+    "escritorio/src/pieza/procesador.rs": "26d0b99438559b45539fe252354fa609015974c7ae2391194de5b0936ebf1b04",
+    "escritorio/src/pieza/protocolo.rs": "b19b87bb18ac63841871cad19da256372986ffe52512a6389fc87a1c59ca518b",
+    "escritorio/src/pieza/sistema.rs": "ecaef6d2c859ddf9b5b4dd707e1828932aa812f4e99ac670c25ec4527426457c",
+    "escritorio/src/pieza/vigilante.rs": "6be8519e7c8f9996e30af4c4f78695994966eb8476a4900eb9bbb840a583973d",
+    "escritorio/src/pieza/host.rs": "b8c32422a164bce77fc3fd35ac23af1b2282fd124e5fa84d6d34a2c080d57dff",
+    "escritorio/iconos/32x32.png": "0c334ce1216ed797b3adf0a255bb68e22189ef538fe4a303180ef6c7e07ed7be",
+    "escritorio/iconos/128x128.png": "c86e3d530fc01c4bf60952a4005e269a6899a52aa3ca441b51e52e3afbd7dd5b",
+    "escritorio/iconos/128x128@2x.png": "8eb6cfbd01f498c1496e592d5ae169954b8448ae92e519863d7179d32e32ae73",
+    "escritorio/iconos/icon.icns": "bf63be44517a9ff5836916c204289a8ee905ebf45fdf28f01f75cd7f42fae65f",
+    "escritorio/iconos/icon.ico": "c9447636799599b281ae73a7a3b420869d9011248d18ad1231ce54b285f1ff7a",
+    "escritorio/iconos/icono.png": "3381c19a5e021e87e403b89f41ca097c4744e2699ccabc320c8131bf886a870e"
+   },
+   "ficha": {
+    "requiere": [
+     "nucleo",
+     "host-ui"
+    ],
+    "permisos": {
+     "mac": [
+      {
+       "clave": "Notificaciones",
+       "por": "solo si la app usa avisos: macOS pregunta la primera vez"
+      },
+      {
+       "clave": "Llavero",
+       "por": "solo si la app usa secretos: quedan en el Llavero de la persona, solo en este Mac"
+      }
+     ],
+     "windows": [
+      {
+       "clave": "Credenciales de Windows",
+       "por": "solo si la app usa secretos: quedan en el Administrador de credenciales de la persona"
+      }
+     ],
+     "linux": [
+      {
+       "clave": "Secret Service (gnome-keyring o KWallet)",
+       "por": "solo si la app usa secretos; sin llavero no se guarda nada"
+      }
+     ]
+    },
+    "red": []
+   },
+   "generados": {
+    "escritorio/Cargo.toml": "43f86afd13efbcdf7394837fbeb094f97726153b82cfe6d8ec1b4546937accef",
+    "escritorio/Info.plist": "30fd6080de8799aa9d8a13923b3c137f0883fbc7948b93f74c9b72317aa00ddb",
+    "escritorio/build.rs": "8af41c0062014fc594e4bb9899e60ee9930ab57d4cf0c73041ff557d6ec736e6",
+    "escritorio/pruebas/arranque.sh": "4105f22b03cea643f5922da17a99e0750783be7abbf0eb0f6f2df8f946f6083d",
+    "escritorio/tauri.conf.json": "337293922ff8a6083b27bf714fced558e1f6234df59ef89ef15c1905064bcb18",
+    "escritorio/vacio/index.html": "cbd4e24cbdfa4a450b0798d98975b97ed980e055c2e088edcb30e52751cb11c8"
+   },
+   "una_vez": [
+    "escritorio/src/main.rs"
+   ]
+  },
+  "empaquetado": {
+   "version": "0.2.0",
+   "archivos": {
+    "herramientas/python.lock": "a038e911e34657048ee048b563506591fc62fdeaa08fb071926b54da57b75d42"
+   },
+   "ficha": {
+    "requiere": [
+     "host-tauri"
+    ],
+    "permisos": {},
+    "red": []
+   },
+   "generados": {
+    ".github/workflows/publicar.yml": "c954a6750172152c452d8cf991631806b03bcdc00529213881576972d655819d",
+    "build.sh": "17be3623e65f1de4f4c50f7194c452c2560095f58a7ac44cbf2d49b015360594",
+    "escritorio/herramientas/preparar.sh": "e6ca3362877f92db805c31586a4af051ba6ce3f4b6c276f9629dacc97932e112",
+    "herramientas/empaquetar.sh": "148d24a9de43c250391070c0687ede8ef842b1a791c72ece4f6104d9784df029",
+    "instalar.sh": "7b77df72b2d2b62058e54aeff70da33bb513dd7371d83ab700c8380b39f663bc"
    }
   }
  }

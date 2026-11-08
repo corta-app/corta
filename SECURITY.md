@@ -33,9 +33,9 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
   unos días de espera (`.github/dependabot.yml`).
 - Python solo con biblioteca estándar; la interfaz y el motor no tienen dependencias de npm.
 - La interfaz tiene una Content-Security-Policy sin `unsafe-eval` ni scripts en línea; todo lo que viene de afuera se valida y se escapa.
-- En la app de Mac (la pieza «host-mac» de Pieza, en `app/Sources/PiezaHost/`), la ventana solo carga la interfaz que viene adentro,
-  el puente solo le responde al marco principal con una página de `ui/` y los videos se sirven por `corta://` solo desde los proyectos
-  de `~/Corta`. Lo que manda la interfaz se valida con su esquema (`acciones.json`; los campos que el esquema deja pasar los vuelve a revisar el script) antes de correr un script, va en un archivo
+- En la app nativa (Rust + Tauri, la pieza «host-tauri» de Pieza, en `escritorio/src/pieza/`), la ventana solo carga la interfaz que
+  viene adentro, el puente solo le responde a su propia ventana con una página de `ui/` y los videos se sirven solo desde los
+  proyectos de `~/Corta` (`escritorio/src/medios.rs`). Lo que manda la interfaz se valida con su esquema (`acciones.json`; los campos que el esquema deja pasar los vuelve a revisar el script) antes de correr un script, va en un archivo
   de entrada (nunca como argumento) y la carpeta de un proyecto se revisa dos veces (en la app y en `bin/`). Cada script tiene límite
   de tiempo (los trabajos largos, mientras laten) y no recibe variables `CORTA_*` de afuera; al salir de la app se corta lo que siga
   corriendo. ffmpeg solo abre archivos locales (`-protocol_whitelist file`), la IA corre sin herramientas y lo que se descarga al armar
@@ -58,7 +58,7 @@ computador; o pedir encabezados que GitHub Pages no deja configurar en la págin
 **fictional data only**), the version or commit and your OS. We reply within **7 days**, keep you posted, publish a GitHub Security
 Advisory with the fix and credit you if you want. Please don't disclose details until a fix is out (90 days at most as a general rule).
 
-The Mac app is Pieza's generic host (`app/Sources/PiezaHost/`): the bridge only answers the main frame with a page from `ui/`, UI data is
+The native app is Pieza's generic host (Rust + Tauri, `escritorio/src/pieza/`): the bridge only answers its own window with a page from `ui/`, UI data is
 validated against its schema (`acciones.json`; fields the schema lets through are checked again by the script) before any script runs, scripts have a time limit and never inherit outside
 `CORTA_*` variables, and updates come only from this repo's Releases, checked against their published SHA-256.
 

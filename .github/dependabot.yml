@@ -11,3 +11,11 @@ updates:
     groups:
       actions: { patterns: ["*"] }
     commit-message: { prefix: "Actions" }
+  - package-ecosystem: cargo
+    directory: /escritorio
+    schedule: { interval: weekly }
+    cooldown: { default-days: 7 }
+    open-pull-requests-limit: 5
+    groups:
+      crates: { patterns: ["*"] }
+    commit-message: { prefix: "Escritorio" }

@@ -986,7 +986,7 @@ class Vocabulario(unittest.TestCase):
 
     def transcribir_con_vocabulario(self, transcriptor=None):
         """Transcribe el video ficticio con el vocabulario «Kalumi, Ana».
-        transcriptor: None (corta-transcribir, del PATH de las pruebas) o «whisper-cli» (en CORTA_PROGRAMAS)."""
+        transcriptor: None (corta-transcribir, del PATH de las pruebas) o «whisper-cli» (en CORTA_HERRAMIENTAS, donde lo deja la app)."""
         for m in ("turbo", "vad"):  # ficticios, del tamaño de los de verdad (sin ocupar disco)
             with open(transcribir.ruta_modelo(m), "wb") as f:
                 f.truncate(transcribir.MODELOS[m]["bytes"])
@@ -998,7 +998,7 @@ class Vocabulario(unittest.TestCase):
             propios = tempfile.mkdtemp(dir=TMP)
             shutil.copy(os.path.join(RAIZ, "pruebas", "transcriptor_falso.py"), os.path.join(propios, transcriptor))
             os.chmod(os.path.join(propios, transcriptor), 0o755)
-            entorno["CORTA_PROGRAMAS"] = propios
+            entorno["CORTA_HERRAMIENTAS"] = propios
             # La pieza busca primero corta-transcribir en todas partes: sin el del PATH de las pruebas, queda whisper-cli.
             entorno["PATH"] = os.pathsep.join(d for d in os.environ["PATH"].split(os.pathsep) if d != BIN_FALSO)
         path = os.environ["PATH"]
@@ -1128,12 +1128,13 @@ class App(unittest.TestCase):
         with open(ff, "w") as f:
             f.write("#!/bin/sh\n")
         os.chmod(ff, 0o755)
-        os.environ["CORTA_PROGRAMAS"] = falsos
-        try:
-            self.assertEqual(proyecto.programa("ffmpeg"), ff, "el ffmpeg de la app gana sobre el del sistema")
-            self.assertNotEqual(proyecto.programa("ffprobe"), os.path.join(falsos, "ffprobe"))
-        finally:
-            del os.environ["CORTA_PROGRAMAS"]
+        for variable in ("CORTA_HERRAMIENTAS", "CORTA_PROGRAMAS"):  # la de la app nativa (host-tauri) y la de antes
+            os.environ[variable] = falsos
+            try:
+                self.assertEqual(proyecto.programa("ffmpeg"), ff, "el ffmpeg de la app gana sobre el del sistema")
+                self.assertNotEqual(proyecto.programa("ffprobe"), os.path.join(falsos, "ffprobe"))
+            finally:
+                del os.environ[variable]
         for script in ("render.py", "importar.py", "limpiar.py", "plantillas.py"):
             fuente = open(os.path.join(RAIZ, "bin", script), encoding="utf-8").read()
             self.assertNotRegex(fuente, r'"-i", (?!proyecto\.entrada)', f"{script}: cada -i va con proyecto.entrada()")
@@ -1241,13 +1242,13 @@ class Piezas(unittest.TestCase):
         self.assertEqual(os.path.realpath(proyecto.INTERNO), os.path.realpath(os.path.join(proyecto.BASE, ".corta")))
         import nucleo
         self.assertEqual(os.path.realpath(nucleo.carpeta_datos()), os.path.realpath(proyecto.INTERNO))
-        # La app de Mac (pieza «host-mac») acepta en Config.guardar justo las claves de app.json: las lee de ahí, dentro de la app,
+        # La app nativa (pieza «host-tauri») acepta en config justo las claves de app.json: las lee de ahí, dentro de la app,
         # junto a acciones.json (las acciones declaradas).
-        host = open(os.path.join(RAIZ, "app", "Sources", "PiezaHost", "Host.swift"), encoding="utf-8").read()
-        self.assertIn('Host.app["config"]', host, "Config sale de app.json")
-        sh = open(os.path.join(RAIZ, "herramientas", "empaquetar.sh"), encoding="utf-8").read()
-        self.assertIn('cp "$RAIZ/app.json" "$APP/Contents/Resources/corta/app.json"', sh, "app.json va dentro de la app")
-        self.assertIn('cp "$RAIZ/acciones.json" "$APP/Contents/Resources/corta/acciones.json"', sh, "acciones.json va dentro de la app")
+        host = open(os.path.join(RAIZ, "escritorio", "src", "pieza", "enchufe.rs"), encoding="utf-8").read()
+        self.assertIn('config: d.get("config")', host, "Config sale de app.json")
+        recursos = json.load(open(os.path.join(RAIZ, "escritorio", "tauri.conf.json"), encoding="utf-8"))["bundle"]["resources"]
+        self.assertEqual(recursos.get("../app.json"), "recursos/app.json", "app.json va dentro de la app")
+        self.assertEqual(recursos.get("../acciones.json"), "recursos/acciones.json", "acciones.json va dentro de la app")
 
     def test_config_validada(self):
         ruta = os.path.join(proyecto.INTERNO, "config.json")

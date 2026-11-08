@@ -50,12 +50,14 @@ def config():
 
 # ───────────── Programas (ffmpeg, ffprobe, transcriptor) ─────────────
 def programa(*nombres):
-    """Ruta del primer programa que exista: primero los que vienen dentro de la app (CORTA_PROGRAMAS, verificados por huella al
-    empaquetar), después los del sistema (desarrollo). Si no hay ninguno, el primer nombre (el error lo da quien lo llame)."""
-    propios = os.environ.get("CORTA_PROGRAMAS")
-    if propios:
+    """Ruta del primer programa que exista: primero los que vienen dentro de la app (CORTA_HERRAMIENTAS, que pone la pieza
+    «host-tauri», o CORTA_PROGRAMAS; verificados por huella al empaquetar), después los del sistema (desarrollo). Si no hay
+    ninguno, el primer nombre (el error lo da quien lo llame)."""
+    for propios in (os.environ.get("CORTA_HERRAMIENTAS"), os.environ.get("CORTA_PROGRAMAS")):
+        if not propios:
+            continue
         for n in nombres:
-            r = os.path.join(propios, n)
+            r = os.path.join(propios, n + (".exe" if os.name == "nt" else ""))
             if os.path.isfile(r) and os.access(r, os.X_OK):
                 return r
     for n in nombres:

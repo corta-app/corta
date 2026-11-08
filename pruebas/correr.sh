@@ -1,5 +1,5 @@
 #!/bin/bash
-# Todas las pruebas (las mismas que corre GitHub en cada cambio). Necesita ffmpeg.
+# Todas las pruebas (las mismas que corre GitHub en cada cambio). Necesita ffmpeg; la app nativa (Rust), cargo (SIN_RUST=1 la salta).
 # Uso: bash pruebas/correr.sh   (la interfaz necesita Playwright: PLAYWRIGHT=/ruta/a/playwright si no está en node_modules)
 set -eo pipefail
 cd "$(dirname "$0")/.."
@@ -12,3 +12,9 @@ echo "Python"; python3 pruebas/test_python.py 2>&1 | tail -3
 echo "Interfaz"; node pruebas/interfaz.mjs
 echo "Transiciones (vista previa ↔ exportado)"; node pruebas/transiciones.mjs
 echo "Velocidad (vista previa ↔ exportado)"; node pruebas/velocidad.mjs
+if command -v cargo >/dev/null && [ "${SIN_RUST:-0}" != "1" ]; then
+  echo "App nativa (Rust, pieza «host-tauri»)"; (cd escritorio && cargo test --quiet 2>&1 | grep -E "test result|error" | tail -3)
+  if command -v xvfb-run >/dev/null && command -v dbus-run-session >/dev/null; then bash escritorio/pruebas/arranque.sh; fi
+else
+  echo "App nativa: sin cargo (o SIN_RUST=1), se prueba en GitHub (job «app»)"
+fi

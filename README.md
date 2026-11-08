@@ -96,7 +96,8 @@ macOS 15 o más nuevo.
 3. Ábrela. Corta es una app **sin firmar** (no pagamos el certificado de Apple), así que la primera vez macOS avisa que no puede
    verificarla: ve a **Ajustes del Sistema → Privacidad y seguridad** y, abajo, toca **«Abrir igualmente»**. Solo la primera vez.
 
-**Desde el código** (si prefieres armarla tú; necesitas las herramientas de línea de comandos de Xcode: `xcode-select --install`):
+**Desde el código** (si prefieres armarla tú; necesitas las herramientas de línea de comandos de Xcode, `xcode-select --install`,
+[Rust](https://rustup.rs) y `cmake`, que arma whisper.cpp):
 ```bash
 git clone https://github.com/corta-app/corta ~/Developer/corta   # no en ~/corta: macOS no distingue ~/corta de ~/Corta (tus videos)
 cd ~/Developer/corta && bash build.sh                            # queda en ~/Applications/Corta.app
@@ -105,7 +106,8 @@ La primera vez elige tu idioma, tu IA y descarga el transcriptor (se verifica su
 actualizar nunca los toca. Corta revisa sola si hay una versión nueva y te avisa en Ajustes (en una instalación desde el código,
 con `git pull`).
 Dentro de la app van [ffmpeg](https://ffmpeg.org) (GPL, como programa aparte), [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
-(MIT) y Python portátil, todos descargados con su huella SHA-256 fija (`herramientas/empaquetar.sh`).
+(MIT, compilado al empaquetar, con Metal) y Python portátil: ffmpeg y Python con su huella SHA-256 fija, whisper.cpp desde un commit
+fijo (`escritorio/herramientas/preparar.sh`).
 
 ## Cómo funciona
 ```
@@ -162,8 +164,9 @@ transiciones por nombre, textos, la velocidad de cada hueco (cámara lenta, ráp
 tienes, Corta te ofrece descargarlo.
 
 ## Desarrollo
-Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`). La app de Mac está en
-`app/` (Swift Package Manager, sin proyecto de Xcode): `bash build.sh` la arma e instala.
+Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`). La app nativa está en
+`escritorio/` (Rust + Tauri, la pieza «host-tauri» de Pieza; la misma servirá para Windows y Linux): `bash build.sh` la arma e
+instala en el Mac y `cd escritorio && cargo run` la abre en cualquier sistema.
 ```bash
 cd ui && python3 -m http.server 8765         # interfaz con el video de mentira: http://localhost:8765 (?idioma=en, ?bienvenida, ?vacio)
 python3 bin/importar.py mi-video.mp4 /tmp/r.json   # crea el proyecto en ~/Corta
@@ -195,11 +198,11 @@ photos and it builds itself with its cuts, transitions, effects and texts; then 
 JSON too, and the community shares more by category in the catalog.
 Spanish-first, English included. Licensed under AGPL-3.0.
 
-**Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python, ffmpeg, whisper.cpp, all pinned by SHA-256).
+**Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python and ffmpeg pinned by SHA-256, whisper.cpp built with Metal from a pinned commit).
 [**Download Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip), unzip it and drag Corta to Applications (every version, with its `.sha256`, is in
 [Releases](https://github.com/corta-app/corta/releases)). It's an **unsigned app**: the first time, macOS says it can't verify it; go
 to **System Settings → Privacy & Security** and, at the bottom, click **"Open Anyway"**. Only the first time. Corta checks for new
-versions itself and tells you in Settings. Or build it from source:
+versions itself and tells you in Settings. Or build it from source (Xcode command line tools, [Rust](https://rustup.rs) and `cmake`):
 `git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`
 (installs to `~/Applications/Corta.app`; your videos live in `~/Corta`). Windows and Linux are on the way.
 No special permissions (no microphone, camera, notifications or Keychain); it only goes online to download the transcriber once
