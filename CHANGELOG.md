@@ -6,6 +6,8 @@ Lo que cambia para quien usa Corta, en palabras simples. Cada versión, con su d
 
 ## Sin publicar
 
+## 0.2.0 · 2026-11-08
+
 - **Corta para Mac cambia por dentro:** ahora es la misma app nativa que tendrán Windows y Linux (Rust y Tauri, con el navegador
   del sistema). Tus videos, proyectos, ajustes y modelos siguen donde estaban y no tienes que hacer nada. El transcriptor es el
   mismo whisper.cpp con la GPU del Mac (Metal), ahora armado como un solo programa.
