@@ -13,9 +13,14 @@ updates:
     commit-message: { prefix: "Actions" }
   - package-ecosystem: cargo
     directory: /escritorio
+    # Los crates son de la pieza «host-tauri»: suben en Pieza, con sus pruebas, y llegan con «Pieza al día».
+    # Aquí solo llegan las alertas de seguridad (0 = sin PR de versiones nuevas).
+    open-pull-requests-limit: 0
+    ignore:
+      # glib 0.18 llega con Tauri en Linux (gtk3). La versión arreglada (0.20) necesita gtk4: llega cuando Tauri cambie.
+      - dependency-name: glib
     schedule: { interval: weekly }
     cooldown: { default-days: 7 }
-    open-pull-requests-limit: 5
     groups:
       crates: { patterns: ["*"] }
     commit-message: { prefix: "Escritorio" }
