@@ -268,7 +268,7 @@
  "empaquetado": {
   "descripcion": "Editor de video para Shorts, Reels y TikTok: edita el texto y se corta el video, todo en tu computador.",
   "categoria": "public.app-category.video",
-  "linux_categoria": "AudioVideo",
+  "linux_categoria": "Video",
   "carpetas": [
    "estilos",
    "efectos",
