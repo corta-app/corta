@@ -10,7 +10,7 @@
     "active": true,
     "targets": "all",
     "icon": ["iconos/32x32.png", "iconos/128x128.png", "iconos/128x128@2x.png", "iconos/icon.icns", "iconos/icon.ico"],
-    "category": "AudioVideo",
+    "category": "Video",
     "copyright": "AGPL-3.0",
     "resources": {
       "../app.json": "recursos/app.json",
