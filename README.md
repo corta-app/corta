@@ -3,12 +3,13 @@
 <h1 align="center">Corta</h1>
 
 <p align="center"><b>El editor gratis y de código abierto para Shorts, Reels y TikTok.</b><br>
-Editas el texto y se edita el video. Subtítulos animados, sin silencios ni muletillas, y tu propia IA hace el trabajo pesado.<br>
-Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.</p>
+Editas el texto y se edita el video. Subtítulos animados, sin silencios ni muletillas. Tu propia IA hace el trabajo pesado.<br>
+Todo pasa en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.</p>
 
 <p align="center"><a href="https://corta-app.github.io/corta/"><b>Página</b></a> ·
 <a href="https://corta-app.github.io/corta/demo/"><b>Pruébala en el navegador</b></a> ·
 <a href="#instalar">Instalar</a> ·
+<a href="https://github.com/corta-app/corta/wiki">Wiki</a> ·
 <a href="https://github.com/corta-app/corta/discussions">Comunidad</a> ·
 <a href="#como-aportar">Cómo aportar</a> ·
 <a href="#english">English</a></p>
@@ -25,89 +26,114 @@ Todo en tu computador: tus videos no se suben a ningún lado. Sin marca de agua.
 ## Qué hace
 - **Edita por texto.** Corta transcribe tu video en tu computador, palabra por palabra. Borras una frase y se borra del video.
 - **Saca silencios y muletillas** de una vez («eh», «mmm», pausas largas). Lo puedes deshacer cuando quieras.
-- **Subtítulos animados** al estilo de los Shorts, en cualquier idioma. Los estilos son archivos simples que cualquiera puede crear.
-- **Corrige cualquier palabra** tocándola, en el texto o sobre el video, sin perder los tiempos. Si el nombre de tu marca salió mal,
-  lo cambias en todo el video de una vez y Corta lo recuerda para tus próximos videos.
-- **Vertical primero:** 9:16, 1:1, 4:5 o 16:9, con encuadre ajustable o fondo borroso para videos horizontales.
+- **Subtítulos animados** al estilo de los Shorts, en cualquier idioma. Los estilos son archivos simples. Cualquiera puede crear uno.
+- **Corrige cualquier palabra.** Tócala en el texto o sobre el video. Los tiempos no cambian. Si el nombre de tu marca salió mal,
+  lo cambias en todo el video de una vez. Corta lo recuerda para tus próximos videos.
+- **Vertical primero:** 9:16, 1:1, 4:5 o 16:9. Para un video horizontal, ajustas el encuadre o usas un fondo borroso.
 - **Dile a tu IA lo que quieres:** «pon zoom cuando digo el precio», «saca la parte donde me equivoco», «pon un título al inicio».
   Si no te gusta, **«Quitar»** deshace justo ese cambio de la IA, aunque hayas seguido editando.
-- **Shorts desde un video largo:** tu IA elige los mejores momentos de una clase, un podcast o un live, y cada uno queda como un video nuevo.
-- **Velocidad y cámara lenta:** toca un tramo y elige 0,25× a 3× (o un valor exacto). Subtítulos, textos y efectos siguen
-  sincronizados; la voz mantiene su tono (bajo 0,5× se silencia sola, y tú decides) y la música no se acelera. Una **rampa** pasa
-  suave de 1× a cámara lenta y vuelve, justo en el momento clave, y **Suavizar** evita que la cámara lenta salte. También se lo
-  puedes pedir a tu IA: «pon en cámara lenta cuando digo…».
-- **Cortes, efectos y filtros:** divide en el cabezal, borra o recorta un tramo, y ponle a todo el video o a un momento un filtro
-  (blanco y negro, cálido, vintage…), un zoom o una transición en cada corte: interferencia, destello, franjas, rebote, barrido o
-  zoom de paso, con la misma imagen en la vista previa y al exportar. Los efectos son archivos simples: la comunidad crea más en el
-  [catálogo](https://github.com/corta-app/corta-catalogo) y los descargas gratis desde la app, ordenados por categoría.
-- **Plantillas:** elige una (presentación de producto, pitch en 30 s, antes y después, recuerdos del mes, receta rápida…), pon tus
-  clips o fotos y se arma sola, con sus cortes, transiciones, efectos y textos. Después la retocas como cualquier video. La comunidad
-  aporta más en el [catálogo](https://github.com/corta-app/corta-catalogo#plantillas), por categorías y gratis.
-- **Música de fondo que baja sola cuando hablas**, y una **línea de tiempo con pistas** (video, subtítulos, textos y música) donde
-  arrastras los bordes con el mouse, el dedo o el teclado.
+- **Shorts desde un video largo.** Tu IA elige los mejores momentos de una clase, un podcast o un live. Cada momento queda como un
+  video nuevo.
+- **Velocidad y cámara lenta.** Toca un tramo y elige de 0,25× a 3×, o un valor exacto.
+  - Los subtítulos, los textos y los efectos siguen sincronizados.
+  - La voz mantiene su tono. Bajo 0,5× se silencia sola, y tú decides. La música no se acelera.
+  - Una **rampa** pasa suave de 1× a cámara lenta y vuelve, justo en el momento clave.
+  - **Suavizar** evita que la cámara lenta salte.
+  - También se lo puedes pedir a tu IA: «pon en cámara lenta cuando digo…».
+- **Cortes, efectos y filtros.**
+  - Divide en el cabezal. Borra o recorta un tramo.
+  - Ponle un filtro a todo el video o a un momento: blanco y negro, cálido, vintage…
+  - Suma un zoom, o una transición en cada corte: interferencia, destello, franjas, rebote, barrido o zoom de paso.
+  - La vista previa y el video exportado se ven igual.
+  - Los efectos son archivos simples. La comunidad crea más en el [catálogo](https://github.com/corta-app/corta-catalogo). Los
+    descargas gratis desde la app, ordenados por categoría.
+- **Plantillas.** Elige una: presentación de producto, pitch en 30 s, antes y después, recuerdos del mes, receta rápida… Pon tus
+  clips o fotos y el video se arma solo, con sus cortes, transiciones, efectos y textos. Después lo retocas como cualquier video. La
+  comunidad aporta más en el [catálogo](https://github.com/corta-app/corta-catalogo#plantillas), por categorías y gratis.
+- **Música de fondo que baja sola cuando hablas.**
+- **Una línea de tiempo con pistas:** video, subtítulos, textos y música. Arrastras los bordes con el mouse, el dedo o el teclado.
 
 <a id="instalar"></a>
 ## Instalar
 
 | | Cómo | Estado |
 |---|---|---|
-| 🌐 **Navegador** | [Vista previa con un video de mentira](https://corta-app.github.io/corta/demo/): nada que instalar. | Para mirar cómo funciona |
-| 🍎 **Mac** | [**Descargar Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip) (Apple Silicon, macOS 15): [cómo instalarla](#instalar-en-mac). Trae todo adentro. | Funciona; sin firma de Apple |
+| 🌐 **Navegador** | [Vista previa con un video de mentira](https://corta-app.github.io/corta/demo/). No hay que instalar nada. | Para ver cómo funciona |
+| 🍎 **Mac** | [**Descargar Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip) (Apple Silicon, macOS 15). [Cómo instalarla](#instalar-en-mac). Trae todo adentro. | Funciona. Sin firma de Apple |
 | 🪟 🐧 **Windows y Linux** | La misma interfaz, en una app de escritorio. | En camino |
 
 La IA es opcional y es la tuya, con tu cuenta: Claude Code, Codex (ChatGPT) o Gemini CLI
-([cómo instalarla](https://corta-app.github.io/corta/ia.html)). Sin IA igual editas por texto, limpias silencios, pones subtítulos,
-efectos y plantillas. Todas las versiones, cada una con su huella `.sha256`, están en [Releases](https://github.com/corta-app/corta/releases).
+([cómo instalarla](https://corta-app.github.io/corta/ia.html)). Sin IA igual puedes editar por texto, limpiar silencios y poner
+subtítulos, efectos y plantillas. Todas las versiones están en [Releases](https://github.com/corta-app/corta/releases), cada una
+con su huella `.sha256`.
 
 ## Tus videos son tuyos
-- Transcripción (whisper.cpp) y exportación (ffmpeg) en tu computador. **No hay servidores de Corta**, ni cuentas, ni telemetría.
-- La IA es **la tuya** (Claude Code, Codex o Gemini), con tu cuenta, y solo ve el texto con sus tiempos. Nunca el video ni el audio.
-- El video original nunca se modifica: los cambios viven en un `proyecto.json` abierto, con historial para deshacer.
-- Sin marca de agua, sin límite de resolución ni de duración.
-- **Sin permisos especiales** en el Mac (ni micrófono, ni cámara, ni avisos, ni el Llavero): solo abre los archivos que eliges o
-  sueltas. Sale a internet solo para bajar el transcriptor una vez (huggingface.co), abrir el catálogo de la comunidad
-  (raw.githubusercontent.com) y buscar o bajar versiones nuevas (GitHub); todo lo que baja se comprueba con su huella SHA-256.
+- La transcripción (whisper.cpp) y la exportación (ffmpeg) pasan en tu computador. **Corta no tiene servidores**, cuentas ni
+  telemetría.
+- La IA es **la tuya** (Claude Code, Codex o Gemini), con tu cuenta. Solo ve el texto con sus tiempos. Nunca ve el video ni el audio.
+- El video original nunca cambia. Los cambios viven en un `proyecto.json` abierto, con historial para deshacer.
+- No hay marca de agua ni límite de resolución o de duración.
+- **Sin permisos especiales** en el Mac: ni micrófono, ni cámara, ni avisos, ni el Llavero. Corta solo abre los archivos que eliges
+  o sueltas.
+- Corta sale a internet solo para tres cosas:
+  1. Bajar el transcriptor, una vez (huggingface.co).
+  2. Abrir el catálogo de la comunidad (raw.githubusercontent.com).
+  3. Buscar o bajar versiones nuevas (GitHub).
+
+  Corta comprueba todo lo que baja con su huella SHA-256.
 
 <a id="como-aportar"></a>
 ## Cómo aportar
-Corta es gratis y abierta, y la hacemos entre todos. Casi nada exige programar:
-- 💬 **Crea un estilo de subtítulos, un efecto o una plantilla:** son archivos JSON cortos ([estilos](estilos/README.md),
-  [efectos](efectos/README.md), [plantillas](plantillas/README.md)) y se comparten en el
-  [catálogo de la comunidad](https://github.com/corta-app/corta-catalogo), desde donde cualquiera los descarga gratis en la app.
-  Una plantilla la puedes proponer con palabras, sin escribir el JSON.
-- 🎬 **Pruébala con tus videos:** los issues con la etiqueta [`probar`](https://github.com/corta-app/corta/labels/probar).
+Corta es gratis y abierta. La hacemos entre todos. Casi nada exige programar:
+- 💬 **Crea un estilo de subtítulos, un efecto o una plantilla.** Son archivos JSON cortos ([estilos](estilos/README.md),
+  [efectos](efectos/README.md), [plantillas](plantillas/README.md)). Se comparten en el
+  [catálogo de la comunidad](https://github.com/corta-app/corta-catalogo). Desde ahí, cualquiera los descarga gratis en la app. Una
+  plantilla la puedes proponer con palabras, sin escribir el JSON.
+- 🎬 **Pruébala con tus videos:** mira los issues con la etiqueta [`probar`](https://github.com/corta-app/corta/labels/probar).
 - 🗣️ **Conversa** en [Discussions](https://github.com/corta-app/corta/discussions): dudas, ideas o lo que publicaste.
-- 🛠️ **Programa, con o sin IA:** [`AGENTS.md`](AGENTS.md) es la guía para personas y para cualquier IA de programación. Empieza
+- 🛠️ **Programa, con o sin IA.** [`AGENTS.md`](AGENTS.md) es la guía para personas y para cualquier IA de programación. Empieza
   por [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Al participar aceptas el [código de conducta](CODE_OF_CONDUCT.md). ¿Una falla de seguridad? Avísanos en privado: [SECURITY.md](SECURITY.md).
+Al participar, aceptas el [código de conducta](CODE_OF_CONDUCT.md). ¿Encontraste una falla de seguridad? Avísanos en privado:
+[SECURITY.md](SECURITY.md).
 
 ## Estado
-Versión 0.1, recién nacida y [lista para descargar](#instalar-en-mac). Ya funcionan el motor (cortes, silencios, subtítulos, zooms, textos, encuadre, exportación vertical,
-edición con IA y Shorts), la interfaz y la **app para Mac** (Apple Silicon, macOS 15 o más nuevo). Windows y Linux vienen en camino.
-Puedes [probar la interfaz con un video de mentira](https://corta-app.github.io/corta/demo/).
+Corta está en la versión 0.2 y [lista para descargar](#instalar-en-mac). Ya funcionan:
+- El motor: cortes, silencios, subtítulos, zooms, textos, encuadre, exportación vertical, edición con IA y Shorts.
+- La interfaz.
+- La **app para Mac** (Apple Silicon, macOS 15 o más nuevo), hecha con Rust y Tauri.
+
+Windows y Linux vienen en camino. Puedes [probar la interfaz con un video de mentira](https://corta-app.github.io/corta/demo/).
 
 ## Instalar en Mac
-Corta para Mac trae todo adentro: no necesitas instalar Python, ffmpeg ni whisper. Es para Mac con Apple Silicon (M1 o más nuevo) y
-macOS 15 o más nuevo.
-1. Descarga [**Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip) (la última versión; su huella SHA-256 está en el mismo
-   [Release](https://github.com/corta-app/corta/releases/latest), en `Corta-macOS.zip.sha256`).
-2. Descomprímelo y arrastra **Corta** a Aplicaciones.
-3. Ábrela. Corta es una app **sin firmar** (no pagamos el certificado de Apple), así que la primera vez macOS avisa que no puede
-   verificarla: ve a **Ajustes del Sistema → Privacidad y seguridad** y, abajo, toca **«Abrir igualmente»**. Solo la primera vez.
+Corta para Mac trae todo adentro. No necesitas instalar Python, ffmpeg ni whisper. Necesitas un Mac con Apple Silicon (M1 o más
+nuevo) y macOS 15 o más nuevo.
+1. Descarga [**Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip), la última versión.
+   Su huella SHA-256 está en el mismo [Release](https://github.com/corta-app/corta/releases/latest), en `Corta-macOS.zip.sha256`.
+2. Descomprime el archivo.
+3. Arrastra **Corta** a Aplicaciones.
+4. Ábrela. Corta es una app **sin firmar**: no pagamos el certificado de Apple. Por eso, la primera vez, macOS avisa que no puede
+   verificarla.
+5. Ve a **Ajustes del Sistema → Privacidad y seguridad**. Abajo, toca **«Abrir igualmente»**. Esto se hace solo la primera vez.
 
-**Desde el código** (si prefieres armarla tú; necesitas las herramientas de línea de comandos de Xcode, `xcode-select --install`,
-[Rust](https://rustup.rs) y `cmake`, que arma whisper.cpp):
+**Desde el código**, si prefieres armarla tú. Necesitas las herramientas de línea de comandos de Xcode (`xcode-select --install`),
+[Rust](https://rustup.rs) y `cmake` (arma whisper.cpp):
 ```bash
 git clone https://github.com/corta-app/corta ~/Developer/corta   # no en ~/corta: macOS no distingue ~/corta de ~/Corta (tus videos)
 cd ~/Developer/corta && bash build.sh                            # queda en ~/Applications/Corta.app
 ```
-La primera vez elige tu idioma, tu IA y descarga el transcriptor (se verifica su huella). Tus videos y proyectos quedan en `~/Corta`;
-actualizar nunca los toca. Corta revisa sola si hay una versión nueva y te avisa en Ajustes (en una instalación desde el código,
-con `git pull`).
-Dentro de la app van [ffmpeg](https://ffmpeg.org) (GPL, como programa aparte), [whisper.cpp](https://github.com/ggml-org/whisper.cpp)
-(MIT, compilado al empaquetar, con Metal) y Python portátil: ffmpeg y Python con su huella SHA-256 fija, whisper.cpp desde un commit
-fijo (`escritorio/herramientas/preparar.sh`).
+
+La primera vez, eliges tu idioma y tu IA, y descargas el transcriptor. Corta verifica su huella.
+
+Tus videos y proyectos quedan en `~/Corta`. Actualizar nunca los toca. Corta revisa sola si hay una versión nueva y te avisa en
+Ajustes. En una instalación desde el código, actualiza con `git pull`.
+
+Dentro de la app van estos programas:
+- [ffmpeg](https://ffmpeg.org) (GPL, como programa aparte), con su huella SHA-256 fija.
+- [whisper.cpp](https://github.com/ggml-org/whisper.cpp) (MIT), compilado al empaquetar con Metal, desde un commit fijo.
+- Python portátil, con su huella SHA-256 fija.
+
+El detalle está en `escritorio/herramientas/preparar.sh`.
 
 ## Cómo funciona
 ```
@@ -119,9 +145,17 @@ tu video ──► whisper (en tu computador) ──► palabras con tiempos ─
 ```
 
 ## Formato del proyecto
-Cada video vive en `~/Corta/<fecha> <nombre>/`: `original.<ext>` (tu video tal cual), `proyecto.json`, `historial/` (para deshacer),
-`musica/` (una copia de la música que elegiste) y lo que exportas. Un video hecho con una plantilla tiene `clips/` (copias de tus
-clips y fotos) y `plantilla-N.mp4` (los clips ya armados) en vez de `original.<ext>`. `proyecto.json` es abierto: puedes armar tus propios scripts encima (ver [`ejemplos/`](ejemplos/)).
+Cada video vive en `~/Corta/<fecha> <nombre>/`. La carpeta tiene:
+- `original.<ext>`: tu video tal cual.
+- `proyecto.json`: los cambios.
+- `historial/`: para deshacer.
+- `musica/`: una copia de la música que elegiste.
+- Lo que exportas.
+
+Un video hecho con una plantilla no tiene `original.<ext>`. En su lugar tiene `clips/` (copias de tus clips y fotos) y
+`plantilla-N.mp4` (los clips ya armados).
+
+`proyecto.json` es abierto: puedes armar tus propios scripts encima (ver [`ejemplos/`](ejemplos/)).
 
 | Campo | Qué guarda |
 |---|---|
@@ -164,9 +198,11 @@ transiciones por nombre, textos, la velocidad de cada hueco (cámara lenta, ráp
 tienes, Corta te ofrece descargarlo.
 
 ## Desarrollo
-Necesitas Python 3 (solo biblioteca estándar), ffmpeg y, para transcribir, whisper.cpp (`whisper-cli`). La app nativa está en
-`escritorio/` (Rust + Tauri, la pieza «host-tauri» de Pieza; la misma servirá para Windows y Linux): `bash build.sh` la arma e
-instala en el Mac y `cd escritorio && cargo run` la abre en cualquier sistema.
+Necesitas Python 3 (solo biblioteca estándar) y ffmpeg. Para transcribir, necesitas whisper.cpp (`whisper-cli`).
+
+La app nativa está en `escritorio/`. Es Rust + Tauri, con la pieza «host-tauri» de Pieza. La misma app servirá para Windows y Linux.
+- `bash build.sh` la arma y la instala en el Mac.
+- `cd escritorio && cargo run` la abre en cualquier sistema.
 ```bash
 cd ui && python3 -m http.server 8765         # interfaz con el video de mentira: http://localhost:8765 (?idioma=en, ?bienvenida, ?vacio)
 python3 bin/importar.py mi-video.mp4 /tmp/r.json   # crea el proyecto en ~/Corta
@@ -178,41 +214,53 @@ Lee [`AGENTS.md`](AGENTS.md) antes de cambiar algo: sirve igual para personas y 
 
 ## Licencia
 [AGPL-3.0](LICENSE). Puedes usar, estudiar, cambiar y compartir Corta. Si la ofreces como servicio o la distribuyes modificada,
-tienes que publicar tu código con la misma licencia. Las tipografías de `ui/fuentes/` usan la [SIL Open Font License](ui/fuentes/OFL.txt).
+publica tu código con la misma licencia. Las tipografías de `ui/fuentes/` usan la [SIL Open Font License](ui/fuentes/OFL.txt).
 
 ---
 
 ## English
-**Corta** ("cut") is a free, open-source editor for Shorts, Reels and TikTok. It transcribes your video on your computer, so you edit
-the video by editing its text; it removes silences and filler words in one click, adds animated captions in any language, reframes
-landscape footage to vertical, and lets your own AI (Claude Code, Codex or Gemini, with your account) apply edits from plain requests
-or pick the best moments of a long video as new Shorts. Add background music that ducks itself under your voice and fine-tune cuts,
-zooms and text on a multi-track timeline. Videos never leave your computer, there's no watermark, and the project is a
-plain open JSON file. Caption styles are data-only files anyone can create. Fix any caption word in place (Corta remembers your
-brand names for future videos), split and trim segments, and add filters, zooms and transitions (glitch, flash, split, bounce,
-swipe, zoom through) to the whole video or one moment. Change the speed of any segment (0.25× to 3×, or a smooth slow-motion
-ramp right at the key moment) with captions and text kept in sync, the voice keeping its pitch and the music untouched; the community shares more effects in the
-[catalog](https://github.com/corta-app/corta-catalogo), downloadable for free from the app.
-**Templates:** pick one (product showcase, 30-second pitch, before and after, month in memories, quick recipe…), add your clips or
-photos and it builds itself with its cuts, transitions, effects and texts; then edit it like any other video. Templates are data-only
-JSON too, and the community shares more by category in the catalog.
-Spanish-first, English included. Licensed under AGPL-3.0.
+**Corta** ("cut") is a free, open-source editor for Shorts, Reels and TikTok.
+- It transcribes your video on your computer. You edit the video by editing its text.
+- It removes silences and filler words in one click.
+- It adds animated captions in any language. Caption styles are data-only files anyone can create.
+- It reframes landscape footage to vertical.
+- Your own AI (Claude Code, Codex or Gemini, with your account) applies edits from plain requests. It can also pick the best
+  moments of a long video as new Shorts. If you don't like an AI edit, **Remove** undoes just that change, even after you kept
+  editing.
+- Fix any caption word in place. Corta remembers your brand names for future videos.
+- Split and trim segments. Add filters, zooms and transitions (glitch, flash, split, bounce, swipe, zoom through) to the whole video
+  or one moment.
+- Change the speed of any segment, from 0.25× to 3×, or use a smooth slow-motion ramp at the key moment. Captions and text stay in
+  sync. The voice keeps its pitch and the music doesn't change.
+- Add background music that ducks under your voice. Fine-tune cuts, zooms and text on a multi-track timeline.
+- **Templates:** pick one (product showcase, 30-second pitch, before and after, month in memories, quick recipe…). Add your clips
+  or photos and the video builds itself, with its cuts, transitions, effects and texts. Then edit it like any other video.
+- The community shares more effects and templates in the [catalog](https://github.com/corta-app/corta-catalogo). Download them for
+  free from the app.
 
-**Mac app** (Apple Silicon, macOS 15+): everything is bundled (Python and ffmpeg pinned by SHA-256, whisper.cpp built with Metal from a pinned commit).
-[**Download Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip), unzip it and drag Corta to Applications (every version, with its `.sha256`, is in
-[Releases](https://github.com/corta-app/corta/releases)). It's an **unsigned app**: the first time, macOS says it can't verify it; go
-to **System Settings → Privacy & Security** and, at the bottom, click **"Open Anyway"**. Only the first time. Corta checks for new
-versions itself and tells you in Settings. Or build it from source (Xcode command line tools, [Rust](https://rustup.rs) and `cmake`):
-`git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`
-(installs to `~/Applications/Corta.app`; your videos live in `~/Corta`). Windows and Linux are on the way.
-No special permissions (no microphone, camera, notifications or Keychain); it only goes online to download the transcriber once
-(huggingface.co), open the community catalog (raw.githubusercontent.com) and check for or download new versions (GitHub), all
-verified by SHA-256.
+Videos never leave your computer. There's no watermark. The project is a plain, open JSON file. Spanish first, English included.
+License: AGPL-3.0.
 
-**Try it** in your browser with a made-up video: [live preview](https://corta-app.github.io/corta/demo/?idioma=en). If you don't
-like an AI edit, **Remove** undoes just that change, even after you kept editing. Caption styles, effects and templates are welcome
-in the [community catalog](https://github.com/corta-app/corta-catalogo); questions and ideas in
-[Discussions](https://github.com/corta-app/corta/discussions), in English or Spanish. See [CONTRIBUTING.md](CONTRIBUTING.md).
+**Mac app** (Apple Silicon, macOS 15+). Everything is bundled: Python and ffmpeg pinned by SHA-256, and whisper.cpp built with Metal
+from a pinned commit.
+1. [**Download Corta-macOS.zip**](https://github.com/corta-app/corta/releases/latest/download/Corta-macOS.zip). Every version, with
+   its `.sha256`, is in [Releases](https://github.com/corta-app/corta/releases).
+2. Unzip it and drag Corta to Applications.
+3. It's an **unsigned app**. The first time, macOS says it can't verify it. Go to **System Settings → Privacy & Security** and, at
+   the bottom, click **"Open Anyway"**. You do this only the first time.
+
+Corta checks for new versions itself and tells you in Settings. To build it from source, install the Xcode command line tools,
+[Rust](https://rustup.rs) and `cmake`, then run:
+`git clone https://github.com/corta-app/corta ~/Developer/corta && cd ~/Developer/corta && bash build.sh`.
+It installs to `~/Applications/Corta.app`. Your videos live in `~/Corta`. Windows and Linux are on the way.
+
+Corta needs no special permissions: no microphone, camera, notifications or Keychain. It goes online only to download the
+transcriber once (huggingface.co), open the community catalog (raw.githubusercontent.com) and check for or download new versions
+(GitHub). It verifies everything by SHA-256.
+
+**Try it** in your browser with a made-up video: [live preview](https://corta-app.github.io/corta/demo/?idioma=en). Caption styles,
+effects and templates are welcome in the [community catalog](https://github.com/corta-app/corta-catalogo). Questions and ideas are
+welcome in [Discussions](https://github.com/corta-app/corta/discussions), in English or Spanish. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
