@@ -5,11 +5,10 @@
 @font-face { font-family: "Bebas Neue"; src: url("fuentes/BebasNeue_400Regular.ttf"); font-display: block; }
 @font-face { font-family: "Anton"; src: url("fuentes/Anton_400Regular.ttf"); font-display: block; }
 
-/* Colores: pieza «tema» (ui/tema.css, cargada antes). Cada color es un par claro/oscuro; con «Como el sistema» se ve como antes
-   (oscuro, o claro si el sistema está en claro). Lo propio de Corta (lateral, cortes, escenario, violeta, azul) también. */
+/* Colores: pieza «tema» (ui/tema.css, cargada antes), con los neutros de la familia; Corta pone su verde lima y lo propio (cortes,
+   escenario, violeta, azul) como pares. La barra de arriba y la de proyectos son oscuras en los dos modos (.pz-zona-oscura de
+   «componentes»). */
 :root {
-  --fondo-claro: #f3f3ef; --fondo-oscuro: #0d0e10; --panel-claro: #ffffff; --panel-oscuro: #16171a; --panel-2-claro: #f6f6f2; --panel-2-oscuro: #1d1f23;
-  --linea-claro: #deded8; --linea-oscuro: #2a2c31; --texto-claro: #141518; --texto-oscuro: #f4f4f0; --texto-suave-claro: #63656d; --texto-suave-oscuro: #9a9ca3;
   --acento-claro: #4f7a00; --acento-oscuro: #c6f432; --sobre-acento-oscuro: #111214;
   --rojo-claro: #c93636; --rojo-oscuro: #ff6b6b; --verde-claro: #4f7a00; --verde-oscuro: #c6f432;
   /* Lo propio de Corta, también como pares: el token lo elige light-dark() y, sin él, el respaldo de abajo. */
@@ -55,6 +54,7 @@ h1, h2, h3 { margin: 0; line-height: 1.25; }
 /* Estructura: proyectos · escenario · panel */
 .app { display: grid; grid-template-columns: 232px minmax(0, 1fr) 380px; grid-template-rows: 56px minmax(0, 1fr); height: 100vh; }
 .barra { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 1px solid var(--linea); background: var(--lateral); -webkit-app-region: drag; min-width: 0; }
+.barra.pz-zona-oscura, .lateral.pz-zona-oscura { background: var(--barra-lateral); }
 .barra > * { -webkit-app-region: no-drag; }
 .marca { display: flex; align-items: center; gap: 9px; font-weight: 800; font-size: 17px; letter-spacing: -.01em; -webkit-app-region: drag; }
 .logo { width: 28px; height: 28px; flex: none; }

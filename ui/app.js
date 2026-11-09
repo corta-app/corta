@@ -550,7 +550,7 @@
 
   function barra() {
     const p = P();
-    return `<header class="barra"><span class="marca">${LOGO}<span>Corta</span></span>
+    return `<header class="barra pz-zona-oscura"><span class="marca">${LOGO}<span>Corta</span></span>
       <span class="titulo-proy" data-sin-traducir>${p ? `<b>${esc(p.titulo)}</b>` : ""}</span>
       ${p && p.palabras ? `<div class="pz-seg" role="group" aria-label="Formato">${Object.keys(LIENZOS).map((l) =>
         `<button data-lienzo="${l}" aria-pressed="${p.lienzo === l}" data-sin-traducir>${l}</button>`).join("")}</div>
@@ -568,7 +568,7 @@
       return `<button class="item" data-sel="${esc(x.carpeta)}" aria-current="${x.carpeta === E.sel}">
         <span class="t" data-sin-traducir>${esc(p.titulo)}</span><span class="m">${meta}</span></button>`;
     }).join("");
-    return `<aside class="lateral"><div class="caja"><button class="pz-boton pz-principal grande" data-accion="nuevo">＋ <span>Nuevo video</span></button>
+    return `<aside class="lateral pz-zona-oscura"><div class="caja"><button class="pz-boton pz-principal grande" data-accion="nuevo">＋ <span>Nuevo video</span></button>
       <button class="pz-boton pz-plano grande" data-accion="plantillas">▦ <span>Usar una plantilla</span></button></div>
       <nav class="lista" aria-label="Videos">${E.proyectos.length ? `<h2>Tus videos</h2>${items}` : ""}</nav>
       <div class="pie-lateral"><span aria-hidden="true">🔒</span><span>Tus videos no salen de tu computador.</span></div></aside>`;

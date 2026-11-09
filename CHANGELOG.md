@@ -5,6 +5,7 @@ Lo que cambia para quien usa Corta, en palabras simples. Cada versión, con su d
 *What changes for people using Corta, in plain words. Every version, with its download and SHA-256 checksum, is in Releases.*
 
 ## Sin publicar
+- Corta tiene el estilo nuevo de la familia: barras oscuras, fondo cálido y el verde lima de siempre. · *Corta has the family's new look: dark bars, a warm background and the same lime green.*
 
 ## 0.2.0 · 2026-11-08
 
