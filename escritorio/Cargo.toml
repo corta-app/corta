@@ -2,7 +2,7 @@
 # los scripts de bin/. Generado por Pieza desde app.json y las piezas instaladas: si lo cambias, desde ahí es de la app.
 [package]
 name = "corta"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 publish = false
 license = "AGPL-3.0-only"
