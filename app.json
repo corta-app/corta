@@ -1,7 +1,7 @@
 {
  "nombre": "Corta",
  "id": "corta",
- "version": "0.2.0",
+ "version": "0.3.0",
  "repo": "corta-app/corta",
  "datos": "visible",
  "privado": true,
